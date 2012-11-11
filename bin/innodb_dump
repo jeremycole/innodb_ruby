@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+
+require "pp"
+require "innodb"
+
+file, page_number = ARGV.shift(2)
+
+space = Innodb::Space.new(file)
+page_types = Hash.new(0)
+page_levels = Hash.new(0)
+records_per_level = {}
+puts "%-8s%-8s%-8s" % ["page", "level", "records"]
+space.each_page do |page_number, page|
+  fh = page.fil_header
+  page_types[fh[:type]] += 1
+  if fh[:type] == :INDEX
+    ph = page.page_header
+    puts "%-8i%-8i%-8i" % [
+      page_number,
+      ph[:level],
+      ph[:n_recs],
+    ]
+    page_levels[ph[:level]] += 1
+    records_per_level[ph[:level]] ||= Hash.new(0)
+    records_per_level[ph[:level]][ph[:n_recs]] += 1
+  end
+  if fh[:type] == :ALLOCATED
+    puts "%-8i%-8i%-8i" % [ page_number, 0, 0 ]
+  end
+end
+#pp page_types
+#pp page_levels
+#pp records_per_level
+#space.page(page_number).dump
