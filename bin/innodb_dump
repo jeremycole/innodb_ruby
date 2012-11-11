@@ -11,20 +11,18 @@ page_levels = Hash.new(0)
 records_per_level = {}
 puts "%-8s%-8s%-8s" % ["page", "level", "records"]
 space.each_page do |page_number, page|
-  fh = page.fil_header
-  page_types[fh[:type]] += 1
-  if fh[:type] == :INDEX
-    ph = page.page_header
+  page_types[page.type] += 1
+  if page.type == :INDEX
     puts "%-8i%-8i%-8i" % [
       page_number,
-      ph[:level],
-      ph[:n_recs],
+      page.ph[:level],
+      page.ph[:n_recs],
     ]
-    page_levels[ph[:level]] += 1
-    records_per_level[ph[:level]] ||= Hash.new(0)
-    records_per_level[ph[:level]][ph[:n_recs]] += 1
+    page_levels[page.ph[:level]] += 1
+    records_per_level[page.ph[:level]] ||= Hash.new(0)
+    records_per_level[page.ph[:level]][page.ph[:n_recs]] += 1
   end
-  if fh[:type] == :ALLOCATED
+  if page.type == :ALLOCATED
     puts "%-8i%-8i%-8i" % [ page_number, 0, 0 ]
   end
 end

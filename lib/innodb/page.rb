@@ -106,6 +106,19 @@ class Innodb::Page
       :space_id   => c.get_uint32,
     }
   end
+  alias :fh :fil_header
+
+  def type
+    fil_header[:type]
+  end
+
+  def prev
+    fil_header[:prev]
+  end
+
+  def next
+    fil_header[:next]
+  end
 
   def page_header
     c = cursor(PAGE_HEADER_START)
@@ -125,6 +138,7 @@ class Innodb::Page
       :format       => (n_heap & 1<<15) == 0 ? :redundant : :compact,
     }
   end
+  alias :ph :page_header
 
   def system_record(offset)
     return nil unless fil_header[:type] == :INDEX
