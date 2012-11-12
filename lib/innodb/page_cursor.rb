@@ -41,6 +41,10 @@ class Innodb::Page
       type ? data.unpack(type).first : data
     end
 
+    def get_bytes(length)
+      read_and_advance(length)
+    end
+
     def get_uint8(offset=nil)
       seek(offset)
       read_and_advance(1, "C")
@@ -64,11 +68,10 @@ class Innodb::Page
   
     def get_uint64(offset=nil)
       seek(offset)
-      read_and_advance(8, "Q")
-    end
-
-    def get_bytes(length)
-      read_and_advance(length)
+      # Ruby 1.8 doesn't support big-endian quad-word unpack; unpack as two
+      # 32-bit big-endian instead.
+      high, low = read_and_advance(8).unpack("NN")
+      (high << 32) | low
     end
   end
 end
