@@ -1,6 +1,8 @@
 require "innodb/page_cursor"
 
 class Innodb::Page
+  PAGE_SIZE = 16384
+
   # InnoDB Page Type constants from include/fil0fil.h.
   PAGE_TYPE = {
     0     => :ALLOCATED,      # Freshly allocated page
@@ -34,14 +36,17 @@ class Innodb::Page
     Cursor.new(self, offset)
   end
 
-  FIL_HEADER_START  = 0
   FIL_HEADER_SIZE   = 38
+  FIL_HEADER_START  = 0
 
-  PAGE_HEADER_START = FIL_HEADER_START + FIL_HEADER_SIZE
   PAGE_HEADER_SIZE  = 36
+  PAGE_HEADER_START = FIL_HEADER_START + FIL_HEADER_SIZE
 
-  FSEG_HEADER_START = PAGE_HEADER_START + PAGE_HEADER_SIZE
+  PAGE_TRAILER_SIZE  = 16
+  PAGE_TRAILER_START = PAGE_SIZE - PAGE_TRAILER_SIZE
+
   FSEG_HEADER_SIZE  = 10
+  FSEG_HEADER_START = PAGE_HEADER_START + PAGE_HEADER_SIZE
   FSEG_HEADER_COUNT = 2
 
   MUM_RECORD_SIZE   = 8
@@ -159,15 +164,32 @@ class Innodb::Page
     @supremum ||= system_record(pos_supremum)
   end
 
+  def free_space
+    unused_space = (PAGE_TRAILER_START - page_header[:heap_top])
+    unused_space + page_header[:garbage]
+  end
+
+  def used_space
+    PAGE_SIZE - free_space
+  end
+
+  def record_space
+    used_space - pos_user_records
+  end
+
   def record_header(offset)
     c = cursor(offset).backward
     case page_header[:format]
     when :compact
-      {
-        :next => c.get_sint16,
-        :bits1 => c.get_uint16,
-        :bits2 => c.get_uint8,
-      }
+      header = {}
+      header[:next] = c.get_sint16
+      bits1 = c.get_uint16
+      header[:type] = bits1 & 0x07
+      header[:order] = (bits1 & 0xf8) >> 3
+      bits2 = c.get_uint8
+      header[:n_owned] = bits2 & 0x0f
+      header[:deleted] = (bits2 & 0xf0) >> 4
+      header
     when :redundant
       raise "Not implemented"
     end
@@ -179,7 +201,7 @@ class Innodb::Page
     return nil if offset == pos_infimum
     return nil if offset == pos_supremum
 
-    c = cursor(offset)
+    c = cursor(offset).forward
     # There is a header preceding the row itself, so back up and read it.
     header = record_header(offset)
     {
@@ -210,6 +232,11 @@ class Innodb::Page
     puts
     puts "page header:"
     pp page_header
+
+    puts
+    puts "free space: #{free_space}"
+    puts "used space: #{used_space}"
+    puts "record space: #{record_space}"
 
     if fil_header[:type] == :INDEX
       puts

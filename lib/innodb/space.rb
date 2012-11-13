@@ -1,18 +1,16 @@
 class Innodb::Space
-  PAGE_SIZE = 16384
-
   def initialize(file)
     @file = File.open(file)
     @size = @file.stat.size
-    @pages = (@size/PAGE_SIZE)
+    @pages = (@size / Innodb::Page::PAGE_SIZE)
   end
 
   def page(page_number)
-    offset = page_number.to_i * PAGE_SIZE
+    offset = page_number.to_i * Innodb::Page::PAGE_SIZE
     return nil unless offset < @size
-    return nil unless (offset+PAGE_SIZE) <= @size
+    return nil unless (offset + Innodb::Page::PAGE_SIZE) <= @size
     @file.seek(offset)
-    page_data = @file.read(PAGE_SIZE)
+    page_data = @file.read(Innodb::Page::PAGE_SIZE)
     Innodb::Page.new(page_data)
   end
 
