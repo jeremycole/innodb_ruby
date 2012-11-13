@@ -6,27 +6,28 @@ require "innodb"
 file, page_number = ARGV.shift(2)
 
 space = Innodb::Space.new(file)
+#space.page(page_number).dump
+#exit
+
 page_types = Hash.new(0)
 page_levels = Hash.new(0)
 records_per_level = {}
-puts "%-8s%-8s%-8s" % ["page", "level", "records"]
+puts "%-8s%-8s%-8s%-8s" % ["page", "index", "level", "data"]
 space.each_page do |page_number, page|
   page_types[page.type] += 1
   if page.type == :INDEX
-    puts "%-8i%-8i%-8i" % [
+    puts "%-8i%-8i%-8i%-8i" % [
       page_number,
+      page.ph[:index_id],
       page.ph[:level],
-      page.ph[:n_recs],
+      page.record_space,
     ]
-    page_levels[page.ph[:level]] += 1
-    records_per_level[page.ph[:level]] ||= Hash.new(0)
-    records_per_level[page.ph[:level]][page.ph[:n_recs]] += 1
+    #page_levels[page.ph[:index_id]] ||= Hash.new(0)
+    #page_levels[page.ph[:index_id]][page.ph[:level]] += 1
+    #records_per_level[page.ph[:level]] ||= Hash.new(0)
+    #records_per_level[page.ph[:level]][page.ph[:n_recs]] += 1
   end
   if page.type == :ALLOCATED
-    puts "%-8i%-8i%-8i" % [ page_number, 0, 0 ]
+    puts "%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0 ]
   end
 end
-#pp page_types
-#pp page_levels
-#pp records_per_level
-#space.page(page_number).dump
