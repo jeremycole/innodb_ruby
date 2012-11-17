@@ -28,8 +28,8 @@ class Innodb::Page
     5 => :no_direction,
   }
 
-  def initialize(page)
-    @page = page
+  def initialize(buffer)
+    @buffer = buffer
   end
 
   def cursor(offset)
@@ -95,7 +95,7 @@ class Innodb::Page
   end
 
   def data(offset, length)
-    @page[offset...(offset + length)]
+    @buffer[offset...(offset + length)]
   end
 
   def fil_header
