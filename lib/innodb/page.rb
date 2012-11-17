@@ -1,4 +1,4 @@
-require "innodb/page_cursor"
+require "innodb/cursor"
 
 class Innodb::Page
   PAGE_SIZE = 16384
@@ -33,7 +33,7 @@ class Innodb::Page
   end
 
   def cursor(offset)
-    Cursor.new(self, offset)
+    Innodb::Cursor.new(self, offset)
   end
 
   FIL_HEADER_SIZE   = 38
