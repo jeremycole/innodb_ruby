@@ -177,6 +177,10 @@ class Innodb::Page
     used_space - pos_user_records
   end
 
+  def record_bytes
+    data(pos_user_records, page_header[:heap_top] - pos_user_records)
+  end
+
   def record_header(offset)
     c = cursor(offset).backward
     case page_header[:format]
