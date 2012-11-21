@@ -18,6 +18,7 @@ Gem::Specification.new do |s|
     'lib/innodb/log_block.rb',
     'lib/innodb/page.rb',
     'lib/innodb/space.rb',
+    'lib/innodb/version.rb',
   ]
   s.executables = [
     'innodb_dump_log',
