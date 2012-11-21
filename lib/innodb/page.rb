@@ -21,14 +21,17 @@ class Innodb::Page
     17855 => :INDEX,          # B-tree node
   }
 
+  attr_accessor :record_formatter
+
   # Initialize a page by passing in a 16kB buffer containing the raw page
   # contents. Currently only 16kB pages are supported.
-  def initialize(buffer)
+  def initialize(buffer, record_formatter=nil)
     unless buffer.size == PAGE_SIZE
       raise "Page buffer provided was not #{PAGE_SIZE} bytes" 
     end
 
     @buffer = buffer
+    @record_formatter = record_formatter
   end
 
   # A helper function to return bytes from the page buffer based on offset
@@ -101,6 +104,11 @@ class Innodb::Page
   
   RECORD_BITS_SIZE  = 3
   RECORD_NEXT_SIZE  = 2
+
+  PAGE_DIR_START              = PAGE_TRAILER_START
+  PAGE_DIR_SLOT_SIZE          = 2
+  PAGE_DIR_SLOT_MIN_N_OWNED   = 4
+  PAGE_DIR_SLOT_MAX_N_OWNED   = 8
 
   # Page direction values possible in the page_header[:direction] field.
   PAGE_DIRECTION = {
@@ -205,13 +213,27 @@ class Innodb::Page
   # Return the byte offset of the start of the user records in a page, which
   # immediately follows the supremum record.
   def pos_user_records
-    pos_supremum + size_record_header + size_record_undefined + MUM_RECORD_SIZE
+    pos_supremum + MUM_RECORD_SIZE
+  end
+
+  def header_space
+    # The end of the supremum record is the beginning of the space available
+    # for user records.
+    pos_user_records
+  end
+
+  def directory_space
+    page_header[:n_dir_slots] * PAGE_DIR_SLOT_SIZE
+  end
+
+  def trailer_space
+    PAGE_TRAILER_SIZE
   end
 
   # Return the amount of free space in the page.
   def free_space
-    unused_space = (PAGE_TRAILER_START - page_header[:heap_top])
-    unused_space + page_header[:garbage]
+    page_header[:garbage] +
+      (PAGE_SIZE - trailer_space - directory_space - page_header[:heap_top])
   end
 
   # Return the amount of used space in the page.
@@ -221,7 +243,7 @@ class Innodb::Page
 
   # Return the amount of space occupied by records in the page.
   def record_space
-    used_space - pos_user_records
+    used_space - header_space - trailer_space - directory_space
   end
 
   # Return the actual bytes of the portion of the page which is used to
@@ -251,6 +273,12 @@ class Innodb::Page
     end
   end
 
+  def record_format
+    if record_formatter
+      @record_format ||= record_formatter.format(self)
+    end
+  end
+
   # Return a record. (This is mostly unimplemented.)
   def record(offset)
     return nil unless offset
@@ -259,18 +287,37 @@ class Innodb::Page
     return nil if offset == pos_supremum
 
     c = cursor(offset).forward
+
     # There is a header preceding the row itself, so back up and read it.
     header = record_header(offset)
-    {
+
+    this_record = {
       :header => header,
       :next => header[:next] == 0 ? nil : (offset + header[:next]),
-      # These system records may not be present depending on schema.
-      :rec1 => c.get_bytes(6),
-      :rec2 => c.get_bytes(6),
-      :rec3 => c.get_bytes(7),
-      # Read a few bytes just so it can be visually verified.
-      :data => c.get_bytes(8),
     }
+
+    if record_format
+      this_record[:type] = record_format[:type]
+      # Read the key fields.
+      this_record[:key] = []
+      record_format[:key].each do |f|
+        this_record[:key].push c.send(*f)
+      end
+
+      # Read InnoDB's internal fields for clustered keys.
+      if record_format[:type] == :clustered
+        this_record[:transaction_id] = c.get_bytes(6)
+        this_record[:roll_pointer]   = c.get_bytes(7)
+      end
+
+      # Read the non-key fields.
+      this_record[:row] = []
+      record_format[:row].each do |f|
+        this_record[:row].push c.send(*f)
+      end
+    end
+
+    this_record
   end
 
   # Iterate through all records. (This is mostly unimplemented.)
@@ -293,9 +340,17 @@ class Innodb::Page
     pp page_header
 
     puts
-    puts "free space: #{free_space}"
-    puts "used space: #{used_space}"
-    puts "record space: #{record_space}"
+    puts "sizes:"
+    puts "  %-15s%5i" % [ "header", header_space ]
+    puts "  %-15s%5i" % [ "trailer", trailer_space ]
+    puts "  %-15s%5i" % [ "directory", directory_space ]
+    puts "  %-15s%5i" % [ "free", free_space ]
+    puts "  %-15s%5i" % [ "used", used_space ]
+    puts "  %-15s%5i" % [ "record", record_space ]
+    puts "  %-15s%5.2f" % [
+      "per record",
+      record_space / page_header[:n_recs]
+    ]
 
     if type == :INDEX
       puts

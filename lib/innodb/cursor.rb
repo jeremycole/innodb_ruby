@@ -145,4 +145,16 @@ class Innodb::Cursor
       raise "Invalid flag #{flag.to_s(16)} seen"
     end
   end
+
+  # Return an InnoDB-munged signed 8-bit integer. (This is only implemented
+  # for positive integers at the moment.)
+  def get_i_sint8
+    get_uint8 ^ (1 << 7)
+  end
+
+  # Return an InnoDB-munged signed 64-bit integer. (This is only implemented
+  # for positive integers at the moment.)
+  def get_i_sint64
+    get_uint64 ^ (1 << 63)
+  end
 end

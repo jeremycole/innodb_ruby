@@ -9,13 +9,13 @@ class Innodb::Space
   end
 
   # Get an Innodb::Page object for a specific page by page number.
-  def page(page_number)
+  def page(page_number, record_formatter=nil)
     offset = page_number.to_i * Innodb::Page::PAGE_SIZE
     return nil unless offset < @size
     return nil unless (offset + Innodb::Page::PAGE_SIZE) <= @size
     @file.seek(offset)
     page_data = @file.read(Innodb::Page::PAGE_SIZE)
-    Innodb::Page.new(page_data)
+    Innodb::Page.new(page_data, record_formatter)
   end
 
   # Iterate through all pages in a tablespace, returning the page number
