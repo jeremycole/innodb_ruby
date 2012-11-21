@@ -1,42 +1,49 @@
+# A cursor to walk through InnoDB data structures to read fields.
 class Innodb::Cursor
-  attr_reader :offset
-
   def initialize(buffer, offset)
     @buffer = buffer
     @cursor = [ offset ]
     @direction = :forward
   end
 
+  # Set the direction of the cursor to "forward".
   def forward
     @direction = :forward
     self
   end
 
+  # Set the direction of the cursor to "backward".
   def backward
     @direction = :backward
     self
   end
 
+  # Return the position of the current cursor.
   def position
     @cursor[0]
   end
 
+  # Move the current cursor to a new absolute position.
   def seek(offset)
     @cursor[0] = offset if offset
     self
   end
 
+  # Adjust the current cursor to a new relative position.
   def adjust(relative_offset)
     @cursor[0] += relative_offset
     self
   end
 
+  # Save the current cursor position and start a new (nested, stacked) cursor.
   def push(offset=nil)
     @cursor.unshift(offset.nil? ? @cursor[0] : offset)
     self
   end
 
+  # Restore the last cursor position.
   def pop
+    raise "No cursors to pop" unless @cursor.size > 1
     @cursor.shift
     self
   end
@@ -52,6 +59,9 @@ class Innodb::Cursor
     result
   end
 
+  # Read a number of bytes forwards or backwards from the current cursor
+  # position and adjust the cursor position by that amount, optionally
+  # unpacking the data using the provided type.
   def read_and_advance(length, type=nil)
     data = nil
     #print "data(#{@cursor[0]}..."
@@ -67,26 +77,31 @@ class Innodb::Cursor
     type ? data.unpack(type).first : data
   end
 
+  # Return raw bytes.
   def get_bytes(length)
     read_and_advance(length)
   end
 
+  # Return a big-endian unsigned 8-bit integer.
   def get_uint8(offset=nil)
     seek(offset)
     read_and_advance(1, "C")
   end
 
+  # Return a big-endian unsigned 16-bit integer.
   def get_uint16(offset=nil)
     seek(offset)
     read_and_advance(2, "n")
   end
 
+  # Return a big-endian signed 16-bit integer.
   def get_sint16(offset=nil)
     seek(offset)
     uint = read_and_advance(2, "n")
     (uint & 32768) == 0 ? uint : -(uint ^ 65535) - 1
   end
 
+  # Return a big-endian unsigned 24-bit integer.
   def get_uint24(offset=nil)
     seek(offset)
     # Ruby 1.8 doesn't support big-endian 24-bit unpack; unpack as one
@@ -95,11 +110,13 @@ class Innodb::Cursor
     (high << 8) | low
   end
 
+  # Return a big-endian unsigned 32-bit integer.
   def get_uint32(offset=nil)
     seek(offset)
     read_and_advance(4, "N")
   end
 
+  # Return a big-endian unsigned 64-bit integer.
   def get_uint64(offset=nil)
     seek(offset)
     # Ruby 1.8 doesn't support big-endian quad-word unpack; unpack as two
@@ -108,7 +125,7 @@ class Innodb::Cursor
     (high << 32) | low
   end
 
-  # InnoDB compressed 32-bit unsigned integer.
+  # Return an InnoDB-compressed unsigned 32-bit integer.
   def get_ic_uint32
     flag = peek { get_uint8 }
 
@@ -128,5 +145,4 @@ class Innodb::Cursor
       raise "Invalid flag #{flag.to_s(16)} seen"
     end
   end
-
 end

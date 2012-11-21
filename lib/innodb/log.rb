@@ -1,3 +1,4 @@
+# An InnoDB transaction log file.
 class Innodb::Log
   HEADER_SIZE   = 4 * Innodb::LogBlock::BLOCK_SIZE
   HEADER_START  = 0
@@ -13,12 +14,15 @@ class Innodb::Log
 #define LOG_CHECKPOINT_2	(3 * OS_FILE_LOG_BLOCK_SIZE)
 #define LOG_FILE_HDR_SIZE	(4 * OS_FILE_LOG_BLOCK_SIZE)
 
+  # Open a log file.
   def initialize(file)
     @file = File.open(file)
     @size = @file.stat.size
     @blocks = ((@size - DATA_START) / Innodb::LogBlock::BLOCK_SIZE)
   end
 
+  # Return a log block with a given block number as an InnoDB::LogBlock object.
+  # Blocks are numbered after the log file header, starting from 0.
   def block(block_number)
     offset = DATA_START + (block_number.to_i * Innodb::LogBlock::BLOCK_SIZE)
     return nil unless offset < @size
@@ -28,6 +32,8 @@ class Innodb::Log
     Innodb::LogBlock.new(block_data)
   end
 
+  # Iterate through all log blocks, returning the block number and an
+  # InnoDB::LogBlock object for each block.
   def each_block
     (0...@blocks).each do |block_number|
       current_block = block(block_number)

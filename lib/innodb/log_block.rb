@@ -1,7 +1,9 @@
 require "innodb/cursor"
 require "pp"
 
+# An InnoDB transaction log block.
 class Innodb::LogBlock
+  # Log blocks are fixed-length at 512 bytes in InnoDB.
   BLOCK_SIZE = 512
 
   HEADER_SIZE = 12
@@ -29,18 +31,28 @@ class Innodb::LogBlock
 #define	LOG_CHECKPOINT_ARCHIVED_LSN	24
 #define	LOG_CHECKPOINT_GROUP_ARRAY	32
 
+  # Initialize a log block by passing in a 512-byte buffer containing the raw
+  # log block contents.
   def initialize(buffer)
+    unless buffer.size == BLOCK_SIZE
+      raise "Log block buffer provided was not #{BLOCK_SIZE} bytes" 
+    end
+
     @buffer = buffer
   end
 
-  def cursor(offset)
-    Innodb::Cursor.new(self, offset)
-  end
-
+  # A helper function to return bytes from the log block buffer based on offset
+  # and length, both in bytes.
   def data(offset, length)
     @buffer[offset...(offset + length)]
   end
 
+  # Return an Innodb::Cursor object positioned at a specific offset.
+  def cursor(offset)
+    Innodb::Cursor.new(self, offset)
+  end
+
+  # Return the log block header.
   def header
     @header ||= begin
       c = cursor(HEADER_START)
@@ -53,6 +65,7 @@ class Innodb::LogBlock
     end
   end
 
+  # Return the log block trailer.
   def trailer
     @trailer ||= begin
       c = cursor(TRAILER_START)
@@ -62,6 +75,7 @@ class Innodb::LogBlock
     end
   end
 
+  # The constants used by InnoDB for identifying different log record types.
   RECORD_TYPES = {
     1  => :MLOG_1BYTE,
     2  => :MLOG_2BYTE,
@@ -111,6 +125,7 @@ class Innodb::LogBlock
     51 => :ZIP_PAGE_COMPRESS,
   }
 
+  # Return the log record contents. (This is mostly unimplemented.)
   def record_content(record_type, offset)
     c = cursor(offset)
     case record_type
@@ -129,6 +144,8 @@ class Innodb::LogBlock
 
   SINGLE_RECORD_MASK = 0x80
   RECORD_TYPE_MASK = 0x7f
+
+  # Return the log record. (This is mostly unimplemented.)
   def record
     @record ||= begin
       if header[:first_rec_group] != 0
@@ -148,6 +165,7 @@ class Innodb::LogBlock
     end
   end
 
+  # Dump the contents of a log block for debugging purposes.
   def dump
     puts
     puts "header:"
