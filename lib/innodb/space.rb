@@ -40,7 +40,7 @@ class Innodb::Space
       child_page = page(child_page_number)
       if child_page.type == :INDEX
         link_proc.call(page, child_page, child_min_key, depth+1)
-        recurse(child_page, node_proc, leaf_proc, link_proc, depth+1)
+        _recurse_index(child_page, node_proc, leaf_proc, link_proc, depth+1)
       end
     end
   end
