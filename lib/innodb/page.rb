@@ -76,6 +76,12 @@ class Innodb::Page
     fil_header[:type]
   end
 
+  # A helper function to return the page offset from the "fil" header, for
+  # easier access.
+  def offset
+    fil_header[:offset]
+  end
+
   # A helper function to return the page number of the logical previous page
   # (from the doubly-linked list from page to page) from the "fil" header,
   # for easier access.
@@ -163,6 +169,12 @@ class Innodb::Page
   end
   alias :ph :page_header
 
+  # A helper function to return the page level from the "page" header, for
+  # easier access.
+  def level
+    page_header && page_header[:level]
+  end
+
   # Parse and return simple fixed-format system records, such as InnoDB's
   # internal infimum and supremum records.
   def system_record(offset)
@@ -216,16 +228,19 @@ class Innodb::Page
     pos_supremum + MUM_RECORD_SIZE
   end
 
+  # The amount of space consumed by the page header.
   def header_space
     # The end of the supremum record is the beginning of the space available
     # for user records.
     pos_user_records
   end
 
+  # The amount of space consumed by the page directory.
   def directory_space
     page_header[:n_dir_slots] * PAGE_DIR_SLOT_SIZE
   end
 
+  # The amount of space consumed by the page trailer.
   def trailer_space
     PAGE_TRAILER_SIZE
   end
@@ -298,22 +313,31 @@ class Innodb::Page
 
     if record_format
       this_record[:type] = record_format[:type]
-      # Read the key fields.
+
+      # Read the key fields present in all types of pages.
       this_record[:key] = []
       record_format[:key].each do |f|
         this_record[:key].push c.send(*f)
       end
 
-      # Read InnoDB's internal fields for clustered keys.
-      if record_format[:type] == :clustered
+      if page_header[:level] == 0 && record_format[:type] == :clustered
+        # Read InnoDB's internal fields for clustered keys on leaf pages.
         this_record[:transaction_id] = c.get_bytes(6)
         this_record[:roll_pointer]   = c.get_bytes(7)
       end
 
-      # Read the non-key fields.
-      this_record[:row] = []
-      record_format[:row].each do |f|
-        this_record[:row].push c.send(*f)
+      if (page_header[:level] == 0 && record_format[:type] == :clustered) ||
+        (record_format[:type] == :secondary)
+        # Read the non-key fields.
+        this_record[:row] = []
+        record_format[:row].each do |f|
+          this_record[:row].push c.send(*f)
+        end
+      end
+
+      if page_header[:level] > 0
+        # Read the node pointer in a node (non-leaf) page.
+        this_record[:child_page_number] = c.get_uint32
       end
     end
 
@@ -325,6 +349,15 @@ class Innodb::Page
     rec = infimum
     while rec = record(rec[:next])
       yield rec
+    end
+    nil
+  end
+
+  # Iterate through all child pages of a node (non-leaf) page.
+  def each_child_page
+    return nil if level == 0
+    each_record do |rec|
+      yield rec[:child_page_number], rec[:key]
     end
     nil
   end
