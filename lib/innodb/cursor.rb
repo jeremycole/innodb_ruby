@@ -82,6 +82,11 @@ class Innodb::Cursor
     read_and_advance(length)
   end
 
+  # Return raw bytes as hex.
+  def get_hex(length)
+    read_and_advance(length).bytes.map { |c| "%02x" % c }.join
+  end
+
   # Return a big-endian unsigned 8-bit integer.
   def get_uint8(offset=nil)
     seek(offset)
