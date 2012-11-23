@@ -267,6 +267,16 @@ class Innodb::Page
     data(pos_user_records, page_header[:heap_top] - pos_user_records)
   end
 
+  RECORD_TYPES = {
+    0 => :conventional,
+    1 => :node_pointer,
+    2 => :infimum,
+    3 => :supremum,
+  }
+
+  INFO_MIN_REC_FLAG = 1
+  INFO_DELETED_FLAG = 2
+
   # Return the header from a record. (This is mostly unimplemented.)
   def record_header(offset)
     return nil unless type == :INDEX
@@ -277,11 +287,13 @@ class Innodb::Page
       header = {}
       header[:next] = c.get_sint16
       bits1 = c.get_uint16
-      header[:type] = bits1 & 0x07
+      header[:type] = RECORD_TYPES[bits1 & 0x07]
       header[:order] = (bits1 & 0xf8) >> 3
       bits2 = c.get_uint8
       header[:n_owned] = bits2 & 0x0f
-      header[:deleted] = (bits2 & 0xf0) >> 4
+      info = (bits2 & 0xf0) >> 4
+      header[:min_rec] = (info & INFO_MIN_REC_FLAG) != 0
+      header[:deleted] = (info & INFO_DELETED_FLAG) != 0
       header
     when :redundant
       raise "Not implemented"
@@ -322,8 +334,8 @@ class Innodb::Page
 
       if page_header[:level] == 0 && record_format[:type] == :clustered
         # Read InnoDB's internal fields for clustered keys on leaf pages.
-        this_record[:transaction_id] = c.get_bytes(6)
-        this_record[:roll_pointer]   = c.get_bytes(7)
+        this_record[:transaction_id] = c.get_hex(6)
+        this_record[:roll_pointer]   = c.get_hex(7)
       end
 
       if (page_header[:level] == 0 && record_format[:type] == :clustered) ||
@@ -382,7 +394,7 @@ class Innodb::Page
     puts "  %-15s%5i" % [ "record", record_space ]
     puts "  %-15s%5.2f" % [
       "per record",
-      record_space / page_header[:n_recs]
+      (page_header[:n_recs] > 0) ? (record_space / page_header[:n_recs]) : 0
     ]
 
     if type == :INDEX
