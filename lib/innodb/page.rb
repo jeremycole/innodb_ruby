@@ -146,7 +146,8 @@ class Innodb::Page
     end
   end
 
-  # Return the "page" header; currently only "INDEX" pages are supported.
+  # Return the "page" header; currently only "INDEX" pages are supported. This
+  # should probably be better modularized to support other page types.
   def page_header
     return nil unless type == :INDEX
 
@@ -175,19 +176,6 @@ class Innodb::Page
     page_header && page_header[:level]
   end
 
-  # Parse and return simple fixed-format system records, such as InnoDB's
-  # internal infimum and supremum records.
-  def system_record(offset)
-    return nil unless type == :INDEX
-
-    c = cursor(offset)
-    c.adjust(-2)
-    {
-      :next => offset + c.get_sint16,
-      :data => c.get_bytes(8),
-    }
-  end
-
   # Return the byte offset of the start of the "origin" of the infimum record,
   # which is always the first record in the singly-linked record chain on any
   # page, and represents a record with a "lower value than any possible user
@@ -196,22 +184,12 @@ class Innodb::Page
     pos_records + size_record_header + size_record_undefined
   end
 
-  # Return the infimum record on a page.
-  def infimum
-    @infimum ||= system_record(pos_infimum)
-  end
-
   # Return the byte offset of the start of the "origin" of the supremum record,
   # which is always the last record in the singly-linked record chain on any
   # page, and represents a record with a "higher value than any possible user
   # record". The supremum record immediately follows the infimum record.
   def pos_supremum
     pos_infimum + size_record_header + size_record_undefined + MUM_RECORD_SIZE
-  end
-
-  # Return the supremum record on a page.
-  def supremum
-    @supremum ||= system_record(pos_supremum)
   end
 
   # Return the byte offset of the start of records within the page (the
@@ -267,6 +245,7 @@ class Innodb::Page
     data(pos_user_records, page_header[:heap_top] - pos_user_records)
   end
 
+  # Record types used in the :type field of the record header.
   RECORD_TYPES = {
     0 => :conventional,
     1 => :node_pointer,
@@ -274,8 +253,11 @@ class Innodb::Page
     3 => :supremum,
   }
 
-  INFO_MIN_REC_FLAG = 1
-  INFO_DELETED_FLAG = 2
+  # This record is the minimum record at this level of the B-tree.
+  RECORD_INFO_MIN_REC_FLAG = 1
+
+  # This record has been marked as deleted.
+  RECORD_INFO_DELETED_FLAG = 2
 
   # Return the header from a record. (This is mostly unimplemented.)
   def record_header(offset)
@@ -292,21 +274,45 @@ class Innodb::Page
       bits2 = c.get_uint8
       header[:n_owned] = bits2 & 0x0f
       info = (bits2 & 0xf0) >> 4
-      header[:min_rec] = (info & INFO_MIN_REC_FLAG) != 0
-      header[:deleted] = (info & INFO_DELETED_FLAG) != 0
+      header[:min_rec] = (info & RECORD_INFO_MIN_REC_FLAG) != 0
+      header[:deleted] = (info & RECORD_INFO_DELETED_FLAG) != 0
       header
     when :redundant
       raise "Not implemented"
     end
   end
 
+  # Parse and return simple fixed-format system records, such as InnoDB's
+  # internal infimum and supremum records.
+  def system_record(offset)
+    return nil unless type == :INDEX
+
+    header = record_header(offset)
+    {
+      :header => header,
+      :next => offset + header[:next],
+      :data => cursor(offset).get_bytes(8),
+    }
+  end
+
+  # Return the infimum record on a page.
+  def infimum
+    @infimum ||= system_record(pos_infimum)
+  end
+
+  # Return the supremum record on a page.
+  def supremum
+    @supremum ||= system_record(pos_supremum)
+  end
+
+  # Return (and cache) the record format provided by an external class.
   def record_format
     if record_formatter
       @record_format ||= record_formatter.format(self)
     end
   end
 
-  # Return a record. (This is mostly unimplemented.)
+  # Parse and return a record at a given offset.
   def record(offset)
     return nil unless offset
     return nil unless type == :INDEX
@@ -332,13 +338,16 @@ class Innodb::Page
         this_record[:key].push c.send(*f)
       end
 
-      if page_header[:level] == 0 && record_format[:type] == :clustered
-        # Read InnoDB's internal fields for clustered keys on leaf pages.
+      # If this is a leaf page of the clustered index, read InnoDB's internal
+      # fields, a transaction ID and roll pointer.
+      if level == 0 && record_format[:type] == :clustered
         this_record[:transaction_id] = c.get_hex(6)
         this_record[:roll_pointer]   = c.get_hex(7)
       end
 
-      if (page_header[:level] == 0 && record_format[:type] == :clustered) ||
+      # If this is a leaf page of the clustered index, or any page of a
+      # secondary index, read the non-key fields.
+      if (level == 0 && record_format[:type] == :clustered) ||
         (record_format[:type] == :secondary)
         # Read the non-key fields.
         this_record[:row] = []
@@ -347,7 +356,9 @@ class Innodb::Page
         end
       end
 
-      if page_header[:level] > 0
+      # If this is a node (non-leaf) page, it will have a child page number
+      # (or "node pointer") stored as the last field.
+      if level > 0
         # Read the node pointer in a node (non-leaf) page.
         this_record[:child_page_number] = c.get_uint32
       end
@@ -365,7 +376,9 @@ class Innodb::Page
     nil
   end
 
-  # Iterate through all child pages of a node (non-leaf) page.
+  # Iterate through all child pages of a node (non-leaf) page, which are
+  # stored as records with the child page number as the last field in the
+  # record.
   def each_child_page
     return nil if level == 0
     each_record do |rec|
