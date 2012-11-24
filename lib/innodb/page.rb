@@ -393,24 +393,24 @@ class Innodb::Page
     puts "fil header:"
     pp fil_header
 
-    puts
-    puts "page header:"
-    pp page_header
-
-    puts
-    puts "sizes:"
-    puts "  %-15s%5i" % [ "header", header_space ]
-    puts "  %-15s%5i" % [ "trailer", trailer_space ]
-    puts "  %-15s%5i" % [ "directory", directory_space ]
-    puts "  %-15s%5i" % [ "free", free_space ]
-    puts "  %-15s%5i" % [ "used", used_space ]
-    puts "  %-15s%5i" % [ "record", record_space ]
-    puts "  %-15s%5.2f" % [
-      "per record",
-      (page_header[:n_recs] > 0) ? (record_space / page_header[:n_recs]) : 0
-    ]
-
     if type == :INDEX
+      puts
+      puts "page header:"
+      pp page_header
+
+      puts
+      puts "sizes:"
+      puts "  %-15s%5i" % [ "header", header_space ]
+      puts "  %-15s%5i" % [ "trailer", trailer_space ]
+      puts "  %-15s%5i" % [ "directory", directory_space ]
+      puts "  %-15s%5i" % [ "free", free_space ]
+      puts "  %-15s%5i" % [ "used", used_space ]
+      puts "  %-15s%5i" % [ "record", record_space ]
+      puts "  %-15s%5.2f" % [
+        "per record",
+        (page_header[:n_recs] > 0) ? (record_space / page_header[:n_recs]) : 0
+      ]
+
       puts
       puts "system records:"
       pp infimum
