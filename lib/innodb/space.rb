@@ -35,27 +35,4 @@ class Innodb::Space
       yield page_number, current_page if current_page
     end
   end
-
-  def _recurse_index(page, node_proc, leaf_proc, link_proc, depth=0)
-    if page.level == 0
-      leaf_proc.call(page, depth) if page.type == :INDEX
-    else
-      node_proc.call(page, depth) if page.type == :INDEX
-    end
-    page.each_child_page do |child_page_number, child_min_key|
-      child_page = page(child_page_number)
-      child_page.record_formatter = @record_formatter
-      if child_page.type == :INDEX
-        link_proc.call(page, child_page, child_min_key, depth+1)
-        _recurse_index(child_page, node_proc, leaf_proc, link_proc, depth+1)
-      end
-    end
-  end
-
-  def recurse_index(page_number, node_proc, leaf_proc, link_proc)
-    this_page = page(page_number)
-    raise "Not an index page; can't recurse" unless this_page.type == :INDEX
-
-    _recurse_index(this_page, node_proc, leaf_proc, link_proc)
-  end
 end
