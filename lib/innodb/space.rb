@@ -12,13 +12,19 @@ class Innodb::Space
   end
 
   # Get an Innodb::Page object for a specific page by page number.
-  def page(page_number, record_formatter=nil)
+  def page(page_number)
     offset = page_number.to_i * Innodb::Page::PAGE_SIZE
     return nil unless offset < @size
     return nil unless (offset + Innodb::Page::PAGE_SIZE) <= @size
     @file.seek(offset)
     page_data = @file.read(Innodb::Page::PAGE_SIZE)
-    Innodb::Page.new(page_data, record_formatter || @record_formatter)
+    this_page = Innodb::Page.parse(page_data)
+
+    if this_page.type == :INDEX
+      this_page.record_formatter = @record_formatter
+    end
+
+    this_page
   end
 
   # Iterate through all pages in a tablespace, returning the page number
@@ -38,6 +44,7 @@ class Innodb::Space
     end
     page.each_child_page do |child_page_number, child_min_key|
       child_page = page(child_page_number)
+      child_page.record_formatter = @record_formatter
       if child_page.type == :INDEX
         link_proc.call(page, child_page, child_min_key, depth+1)
         _recurse_index(child_page, node_proc, leaf_proc, link_proc, depth+1)
@@ -46,6 +53,9 @@ class Innodb::Space
   end
 
   def recurse_index(page_number, node_proc, leaf_proc, link_proc)
-    _recurse_index(page(page_number), node_proc, leaf_proc, link_proc)
+    this_page = page(page_number)
+    raise "Not an index page; can't recurse" unless this_page.type == :INDEX
+
+    _recurse_index(this_page, node_proc, leaf_proc, link_proc)
   end
 end
