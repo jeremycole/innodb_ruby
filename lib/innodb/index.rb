@@ -60,13 +60,26 @@ class Innodb::Index
     page
   end
 
-  # Iterate through all leaf pages by finding the first leaf page and following
-  # the next pointers in each page.
-  def each_leaf_page
-    page = first_leaf_page
+  # Iterate through all leaf pages starting with the provided page.
+  def each_leaf_page_from(page)
     while page.type == :INDEX
       yield page
       page = @space.page(page.next)
+    end
+  end
+
+  # Iterate through all leaf pages by finding the first leaf page and following
+  # the next pointers in each page.
+  def each_leaf_page
+    each_leaf_page_from(first_leaf_page) { |page| yield page }
+  end
+
+  # Iterate through all records on all leaf pages in ascending order.
+  def each_record
+    each_leaf_page do |page|
+      page.each_record do |record|
+        yield record
+      end
     end
   end
 end
