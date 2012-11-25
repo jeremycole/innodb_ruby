@@ -272,6 +272,11 @@ class Innodb::Page::Index < Innodb::Page
     this_record
   end
 
+  # Return the first record on this page.
+  def first_record
+    record(infimum[:next])
+  end
+
   # Iterate through all records. (This is mostly unimplemented.)
   def each_record
     rec = infimum
