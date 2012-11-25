@@ -5,7 +5,6 @@ class Innodb::Page::Index < Innodb::Page
   PAGE_HEADER_START = Innodb::Page::FIL_HEADER_END
 
   PAGE_TRAILER_SIZE  = 16
-  PAGE_TRAILER_START = PAGE_SIZE - PAGE_TRAILER_SIZE
 
   FSEG_HEADER_SIZE  = 10
   FSEG_HEADER_START = PAGE_HEADER_START + PAGE_HEADER_SIZE
@@ -16,7 +15,6 @@ class Innodb::Page::Index < Innodb::Page
   RECORD_BITS_SIZE  = 3
   RECORD_NEXT_SIZE  = 2
 
-  PAGE_DIR_START              = PAGE_TRAILER_START
   PAGE_DIR_SLOT_SIZE          = 2
   PAGE_DIR_SLOT_MIN_N_OWNED   = 4
   PAGE_DIR_SLOT_MAX_N_OWNED   = 8
@@ -111,6 +109,14 @@ class Innodb::Page::Index < Innodb::Page
     pos_supremum + MUM_RECORD_SIZE
   end
 
+  def pos_trailer
+    size - PAGE_TRAILER_SIZE
+  end
+
+  def pos_directory
+    pos_trailer
+  end
+
   # The amount of space consumed by the page header.
   def header_space
     # The end of the supremum record is the beginning of the space available
@@ -131,12 +137,12 @@ class Innodb::Page::Index < Innodb::Page
   # Return the amount of free space in the page.
   def free_space
     page_header[:garbage] +
-      (PAGE_SIZE - trailer_space - directory_space - page_header[:heap_top])
+      (size - trailer_space - directory_space - page_header[:heap_top])
   end
 
   # Return the amount of used space in the page.
   def used_space
-    PAGE_SIZE - free_space
+    size - free_space
   end
 
   # Return the amount of space occupied by records in the page.

@@ -3,21 +3,24 @@
 class Innodb::Space
   attr_accessor :record_formatter
 
+  # Currently only 16kB InnoDB pages are supported.
+  PAGE_SIZE = 16384
+
   # Open a tablespace file.
   def initialize(file)
     @file = File.open(file)
     @size = @file.stat.size
-    @pages = (@size / Innodb::Page::PAGE_SIZE)
+    @pages = (@size / PAGE_SIZE)
     @record_formatter = nil
   end
 
   # Get an Innodb::Page object for a specific page by page number.
   def page(page_number)
-    offset = page_number.to_i * Innodb::Page::PAGE_SIZE
+    offset = page_number.to_i * PAGE_SIZE
     return nil unless offset < @size
-    return nil unless (offset + Innodb::Page::PAGE_SIZE) <= @size
+    return nil unless (offset + PAGE_SIZE) <= @size
     @file.seek(offset)
-    page_data = @file.read(Innodb::Page::PAGE_SIZE)
+    page_data = @file.read(PAGE_SIZE)
     this_page = Innodb::Page.parse(page_data)
 
     if this_page.type == :INDEX

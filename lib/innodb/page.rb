@@ -1,9 +1,6 @@
 require "innodb/cursor"
 
 class Innodb::Page
-  # Currently only 16kB InnoDB pages are supported.
-  PAGE_SIZE = 16384
-
   # InnoDB Page Type constants from include/fil0fil.h.
   PAGE_TYPE = {
     0     => :ALLOCATED,      # Freshly allocated page
@@ -42,11 +39,12 @@ class Innodb::Page
   # Initialize a page by passing in a 16kB buffer containing the raw page
   # contents. Currently only 16kB pages are supported.
   def initialize(buffer)
-    unless buffer.size == PAGE_SIZE
-      raise "Page buffer provided was not #{PAGE_SIZE} bytes" 
-    end
-
     @buffer = buffer
+  end
+
+  # Return the page size, to eventually be able to deal with non-16kB pages.
+  def size
+    @size ||= @buffer.size
   end
 
   # A helper function to return bytes from the page buffer based on offset
