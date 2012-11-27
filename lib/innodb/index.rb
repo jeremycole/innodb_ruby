@@ -49,29 +49,29 @@ class Innodb::Index
   end
 
   # Return the first leaf page in the index by walking down the left side
-  # of the B-tree until a leaf page is encountered.
-  def first_leaf_page
+  # of the B-tree until a page at the given level is encountered.
+  def first_page_at_level(level)
     page = @root
     record = @root.first_record
-    while record && page.level > 0
+    while record && page.level > level
       page = @space.page(record[:child_page_number])
       record = page.first_record
     end
-    page
+    page if page.level == level
   end
 
-  # Iterate through all leaf pages starting with the provided page.
-  def each_leaf_page_from(page)
-    while page.type == :INDEX
+  # Iterate through all pages at this level starting with the provided page.
+  def each_page_from(page)
+    while page && page.type == :INDEX
       yield page
       page = @space.page(page.next)
     end
   end
 
-  # Iterate through all leaf pages by finding the first leaf page and following
-  # the next pointers in each page.
-  def each_leaf_page
-    each_leaf_page_from(first_leaf_page) { |page| yield page }
+  # Iterate through all pages at the given level by finding the first page
+  # and following the next pointers in each page.
+  def each_page_at_level(level)
+    each_page_from(first_page_at_level(level)) { |page| yield page }
   end
 
   # Iterate through all records on all leaf pages in ascending order.
