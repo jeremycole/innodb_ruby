@@ -1,0 +1,118 @@
+
+#<Innodb::Page::Index:0x1018d9300>:
+
+fil header:
+{:type=>:INDEX,
+ :prev=>nil,
+ :lsn=>4649897246,
+ :next=>nil,
+ :offset=>4,
+ :flush_lsn=>0,
+ :space_id=>10,
+ :checksum=>3376004125}
+
+page header:
+{:heap_top=>290,
+ :max_trx_id=>0,
+ :n_heap=>7,
+ :index_id=>152,
+ :garbage=>0,
+ :format=>:compact,
+ :free=>0,
+ :level=>2,
+ :last_insert=>261,
+ :n_recs=>5,
+ :direction=>:right,
+ :n_dir_slots=>2,
+ :n_direction=>4}
+
+sizes:
+  header           120
+  trailer           16
+  directory          4
+  free           16074
+  used             310
+  record           170
+  per record     34.00
+
+system records:
+{:data=>"infimum\000",
+ :next=>125,
+ :header=>
+  {:deleted=>false,
+   :type=>:infimum,
+   :order=>0,
+   :n_owned=>1,
+   :next=>26,
+   :min_rec=>false}}
+{:data=>"supremum",
+ :next=>112,
+ :header=>
+  {:deleted=>false,
+   :type=>:supremum,
+   :order=>1,
+   :n_owned=>6,
+   :next=>0,
+   :min_rec=>false}}
+
+records:
+{:type=>:secondary,
+ :key=>[0, 0],
+ :next=>159,
+ :child_page_number=>136,
+ :header=>
+  {:deleted=>false,
+   :type=>:node_pointer,
+   :order=>2,
+   :n_owned=>0,
+   :next=>34,
+   :min_rec=>true},
+ :row=>[0, 0]}
+{:type=>:secondary,
+ :key=>[124, 754],
+ :next=>193,
+ :child_page_number=>137,
+ :header=>
+  {:deleted=>false,
+   :type=>:node_pointer,
+   :order=>3,
+   :n_owned=>0,
+   :next=>34,
+   :min_rec=>false},
+ :row=>[0, 1240754]}
+{:type=>:secondary,
+ :key=>[375, 326],
+ :next=>227,
+ :child_page_number=>138,
+ :header=>
+  {:deleted=>false,
+   :type=>:node_pointer,
+   :order=>4,
+   :n_owned=>0,
+   :next=>34,
+   :min_rec=>false},
+ :row=>[0, 3750326]}
+{:type=>:secondary,
+ :key=>[625, 898],
+ :next=>261,
+ :child_page_number=>141,
+ :header=>
+  {:deleted=>false,
+   :type=>:node_pointer,
+   :order=>5,
+   :n_owned=>0,
+   :next=>34,
+   :min_rec=>false},
+ :row=>[0, 6250898]}
+{:type=>:secondary,
+ :key=>[876, 470],
+ :next=>112,
+ :child_page_number=>144,
+ :header=>
+  {:deleted=>false,
+   :type=>:node_pointer,
+   :order=>6,
+   :n_owned=>0,
+   :next=>-149,
+   :min_rec=>false},
+ :row=>[0, 8760470]}
