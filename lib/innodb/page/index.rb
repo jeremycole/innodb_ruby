@@ -1,23 +1,105 @@
 class Innodb::Page::Index < Innodb::Page
   attr_accessor :record_formatter
 
-  PAGE_HEADER_SIZE  = 36
-  PAGE_HEADER_START = Innodb::Page::FIL_HEADER_END
+  # Return the byte offset of the start of the "index" page header, which
+  # immediately follows the "fil" header.
+  def pos_index_header
+    pos_fil_header + size_fil_header
+  end
 
-  PAGE_TRAILER_SIZE  = 16
+  # The size of the "index" header.
+  def size_index_header
+    36
+  end
 
-  FSEG_HEADER_SIZE  = 10
-  FSEG_HEADER_START = PAGE_HEADER_START + PAGE_HEADER_SIZE
-  FSEG_HEADER_COUNT = 2
+  # Return the byte offset of the start of the "fseg" header, which immediately
+  # follows the "index" header.
+  def pos_fseg_header
+    pos_index_header + size_index_header
+  end
 
-  MUM_RECORD_SIZE   = 8
-  
-  RECORD_BITS_SIZE  = 3
-  RECORD_NEXT_SIZE  = 2
+  # The size of the "fseg" header.
+  def size_fseg_header
+    2 * 10
+  end
 
-  PAGE_DIR_SLOT_SIZE          = 2
-  PAGE_DIR_SLOT_MIN_N_OWNED   = 4
-  PAGE_DIR_SLOT_MAX_N_OWNED   = 8
+  # Return the byte offset of the start of records within the page (the
+  # position immediately after the page header).
+  def pos_records
+    size_fil_header + size_index_header + size_fseg_header
+  end
+
+  # The size of the data from the supremum or infimum records.
+  def size_mum_record
+    8
+  end
+
+  # Return the byte offset of the start of the "origin" of the infimum record,
+  # which is always the first record in the singly-linked record chain on any
+  # page, and represents a record with a "lower value than any possible user
+  # record". The infimum record immediately follows the page header.
+  def pos_infimum
+    pos_records + size_record_header + size_record_undefined
+  end
+
+  # Return the byte offset of the start of the "origin" of the supremum record,
+  # which is always the last record in the singly-linked record chain on any
+  # page, and represents a record with a "higher value than any possible user
+  # record". The supremum record immediately follows the infimum record.
+  def pos_supremum
+    pos_infimum + size_record_header + size_record_undefined + size_mum_record
+  end
+
+  # Return the byte offset of the start of the user records in a page, which
+  # immediately follows the supremum record.
+  def pos_user_records
+    pos_supremum + size_mum_record
+  end
+
+  # The position of the page directory, which starts at the "fil" trailer and
+  # grows backwards from there.
+  def pos_directory
+    pos_fil_trailer
+  end
+
+  # The amount of space consumed by the page header.
+  def header_space
+    # The end of the supremum system record is the beginning of the space
+    # available for user records.
+    pos_user_records
+  end
+
+  # The amount of space consumed by the page directory.
+  def directory_space
+    page_header[:n_dir_slots] * PAGE_DIR_SLOT_SIZE
+  end
+
+  # The amount of space consumed by the trailers in the page.
+  def trailer_space
+    size_fil_trailer
+  end
+
+  # Return the amount of free space in the page.
+  def free_space
+    page_header[:garbage] +
+      (size - size_fil_trailer - directory_space - page_header[:heap_top])
+  end
+
+  # Return the amount of used space in the page.
+  def used_space
+    size - free_space
+  end
+
+  # Return the amount of space occupied by records in the page.
+  def record_space
+    used_space - header_space - directory_space - trailer_space
+  end
+
+  # Return the actual bytes of the portion of the page which is used to
+  # store user records (eliminate the headers and trailer from the page).
+  def record_bytes
+    data(pos_user_records, page_header[:heap_top] - pos_user_records)
+  end
 
   # Page direction values possible in the page_header[:direction] field.
   PAGE_DIRECTION = {
@@ -28,33 +110,11 @@ class Innodb::Page::Index < Innodb::Page
     5 => :no_direction,
   }
 
-  # Return the size of the header for each record.
-  def size_record_header
-    case page_header[:format]
-    when :compact
-      RECORD_BITS_SIZE + RECORD_NEXT_SIZE
-    when :redundant
-      RECORD_BITS_SIZE + RECORD_NEXT_SIZE + 1
-    end
-  end
-
-  # Return the size of a field in the record header for which no description
-  # could be found (but must be skipped anyway).
-  def size_record_undefined
-    case page_header[:format]
-    when :compact
-      0
-    when :redundant
-      1
-    end
-  end
-
-  # Return the "page" header; currently only "INDEX" pages are supported. This
-  # should probably be better modularized to support other page types.
+  # Return the "index" header.
   def page_header
     return nil unless type == :INDEX
 
-    c = cursor(PAGE_HEADER_START)
+    c = cursor(pos_index_header)
     @page_header ||= {
       :n_dir_slots  => c.get_uint16,
       :heap_top     => c.get_uint16,
@@ -79,81 +139,32 @@ class Innodb::Page::Index < Innodb::Page
     page_header && page_header[:level]
   end
 
-  # Return the byte offset of the start of the "origin" of the infimum record,
-  # which is always the first record in the singly-linked record chain on any
-  # page, and represents a record with a "lower value than any possible user
-  # record". The infimum record immediately follows the page header.
-  def pos_infimum
-    pos_records + size_record_header + size_record_undefined
+  RECORD_BITS_SIZE  = 3
+  RECORD_NEXT_SIZE  = 2
+
+  PAGE_DIR_SLOT_SIZE          = 2
+  PAGE_DIR_SLOT_MIN_N_OWNED   = 4
+  PAGE_DIR_SLOT_MAX_N_OWNED   = 8
+
+  # Return the size of the header for each record.
+  def size_record_header
+    case page_header[:format]
+    when :compact
+      RECORD_BITS_SIZE + RECORD_NEXT_SIZE
+    when :redundant
+      RECORD_BITS_SIZE + RECORD_NEXT_SIZE + 1
+    end
   end
 
-  # Return the byte offset of the start of the "origin" of the supremum record,
-  # which is always the last record in the singly-linked record chain on any
-  # page, and represents a record with a "higher value than any possible user
-  # record". The supremum record immediately follows the infimum record.
-  def pos_supremum
-    pos_infimum + size_record_header + size_record_undefined + MUM_RECORD_SIZE
-  end
-
-  # Return the byte offset of the start of records within the page (the
-  # position immediately after the page header).
-  def pos_records
-    FIL_HEADER_SIZE + 
-      PAGE_HEADER_SIZE + 
-      (FSEG_HEADER_COUNT * FSEG_HEADER_SIZE)
-  end
-
-  # Return the byte offset of the start of the user records in a page, which
-  # immediately follows the supremum record.
-  def pos_user_records
-    pos_supremum + MUM_RECORD_SIZE
-  end
-
-  def pos_trailer
-    size - PAGE_TRAILER_SIZE
-  end
-
-  def pos_directory
-    pos_trailer
-  end
-
-  # The amount of space consumed by the page header.
-  def header_space
-    # The end of the supremum record is the beginning of the space available
-    # for user records.
-    pos_user_records
-  end
-
-  # The amount of space consumed by the page directory.
-  def directory_space
-    page_header[:n_dir_slots] * PAGE_DIR_SLOT_SIZE
-  end
-
-  # The amount of space consumed by the page trailer.
-  def trailer_space
-    PAGE_TRAILER_SIZE
-  end
-
-  # Return the amount of free space in the page.
-  def free_space
-    page_header[:garbage] +
-      (size - trailer_space - directory_space - page_header[:heap_top])
-  end
-
-  # Return the amount of used space in the page.
-  def used_space
-    size - free_space
-  end
-
-  # Return the amount of space occupied by records in the page.
-  def record_space
-    used_space - header_space - trailer_space - directory_space
-  end
-
-  # Return the actual bytes of the portion of the page which is used to
-  # store user records (eliminate the headers and trailer from the page).
-  def record_bytes
-    data(pos_user_records, page_header[:heap_top] - pos_user_records)
+  # Return the size of a field in the record header for which no description
+  # could be found (but must be skipped anyway).
+  def size_record_undefined
+    case page_header[:format]
+    when :compact
+      0
+    when :redundant
+      1
+    end
   end
 
   # Record types used in the :type field of the record header.
@@ -202,7 +213,7 @@ class Innodb::Page::Index < Innodb::Page
     {
       :header => header,
       :next => offset + header[:next],
-      :data => cursor(offset).get_bytes(8),
+      :data => cursor(offset).get_bytes(size_mum_record),
     }
   end
 
@@ -313,12 +324,12 @@ class Innodb::Page::Index < Innodb::Page
 
     puts
     puts "sizes:"
-    puts "  %-15s%5i" % [ "header", header_space ]
-    puts "  %-15s%5i" % [ "trailer", trailer_space ]
-    puts "  %-15s%5i" % [ "directory", directory_space ]
-    puts "  %-15s%5i" % [ "free", free_space ]
-    puts "  %-15s%5i" % [ "used", used_space ]
-    puts "  %-15s%5i" % [ "record", record_space ]
+    puts "  %-15s%5i" % [ "header",     header_space ]
+    puts "  %-15s%5i" % [ "trailer",    trailer_space ]
+    puts "  %-15s%5i" % [ "directory",  directory_space ]
+    puts "  %-15s%5i" % [ "free",       free_space ]
+    puts "  %-15s%5i" % [ "used",       used_space ]
+    puts "  %-15s%5i" % [ "record",     record_space ]
     puts "  %-15s%5.2f" % [
       "per record",
       (page_header[:n_recs] > 0) ? (record_space / page_header[:n_recs]) : 0

@@ -1,31 +1,12 @@
 require "innodb/cursor"
 
 class Innodb::Page
-  # InnoDB Page Type constants from include/fil0fil.h.
-  PAGE_TYPE = {
-    0     => :ALLOCATED,      # Freshly allocated page
-    2     => :UNDO_LOG,       # Undo log page
-    3     => :INODE,          # Index node
-    4     => :IBUF_FREE_LIST, # Insert buffer free list
-    5     => :IBUF_BITMAP,    # Insert buffer bitmap
-    6     => :SYS,            # System page
-    7     => :TRX_SYS,        # Transaction system data
-    8     => :FSP_HDR,        # File space header
-    9     => :XDES,           # Extent descriptor page
-    10    => :BLOB,           # Uncompressed BLOB page
-    11    => :ZBLOB,          # First compressed BLOB page
-    12    => :ZBLOB2,         # Subsequent compressed BLOB page
-    17855 => :INDEX,          # B-tree node
-  }
-
-  # A helper to convert "undefined" values stored in previous and next pointers
-  # in the page header to nil.
-  def self.maybe_undefined(value)
-    value == 4294967295 ? nil : value
-  end
-
   SPECIALIZED_CLASSES = {}
 
+  # Load a page as a generic page in order to make the "fil" header accessible,
+  # and then attempt to hand off the page to a specialized class to be
+  # re-parsed if possible. If there is no specialized class for this type
+  # of page, return the generic object.
   def self.parse(buffer)
     page = Innodb::Page.new(buffer)
 
@@ -58,13 +39,54 @@ class Innodb::Page
     Innodb::Cursor.new(self, offset)
   end
 
-  FIL_HEADER_SIZE   = 38
-  FIL_HEADER_START  = 0
-  FIL_HEADER_END    = FIL_HEADER_START + FIL_HEADER_SIZE
+  # Return the byte offset of the start of the "fil" header, which is at the
+  # beginning of the page. Included here primarily for completeness.
+  def pos_fil_header
+    0
+  end
+
+  # Return the size of the "fil" header, in bytes.
+  def size_fil_header
+    38
+  end
+
+  # Return the byte offset of the start of the "fil" trailer, which is at
+  # the end of the page.
+  def pos_fil_trailer
+    size - size_fil_trailer
+  end
+
+  # Return the size of the "fil" trailer, in bytes.
+  def size_fil_trailer
+    8
+  end
+
+  # InnoDB Page Type constants from include/fil0fil.h.
+  PAGE_TYPE = {
+    0     => :ALLOCATED,      # Freshly allocated page
+    2     => :UNDO_LOG,       # Undo log page
+    3     => :INODE,          # Index node
+    4     => :IBUF_FREE_LIST, # Insert buffer free list
+    5     => :IBUF_BITMAP,    # Insert buffer bitmap
+    6     => :SYS,            # System page
+    7     => :TRX_SYS,        # Transaction system data
+    8     => :FSP_HDR,        # File space header
+    9     => :XDES,           # Extent descriptor page
+    10    => :BLOB,           # Uncompressed BLOB page
+    11    => :ZBLOB,          # First compressed BLOB page
+    12    => :ZBLOB2,         # Subsequent compressed BLOB page
+    17855 => :INDEX,          # B-tree node
+  }
+
+  # A helper to convert "undefined" values stored in previous and next pointers
+  # in the page header to nil.
+  def self.maybe_undefined(value)
+    value == 4294967295 ? nil : value
+  end
 
   # Return the "fil" header from the page, which is common for all page types.
   def fil_header
-    c = cursor(FIL_HEADER_START)
+    c = cursor(pos_fil_header)
     @fil_header ||= {
       :checksum   => c.get_uint32,
       :offset     => c.get_uint32,

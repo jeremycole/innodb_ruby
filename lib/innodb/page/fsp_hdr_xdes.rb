@@ -1,25 +1,26 @@
 require "innodb/free_list"
 
 class Innodb::Page::FspHdrXdes < Innodb::Page
-  FSP_HEADER_SIZE   = (32 + 5 * Innodb::FreeList::BASE_NODE_SIZE)
-  FSP_HEADER_START  = Innodb::Page::FIL_HEADER_END
-
-  XDES_STATES = {
-    1 => :free,
-    2 => :free_frag,
-    3 => :full_frag,
-    4 => :fseg,
-  }
-
   XDES_BITS_PER_PAGE = 2
   XDES_BITMAP_SIZE = (64 * XDES_BITS_PER_PAGE) / 8
   XDES_SIZE = 8 + Innodb::FreeList::NODE_SIZE + 4 + XDES_BITMAP_SIZE
 
-  XDES_ARRAY_START      = FSP_HEADER_START + FSP_HEADER_SIZE
   XDES_N_ARRAY_ENTRIES  = 10
 
+  def pos_fsp_header
+    pos_fil_header + size_fil_header
+  end
+
+  def size_fsp_header
+    (32 + 5 * Innodb::FreeList::BASE_NODE_SIZE)
+  end
+
+  def pos_xdes_array
+    pos_fsp_header + size_fsp_header
+  end
+
   def fsp_header
-    c = cursor(FSP_HEADER_START)
+    c = cursor(pos_fsp_header)
     @fsp_header ||= {
       :space_id           => c.get_uint32,
       :unused             => c.get_uint32,
@@ -35,6 +36,13 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
     }
   end
 
+  XDES_STATES = {
+    1 => :free,
+    2 => :free_frag,
+    3 => :full_frag,
+    4 => :fseg,
+  }
+
   def read_xdes(cursor)
     {
       :xdes_id    => cursor.get_uint64,
@@ -45,7 +53,7 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
   end
   
   def each_xdes
-    c = cursor(XDES_ARRAY_START)
+    c = cursor(pos_xdes_array)
     XDES_N_ARRAY_ENTRIES.times do
       yield read_xdes(c)
     end
