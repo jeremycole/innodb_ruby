@@ -1,3 +1,3 @@
 module Innodb
-  VERSION = "0.4"
+  VERSION = "0.5.0"
 end
