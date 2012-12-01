@@ -22,11 +22,12 @@ Gem::Specification.new do |s|
     'lib/innodb/page/fsp_hdr_xdes.rb',
     'lib/innodb/page/index.rb',
     'lib/innodb/page/inode.rb',
+    'lib/innodb/record_describer.rb',
     'lib/innodb/space.rb',
     'lib/innodb/version.rb',
   ]
   s.executables = [
-    'innodb_dump_log',
-    'innodb_dump_space',
+    'innodb_log',
+    'innodb_space',
   ]
 end
