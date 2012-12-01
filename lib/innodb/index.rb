@@ -76,7 +76,7 @@ class Innodb::Index
 
   # Iterate through all records on all leaf pages in ascending order.
   def each_record
-    each_leaf_page do |page|
+    each_page_at_level(0) do |page|
       page.each_record do |record|
         yield record
       end
