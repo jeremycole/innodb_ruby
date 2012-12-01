@@ -57,7 +57,7 @@ class Innodb::LogBlock
     @header ||= begin
       c = cursor(HEADER_START)
       {
-        :block            => c.get_uint32,
+        :block            => c.get_uint32 & (2**31-1),
         :data_length      => c.get_uint16,
         :first_rec_group  => c.get_uint16,
         :checkpoint_no    => c.get_uint32,
@@ -143,7 +143,7 @@ class Innodb::LogBlock
   end
 
   SINGLE_RECORD_MASK = 0x80
-  RECORD_TYPE_MASK = 0x7f
+  RECORD_TYPE_MASK   = 0x7f
 
   # Return the log record. (This is mostly unimplemented.)
   def record
@@ -153,7 +153,7 @@ class Innodb::LogBlock
         type_and_flag = c.get_uint8
         type = type_and_flag & RECORD_TYPE_MASK
         type = RECORD_TYPES[type] || type
-        single_record = (type_and_flag & SINGLE_RECORD_MASK) == SINGLE_RECORD_MASK
+        single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
         {
           :type           => type,
           :single_record  => single_record,
