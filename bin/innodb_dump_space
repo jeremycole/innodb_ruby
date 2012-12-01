@@ -1,33 +1,306 @@
 #!/usr/bin/env ruby
 
+require "getoptlong"
+require "ostruct"
 require "pp"
 require "innodb"
 
-file, page_number = ARGV.shift(2)
+def space_summary(space)
+  puts "%-12s%-20s%-12s%-12s%-20s" % [
+    "page",
+    "type",
+    "prev",
+    "next",
+    "lsn",
+  ]
 
-space = Innodb::Space.new(file)
-#space.page(page_number).dump
-#exit
-
-page_types = Hash.new(0)
-page_levels = Hash.new(0)
-records_per_level = {}
-puts "%-8s%-8s%-8s%-8s" % ["page", "index", "level", "data"]
-space.each_page do |page_number, page|
-  page_types[page.type] += 1
-  if page.type == :INDEX
-    puts "%-8i%-8i%-8i%-8i" % [
+  space.each_page do |page_number, page|
+    puts "%-12i%-20s%-12i%-12i%-20i" % [
       page_number,
-      page.ph[:index_id],
-      page.ph[:level],
-      page.record_space,
+      page.type,
+      page.prev,
+      page.next,
+      page.lsn,
     ]
-    #page_levels[page.ph[:index_id]] ||= Hash.new(0)
-    #page_levels[page.ph[:index_id]][page.ph[:level]] += 1
-    #records_per_level[page.ph[:level]] ||= Hash.new(0)
-    #records_per_level[page.ph[:level]][page.ph[:n_recs]] += 1
   end
-  if page.type == :ALLOCATED
-    puts "%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0 ]
+end
+
+def space_index_pages_summary(space)
+  puts "%-12s%-8s%-8s%-8s%-8s%-8s" % [
+    "page",
+    "index",
+    "level",
+    "data",
+    "free",
+    "records",
+  ]
+
+  space.each_page do |page_number, page|
+    case page.type
+    when :INDEX
+      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [
+        page_number,
+        page.ph[:index_id],
+        page.ph[:level],
+        page.record_space,
+        page.free_space,
+        page.ph[:n_recs],
+      ]
+    when :ALLOCATED
+      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0, page.size, 0 ]
+    end
+  end
+end
+
+def index_recurse(index)
+  index.recurse(
+    lambda do |page, depth|
+      puts "%s%s %i: %i records, %i bytes" % [
+        "  " * depth,
+        page.level == 0 ? "LEAF" : "NODE",
+        page.offset,
+        page.page_header[:n_recs],
+        page.record_space,
+      ]
+      if page.level == 0
+        page.each_record do |record|
+          puts "%sRECORD: (%s) -> (%s)" % [
+            "  " * (depth+1),
+            record[:key].join(", "),
+            record[:row].join(", "),
+          ]
+        end
+      end
+    end,
+    lambda do |parent_page, child_page, child_min_key, depth|
+      puts "%sLINK %i -> %i: %s records >= (%s)" % [
+        "  " * depth,
+        parent_page.offset,
+        child_page.offset,
+        child_page.page_header[:n_recs],
+        child_min_key.join(", "),
+      ]
+    end
+  )
+end
+
+def index_digraph(index)
+  puts "digraph btree {"
+  puts "  rankdir = LR;"
+  puts "  ranksep = 2.0;"
+  index.recurse(
+    lambda do |page, depth|
+      label = "<page>Page %i|(%i records)" % [
+        page.offset,
+        page.page_header[:n_recs],
+      ]
+      page.each_child_page do |child_page_number, child_key|
+        label += "|<dir_%i>(%s)" % [
+          child_page_number,
+          child_key.join(", "),
+        ]
+      end
+      puts "  %spage_%i [ shape = \"record\"; label = \"%s\"; ];" % [
+        "  " * depth,
+        page.offset,
+        label,
+      ]
+    end,
+    lambda do |parent_page, child_page, child_key, depth|
+      puts "  %spage_%i:dir_%i -> page_%i:page:nw;" % [
+        "  " * depth,
+        parent_page.offset,
+        child_page.offset,
+        child_page.offset,
+      ]
+    end
+  )
+  puts "}"
+end
+
+def index_level_summary(index, levels)
+  puts "%-8s%-8s%-8s%-8s%-8s%-8s%-8s" % [
+    "page",
+    "index",
+    "level",
+    "data",
+    "free",
+    "records",
+    "min_key",
+  ]
+
+  levels.each do |level|
+    index.each_page_at_level(level) do |page|
+      puts "%-8i%-8i%-8i%-8i%-8i%-8i%s" % [
+        page.offset,
+        page.ph[:index_id],
+        page.ph[:level],
+        page.record_space,
+        page.free_space,
+        page.ph[:n_recs],
+        page.first_record[:key].join("|"),
+      ]
+    end
+  end
+end
+
+def usage(exit_code, message = nil)
+  print "Error: #{message}\n" unless message.nil?
+
+  print <<'END_OF_USAGE'
+
+Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
+
+  --help, -?
+    Print this usage text.
+
+  --file, -f <file>
+    Load the tablespace file <file>.
+
+  --page, -p <page>
+    Operate on the page <page>; may be specified more than once.
+
+  --level, -l <level>
+    Operate on the level <level>; may be specified more than once.
+
+  --require, -r <file>
+    Use Ruby's "require" to load the file <file>. This is useful for loading
+    classes with record describers.
+
+  --describer, -d <describer>
+    Use the named record describer to parse records in index pages.
+
+The following modes are supported:
+
+  page-dump
+    Dump the contents of the page, using the Ruby pp ("pretty-print") module.
+
+  space-summary
+    Summarize all pages within a tablespace.
+
+  space-index-pages-summary
+    Summarize all "INDEX" pages within a tablespace. This is useful to analyze
+    page fill rates and record counts per page. In addition to "INDEX" pages,
+    "ALLOCATED" pages are also printed and assumed to be completely empty.
+
+  index-recurse
+    Recurse an index, starting at the root (which must be provided in the first
+    --page/-p argument), printing the node pages, node pointers (links), leaf
+    pages. A record describer must be provided with the --describer/-d argument
+    to recurse indexes (in order to parse node pages).
+
+  index-digraph
+    Recurse an index as index-recurse does, but print a dot-compatible digraph
+    instead of a human-readable summary.
+
+  index-level-summary
+    Print a summary of all pages at a given level (provided with the --level/-l
+    argument) in an index.
+
+END_OF_USAGE
+
+  exit exit_code
+end
+
+@options = OpenStruct.new
+@options.file   = nil
+@options.pages  = []
+@options.levels = []
+@options.describer = nil
+
+getopt_options = [
+  [ "--help",             "-?",     GetoptLong::NO_ARGUMENT ],
+  [ "--file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--page",             "-p",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--level",            "-l",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--require",          "-r",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--describer",        "-d",     GetoptLong::REQUIRED_ARGUMENT ],
+]
+
+getopt = GetoptLong.new(*getopt_options)
+
+getopt.each do |opt, arg|
+  case opt
+  when "--help"
+    usage 0
+  when "--mode"
+    @options.mode = arg
+  when "--file"
+    @options.file = arg
+  when "--page"
+    @options.pages << arg.to_i
+  when "--level"
+    @options.levels << arg.to_i
+  when "--require"
+    require arg
+  when "--describer"
+    @options.describer = arg
+  end
+end
+
+unless @options.file
+  usage 1, "File must be provided with -f argument"
+end
+
+space = Innodb::Space.new(@options.file)
+
+if @options.describer
+  space.record_describer = Innodb::RecordDescriber.const_get(@options.describer)
+end
+
+if ARGV.empty?
+  usage 1, "At least one mode should be provided"
+end
+
+ARGV.each do |mode|
+  case mode
+  when "page-dump"
+    if @options.pages.empty?
+      usage 1, "Page numbers to dump must be provided"
+    end
+
+    @options.pages.each do |page|
+      space.page(page).dump
+    end
+  when "space-summary"
+    space_summary(space)
+  when "space-index-pages-summary"
+    space_index_pages_summary(space)
+  when "index-recurse"
+    unless space.record_describer
+      usage 1, "Record describer necessary for index recursion" 
+    end
+    
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided"
+    end
+
+    @options.pages.each do |page|
+      index_recurse(space.index(page))
+    end
+  when "index-digraph"
+    unless space.record_describer
+      usage 1, "Record describer necessary for index recursion" 
+    end
+    
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided"
+    end
+
+    @options.pages.each do |page|
+      index_digraph(space.index(page))
+    end
+  when "index-level-summary"
+    unless space.record_describer
+      usage 1, "Record describer necessary for index recursion" 
+    end
+    
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided"
+    end
+
+    index_level_summary(space.index(@options.pages.first), @options.levels)
+  else
+    usage 1, "Unknown mode: #{mode}"
   end
 end
