@@ -32,7 +32,7 @@ class Innodb::Index
 
     parent_page.each_child_page do |child_page_number, child_min_key|
       child_page = @space.page(child_page_number)
-      child_page.record_formatter = @space.record_formatter
+      child_page.record_describer = @space.record_describer
       if child_page.type == :INDEX
         if link_proc
           link_proc.call(parent_page, child_page, child_min_key, depth+1)

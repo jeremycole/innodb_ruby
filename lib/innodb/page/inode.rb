@@ -35,9 +35,9 @@ class Innodb::Page::Inode < Innodb::Page
   def dump
     super
 
-    puts
     puts "inode header:"
     pp inode_header
+    puts
   end
 end
 

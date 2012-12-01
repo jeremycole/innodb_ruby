@@ -126,13 +126,18 @@ class Innodb::Page
     fil_header[:next]
   end
 
+  # A helper function to return the LSN, for easier access.
+  def lsn
+    fil_header[:lsn]
+  end
+
   # Dump the contents of a page for debugging purposes.
   def dump
-    puts
     puts "#{self}:"
-
     puts
+
     puts "fil header:"
     pp fil_header
+    puts
   end
 end

@@ -62,15 +62,15 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
   def dump
     super
 
-    puts
     puts "fsp header:"
     pp fsp_header
-    
     puts
+
     puts "xdes entries:"
     each_xdes do |xdes|
       pp xdes
     end
+    puts
   end
 end
 

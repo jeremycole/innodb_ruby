@@ -1,0 +1,1 @@
+class Innodb::RecordDescriber; end

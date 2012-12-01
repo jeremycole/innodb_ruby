@@ -1,5 +1,5 @@
 class Innodb::Page::Index < Innodb::Page
-  attr_accessor :record_formatter
+  attr_accessor :record_describer
 
   # Return the byte offset of the start of the "index" page header, which
   # immediately follows the "fil" header.
@@ -229,8 +229,8 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return (and cache) the record format provided by an external class.
   def record_format
-    if record_formatter
-      @record_format ||= record_formatter.format(self)
+    if record_describer
+      @record_format ||= record_describer.cursor_sendable_description(self)
     end
   end
 
@@ -318,11 +318,10 @@ class Innodb::Page::Index < Innodb::Page
   def dump
     super
 
-    puts
     puts "page header:"
     pp page_header
-
     puts
+
     puts "sizes:"
     puts "  %-15s%5i" % [ "header",     header_space ]
     puts "  %-15s%5i" % [ "trailer",    trailer_space ]
@@ -334,17 +333,18 @@ class Innodb::Page::Index < Innodb::Page
       "per record",
       (page_header[:n_recs] > 0) ? (record_space / page_header[:n_recs]) : 0
     ]
-
     puts
+
     puts "system records:"
     pp infimum
     pp supremum
-    
     puts
+
     puts "records:"
     each_record do |rec|
       pp rec
     end
+    puts
   end
 end
 
