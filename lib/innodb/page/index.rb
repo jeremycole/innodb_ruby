@@ -112,8 +112,6 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return the "index" header.
   def page_header
-    return nil unless type == :INDEX
-
     c = cursor(pos_index_header)
     @page_header ||= {
       :n_dir_slots  => c.get_uint16,
@@ -143,6 +141,24 @@ class Innodb::Page::Index < Innodb::Page
   # at their level.
   def root?
     self.prev.nil? && self.next.nil?
+  end
+
+  # Parse an "fseg" header entry.
+  def fseg_entry(cursor)
+    {
+      :space_id     => cursor.get_uint32,
+      :page_number  => cursor.get_uint32,
+      :offset       => cursor.get_uint16,
+    }
+  end
+
+  # Return the "fseg" header.
+  def fseg_header
+    c = cursor(pos_fseg_header)
+    @fseg_header ||= {
+      :free_list      => fseg_entry(c),
+      :btree_segment  => fseg_entry(c),
+    }
   end
 
   RECORD_BITS_SIZE  = 3
@@ -326,6 +342,10 @@ class Innodb::Page::Index < Innodb::Page
 
     puts "page header:"
     pp page_header
+    puts
+
+    puts "fseg header:"
+    pp fseg_header
     puts
 
     puts "sizes:"
