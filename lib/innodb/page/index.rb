@@ -139,6 +139,12 @@ class Innodb::Page::Index < Innodb::Page
     page_header && page_header[:level]
   end
 
+  # A helper function to identify root index pages; they must be the only pages
+  # at their level.
+  def root?
+    self.prev.nil? && self.next.nil?
+  end
+
   RECORD_BITS_SIZE  = 3
   RECORD_NEXT_SIZE  = 2
 

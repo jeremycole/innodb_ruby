@@ -24,6 +24,11 @@ class Innodb::Index
     end
   end
 
+  # A helper function to access the index ID in the page header.
+  def id
+    @root.page_header[:index_id]
+  end
+
   # Internal method used by recurse.
   def _recurse(parent_page, page_proc, link_proc, depth=0)
     if page_proc && parent_page.type == :INDEX

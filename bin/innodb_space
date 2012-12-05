@@ -52,6 +52,24 @@ def space_index_pages_summary(space)
   end
 end
 
+def space_page_type_regions(space)
+  puts "%-12s%-12s%-12s%-20s" % [
+    "start",
+    "end",
+    "count",
+    "type",
+  ]
+
+  space.each_page_type_region do |region|
+    puts "%-12i%-12i%-12i%-20s" % [
+      region[:start],
+      region[:end],
+      region[:count],
+      region[:type],
+    ]
+  end
+end
+
 def index_recurse(index)
   index.recurse(
     lambda do |page, depth|
@@ -183,6 +201,10 @@ The following modes are supported:
     page fill rates and record counts per page. In addition to "INDEX" pages,
     "ALLOCATED" pages are also printed and assumed to be completely empty.
 
+  space-page-type-regions
+    Summarize all contiguous regions of the same page type. This is useful to
+    provide an overall view of the space and allocations within it.
+
   index-recurse
     Recurse an index, starting at the root (which must be provided in the first
     --page/-p argument), printing the node pages, node pointers (links), leaf
@@ -266,6 +288,8 @@ ARGV.each do |mode|
     space_summary(space)
   when "space-index-pages-summary"
     space_index_pages_summary(space)
+  when "space-page-type-regions"
+    space_page_type_regions(space)
   when "index-recurse"
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 

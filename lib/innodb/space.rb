@@ -35,6 +35,20 @@ class Innodb::Space
     Innodb::Index.new(self, root_page_number)
   end
 
+  # Iterate through each index by guessing that the root pages will be
+  # present starting at page 3, and walking forward until we find a non-
+  # root page. This should work fine for IBD files, but not for ibdata
+  # files.
+  def each_index
+    (3...@pages).each do |page_number|
+      if page(page_number).root?
+        yield index(page_number)
+      else
+        break
+      end
+    end
+  end
+
   # Iterate through all pages in a tablespace, returning the page number
   # and an Innodb::Page object for each one.
   def each_page
@@ -42,5 +56,26 @@ class Innodb::Space
       current_page = page(page_number)
       yield page_number, current_page if current_page
     end
+  end
+
+  # Iterate through unique regions in the space by page type. This is useful
+  # to achieve an overall view of the space.
+  def each_page_type_region
+    region = nil
+    each_page do |page_number, page|
+      if region && region[:type] == page.type
+        region[:end] = page_number
+        region[:count] += 1
+      else
+        yield region if region
+        region = {
+          :start => page_number,
+          :end   => page_number,
+          :type  => page.type,
+          :count => 1,
+        }
+      end
+    end
+    yield region if region
   end
 end
