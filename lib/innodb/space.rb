@@ -2,6 +2,7 @@
 # or a single-table "innodb_file_per_table" .ibd file.
 class Innodb::Space
   attr_accessor :record_describer
+  attr_reader :pages
 
   # Currently only 16kB InnoDB pages are supported.
   PAGE_SIZE = 16384
