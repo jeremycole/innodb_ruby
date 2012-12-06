@@ -1,3 +1,5 @@
+require "innodb/fseg_entry"
+
 class Innodb::Page::Index < Innodb::Page
   attr_accessor :record_describer
 
@@ -20,7 +22,7 @@ class Innodb::Page::Index < Innodb::Page
 
   # The size of the "fseg" header.
   def size_fseg_header
-    2 * 10
+    2 * Innodb::FsegEntry::SIZE
   end
 
   # Return the byte offset of the start of records within the page (the
@@ -143,21 +145,12 @@ class Innodb::Page::Index < Innodb::Page
     self.prev.nil? && self.next.nil?
   end
 
-  # Parse an "fseg" header entry.
-  def fseg_entry(cursor)
-    {
-      :space_id     => cursor.get_uint32,
-      :page_number  => cursor.get_uint32,
-      :offset       => cursor.get_uint16,
-    }
-  end
-
   # Return the "fseg" header.
   def fseg_header
     c = cursor(pos_fseg_header)
     @fseg_header ||= {
-      :free_list      => fseg_entry(c),
-      :btree_segment  => fseg_entry(c),
+      :free_list      => Innodb::FsegEntry.get_entry(c),
+      :btree_segment  => Innodb::FsegEntry.get_entry(c),
     }
   end
 

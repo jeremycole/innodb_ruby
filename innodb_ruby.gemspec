@@ -15,6 +15,7 @@ Gem::Specification.new do |s|
     'lib/innodb.rb',
     'lib/innodb/cursor.rb',
     'lib/innodb/free_list.rb',
+    'lib/innodb/fseg_entry.rb',
     'lib/innodb/index.rb',
     'lib/innodb/log.rb',
     'lib/innodb/log_block.rb',
