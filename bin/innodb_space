@@ -70,6 +70,52 @@ def space_page_type_regions(space)
   end
 end
 
+def space_index_pages_free_plot(space, image)
+  unless require "gnuplot"
+    raise "Couldn't load gnuplot. Is it installed?"
+  end
+
+  index_data = {0 => {:x => [], :y => []}}
+
+  space.each_page do |page_number, page|
+    case page.type
+    when :INDEX
+      data = (index_data[page.page_header[:index_id]] ||= {:x => [], :y => []})
+      data[:x] << page_number
+      data[:y] << page.free_space
+    when :ALLOCATED
+      index_data[0][:x] << page_number
+      index_data[0][:y] << page.size
+    end
+  end
+
+  image_file = image + "_free.png"
+  # Aim for one horizontal pixel per extent, but min 1k and max 10k width.
+  image_width = [10000, [1000, space.pages / 64].max].min
+
+  Gnuplot.open do |gp|
+    Gnuplot::Plot.new(gp) do |plot|
+      plot.terminal "png size #{image_width}, 800"
+      plot.output image_file
+      plot.title image
+      plot.key "reverse left top box horizontal Left textcolor variable"
+      plot.ylabel "free space per page"
+      plot.xlabel "page number"
+      plot.yrange "[-100:18000]"
+      plot.xtics "border"
+
+      index_data.each do |id, data|
+        plot.data << Gnuplot::DataSet.new([data[:x], data[:y]]) do |ds|
+          ds.with = "dots"
+          ds.title = id == 0 ? "Unallocated" : "Index #{id}"
+        end
+      end
+
+      puts "Wrote #{image_file}"
+    end
+  end
+end
+
 def index_recurse(index)
   index.recurse(
     lambda do |page, depth|
@@ -201,6 +247,12 @@ The following modes are supported:
     page fill rates and record counts per page. In addition to "INDEX" pages,
     "ALLOCATED" pages are also printed and assumed to be completely empty.
 
+  space-index-pages-free-plot
+    Use Ruby's gnuplot module to produce a scatterplot of page free space for
+    all "INDEX" and "ALLOCATED" pages in a tablespace. More aesthetically
+    pleasing plots can be produced with space-index-pages-summary output,
+    but this is a quick and easy way to produce a passable plot.
+
   space-page-type-regions
     Summarize all contiguous regions of the same page type. This is useful to
     provide an overall view of the space and allocations within it.
@@ -288,6 +340,9 @@ ARGV.each do |mode|
     space_summary(space)
   when "space-index-pages-summary"
     space_index_pages_summary(space)
+  when "space-index-pages-free-plot"
+    name = File.basename(@options.file).sub(".ibd", "")
+    space_index_pages_free_plot(space, name)
   when "space-page-type-regions"
     space_page_type_regions(space)
   when "index-recurse"
