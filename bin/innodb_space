@@ -104,7 +104,7 @@ def space_index_pages_free_plot(space, image)
       plot.yrange "[-100:18000]"
       plot.xtics "border"
 
-      index_data.each do |id, data|
+      index_data.sort.each do |id, data|
         plot.data << Gnuplot::DataSet.new([data[:x], data[:y]]) do |ds|
           ds.with = "dots"
           ds.title = id == 0 ? "Unallocated" : "Index #{id}"
