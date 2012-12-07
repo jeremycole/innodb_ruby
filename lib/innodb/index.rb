@@ -1,5 +1,7 @@
 # An InnoDB index B-tree, given an Innodb::Space and a root page number.
 class Innodb::Index
+  attr_reader :root
+
   def initialize(space, root_page_number)
     @space = space
     @root = @space.page(root_page_number)
