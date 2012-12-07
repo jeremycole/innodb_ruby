@@ -378,6 +378,10 @@ class Innodb::Page::Index < Innodb::Page
     pp supremum
     puts
 
+    puts "page directory:"
+    pp directory
+    puts
+
     puts "records:"
     each_record do |rec|
       pp rec
