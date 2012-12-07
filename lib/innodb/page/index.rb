@@ -136,12 +136,16 @@ class Innodb::Page::Index < Innodb::Page
       :format       => (n_heap & 1<<15) == 0 ? :redundant : :compact,
     }
   end
-  alias :ph :page_header
 
   # A helper function to return the page level from the "page" header, for
   # easier access.
   def level
     page_header && page_header[:level]
+  end
+
+  # A helper function to return the number of records.
+  def records
+    page_header && page_header[:n_recs]
   end
 
   # A helper function to identify root index pages; they must be the only pages

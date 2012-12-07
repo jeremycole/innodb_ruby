@@ -98,7 +98,6 @@ class Innodb::Page
       :space_id   => c.get_uint32,
     }
   end
-  alias :fh :fil_header
 
   # A helper function to return the page type from the "fil" header, for easier
   # access.

@@ -40,11 +40,11 @@ def space_index_pages_summary(space)
     when :INDEX
       puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [
         page_number,
-        page.ph[:index_id],
-        page.ph[:level],
+        page.page_header[:index_id],
+        page.level,
         page.record_space,
         page.free_space,
-        page.ph[:n_recs],
+        page.records,
       ]
     when :ALLOCATED
       puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0, page.size, 0 ]
@@ -123,7 +123,7 @@ def index_recurse(index)
         "  " * depth,
         page.level == 0 ? "LEAF" : "NODE",
         page.offset,
-        page.page_header[:n_recs],
+        page.records,
         page.record_space,
       ]
       if page.level == 0
@@ -141,7 +141,7 @@ def index_recurse(index)
         "  " * depth,
         parent_page.offset,
         child_page.offset,
-        child_page.page_header[:n_recs],
+        child_page.records,
         child_min_key.join(", "),
       ]
     end
@@ -156,7 +156,7 @@ def index_digraph(index)
     lambda do |page, depth|
       label = "<page>Page %i|(%i records)" % [
         page.offset,
-        page.page_header[:n_recs],
+        page.records,
       ]
       page.each_child_page do |child_page_number, child_key|
         label += "|<dir_%i>(%s)" % [
@@ -197,11 +197,11 @@ def index_level_summary(index, levels)
     index.each_page_at_level(level) do |page|
       puts "%-8i%-8i%-8i%-8i%-8i%-8i%s" % [
         page.offset,
-        page.ph[:index_id],
-        page.ph[:level],
+        page.page_header[:index_id],
+        page.level,
         page.record_space,
         page.free_space,
-        page.ph[:n_recs],
+        page.records,
         page.first_record[:key].join("|"),
       ]
     end
