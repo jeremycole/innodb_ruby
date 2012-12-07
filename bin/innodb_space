@@ -119,9 +119,9 @@ end
 def index_recurse(index)
   index.recurse(
     lambda do |page, depth|
-      puts "%s%s %i: %i records, %i bytes" % [
+      puts "%s%s NODE #%i: %i records, %i bytes" % [
         "  " * depth,
-        page.level == 0 ? "LEAF" : "NODE",
+        index.node_type(page).to_s.upcase,
         page.offset,
         page.records,
         page.record_space,
@@ -137,12 +137,10 @@ def index_recurse(index)
       end
     end,
     lambda do |parent_page, child_page, child_min_key, depth|
-      puts "%sLINK %i -> %i: %s records >= (%s)" % [
+      puts "%sNODE POINTER RECORD >= (%s) -> #%i" % [
         "  " * depth,
-        parent_page.offset,
-        child_page.offset,
-        child_page.records,
         child_min_key.join(", "),
+        child_page.offset,
       ]
     end
   )

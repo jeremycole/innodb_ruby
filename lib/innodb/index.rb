@@ -31,6 +31,17 @@ class Innodb::Index
     @root.page_header[:index_id]
   end
 
+  # Return the type of node that the given page represents in the index tree.
+  def node_type(page)
+    if @root.offset == page.offset
+      :root
+    elsif page.level == 0
+      :leaf
+    else
+      :internal
+    end
+  end
+
   # Internal method used by recurse.
   def _recurse(parent_page, page_proc, link_proc, depth=0)
     if page_proc && parent_page.type == :INDEX
