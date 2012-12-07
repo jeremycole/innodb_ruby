@@ -235,6 +235,7 @@ class Innodb::Page::Index < Innodb::Page
 
     header = record_header(offset)
     {
+      :offset => offset,
       :header => header,
       :next => offset + header[:next],
       :data => cursor(offset).get_bytes(size_mum_record),
