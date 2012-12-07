@@ -71,9 +71,14 @@ class Innodb::Page::Index < Innodb::Page
     pos_user_records
   end
 
+  # The number of directory slots in use.
+  def directory_slots
+    page_header[:n_dir_slots]
+  end
+
   # The amount of space consumed by the page directory.
   def directory_space
-    page_header[:n_dir_slots] * PAGE_DIR_SLOT_SIZE
+    directory_slots * PAGE_DIR_SLOT_SIZE
   end
 
   # The amount of space consumed by the trailers in the page.
@@ -253,8 +258,8 @@ class Innodb::Page::Index < Innodb::Page
   def record(offset)
     return nil unless offset
     return nil unless type == :INDEX
-    return nil if offset == pos_infimum
-    return nil if offset == pos_supremum
+    return infimum  if offset == pos_infimum
+    return supremum if offset == pos_supremum
 
     c = cursor(offset).forward
 
@@ -306,13 +311,14 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return the first record on this page.
   def first_record
-    record(infimum[:next])
+    first = record(infimum[:next])
+    first if first != supremum
   end
 
   # Iterate through all records. (This is mostly unimplemented.)
   def each_record
     rec = infimum
-    while rec = record(rec[:next])
+    while (rec = record(rec[:next])) != supremum
       yield rec
     end
     nil
@@ -327,6 +333,19 @@ class Innodb::Page::Index < Innodb::Page
       yield rec[:child_page_number], rec[:key]
     end
     nil
+  end
+
+  # Return an array of row offsets for all entries in the page directory.
+  def directory
+    return @directory if @directory
+
+    @directory = []
+    c = cursor(pos_directory).backward
+    directory_slots.times do
+      @directory.push c.get_uint16
+    end
+
+    @directory
   end
 
   # Dump the contents of a page for debugging purposes.
