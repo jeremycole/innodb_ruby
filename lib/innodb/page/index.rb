@@ -271,6 +271,7 @@ class Innodb::Page::Index < Innodb::Page
     header = record_header(offset)
 
     this_record = {
+      :offset => offset,
       :header => header,
       :next => header[:next] == 0 ? nil : (offset + header[:next]),
     }
