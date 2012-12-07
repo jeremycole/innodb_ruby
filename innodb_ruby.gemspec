@@ -23,6 +23,7 @@ Gem::Specification.new do |s|
     'lib/innodb/page/fsp_hdr_xdes.rb',
     'lib/innodb/page/index.rb',
     'lib/innodb/page/inode.rb',
+    'lib/innodb/page/trx_sys.rb',
     'lib/innodb/record_describer.rb',
     'lib/innodb/space.rb',
     'lib/innodb/version.rb',
