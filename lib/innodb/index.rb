@@ -100,4 +100,56 @@ class Innodb::Index
       end
     end
   end
+
+  # Compare two arrays of fields to determine if they are equal. This follows
+  # the same comparison rules as strcmp and others:
+  #   0 = a is equal to b
+  #   -1 = a is less than b
+  #   +1 = a is greater than b
+  def compare_key(a, b)
+    return -1 if a.size < b.size
+    return +1 if a.size > b.size
+    a.each_index do |i|
+      return -1 if a[i] < b[i]
+      return +1 if a[i] > b[i]
+    end
+    return 0
+  end
+
+  # Search for a record within a single page, and return either a perfect
+  # match for the key, or the last record closest to they key but not greater
+  # than the key. (If an exact match is desired, compare_key must be used to
+  # check if the returned record matches. This makes the function useful for
+  # search in both leaf and non-leaf pages.)
+  def linear_search_in_page(page, key)
+    c = page.record_cursor(page.infimum[:next])
+    this_rec = c.record
+    while next_rec = c.record
+      return this_rec if next_rec == page.supremum
+      if (compare_key(key, this_rec[:key]) >= 0) &&
+        (compare_key(key, next_rec[:key]) < 0)
+        return this_rec
+      end
+      this_rec = next_rec
+    end
+    this_rec
+  end
+
+  # Search for a record within the entire index, walking down the non-leaf
+  # pages until a leaf page is found, and then verifying that the record
+  # returned on the leaf page is an exact match for the key. If a matching
+  # record is not found, nil is returned (either because linear_search_in_page
+  # returns nil breaking the loop, or because compare_key returns non-zero).
+  def linear_search(key)
+    page = @root
+
+    while rec = linear_search_in_page(page, key)
+      if page.level > 0
+        page = @space.page(rec[:child_page_number])
+      else
+        return page, rec if compare_key(key, rec[:key]) == 0
+        break
+      end
+    end
+  end
 end
