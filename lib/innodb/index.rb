@@ -15,11 +15,6 @@ class Innodb::Index
       raise "Page #{root_page_number} is a #{@root.type} page, not an INDEX page"
     end
 
-    # The root page should not be a leaf page.
-    unless @root.level > 0
-      raise "Page #{root_page_number} is a leaf page"
-    end
-
     # The root page should be the only page at its level.
     unless @root.prev.nil? && @root.next.nil?
       raise "Page #{root_page_number} is a node page, but not appear to be the root; it has previous page and next page pointers"
