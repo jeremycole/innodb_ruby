@@ -102,12 +102,15 @@ class Innodb::Index
   #   -1 = a is less than b
   #   +1 = a is greater than b
   def compare_key(a, b)
-    return -1 if a.size < b.size
-    return +1 if a.size > b.size
+    return 0 if a.nil? && b.nil?
+    return -1 if a.nil? || (!b.nil? && a.size < b.size)
+    return +1 if b.nil? || (!a.nil? && a.size > b.size)
+
     a.each_index do |i|
       return -1 if a[i] < b[i]
       return +1 if a[i] > b[i]
     end
+
     return 0
   end
 
@@ -116,18 +119,51 @@ class Innodb::Index
   # than the key. (If an exact match is desired, compare_key must be used to
   # check if the returned record matches. This makes the function useful for
   # search in both leaf and non-leaf pages.)
-  def linear_search_in_page(page, key)
-    c = page.record_cursor(page.infimum[:next])
-    this_rec = c.record
-    while next_rec = c.record
-      return this_rec if next_rec == page.supremum
+  def linear_search_from_cursor(cursor, key)
+    this_rec = cursor.record
+
+    while this_rec && next_rec = cursor.record
+      return this_rec if next_rec[:header][:type] == :supremum
       if (compare_key(key, this_rec[:key]) >= 0) &&
         (compare_key(key, next_rec[:key]) < 0)
         return this_rec
       end
       this_rec = next_rec
     end
+
     this_rec
+  end
+
+  # Search or a record within a single page using the page directory to limit
+  # the number of record comparisons required. Once the last page directory
+  # entry closest to but not greater than the key is found, fall back to
+  # linear search using linear_search_from_cursor to find the closest record
+  # whose key is not greater than the desired key. (If an exact match is
+  # desired, the returned record must be checked in the same way as the above
+  # linear_search_from_cursor function.
+  def binary_search_by_directory(page, dir, key)
+    return nil if dir.empty?
+
+    mid = dir.size / 2
+    rec = page.record(dir[mid])
+
+    if rec[:header][:type] == :infimum
+      return linear_search_from_cursor(page.record_cursor(rec[:next]), key)
+    end
+
+    case compare_key(key, rec[:key])
+    when 0
+      rec
+    when +1
+      if mid == 0
+        linear_search_from_cursor(page.record_cursor(rec[:next]), key)
+      else
+        binary_search_by_directory(page, dir[mid...dir.size], key)
+      end
+    when -1
+      return nil if mid == 0
+      binary_search_by_directory(page, dir[0...mid], key)
+    end
   end
 
   # Search for a record within the entire index, walking down the non-leaf
@@ -138,7 +174,8 @@ class Innodb::Index
   def linear_search(key)
     page = @root
 
-    while rec = linear_search_in_page(page, key)
+    while rec =
+      linear_search_from_cursor(page.record_cursor(page.infimum[:next]), key)
       if page.level > 0
         page = @space.page(rec[:child_page_number])
       else
@@ -147,4 +184,21 @@ class Innodb::Index
       end
     end
   end
+
+  # Search for a record within the entire index like linear_search, but use
+  # the page directory to search while making as few record comparisons as
+  # possible. If a matching record is not found, nil is returned.
+  def binary_search(key)
+    page = @root
+
+    while rec = binary_search_by_directory(page, page.directory.dup, key)
+      if page.level > 0
+        page = @space.page(rec[:child_page_number])
+      else
+        return page, rec if compare_key(key, rec[:key]) == 0
+        break
+      end
+    end
+  end
+
 end
