@@ -313,18 +313,48 @@ class Innodb::Page::Index < Innodb::Page
     this_record
   end
 
+  # A class for cursoring through records starting from an arbitrary point.
+  class RecordCursor
+    def initialize(page, offset)
+      @page   = page
+      @offset = offset
+    end
+
+    # Return the next record, and advance the cursor. Return nil when the
+    # end of records is reached.
+    def record
+      return nil unless @offset
+
+      record = @page.record(@offset)
+
+      if record == @page.supremum
+        @offset = nil
+      else
+        @offset = record[:next]
+        record
+      end
+    end
+  end
+
+  # Return a RecordCursor starting at offset.
+  def record_cursor(offset)
+    RecordCursor.new(self, offset)
+  end
+
   # Return the first record on this page.
   def first_record
     first = record(infimum[:next])
     first if first != supremum
   end
 
-  # Iterate through all records. (This is mostly unimplemented.)
+  # Iterate through all records.
   def each_record
-    rec = infimum
-    while (rec = record(rec[:next])) != supremum
+    c = record_cursor(infimum[:next])
+
+    while rec = c.record
       yield rec
     end
+
     nil
   end
 
@@ -333,9 +363,11 @@ class Innodb::Page::Index < Innodb::Page
   # record.
   def each_child_page
     return nil if level == 0
+
     each_record do |rec|
       yield rec[:child_page_number], rec[:key]
     end
+
     nil
   end
 
