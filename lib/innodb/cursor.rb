@@ -130,6 +130,24 @@ class Innodb::Cursor
     BinData::Uint64be.read(data)
   end
 
+  # Read a big-endian unsigned integer given its size in bytes.
+  def get_uint_by_size(size)
+    case size
+    when 1
+      get_uint8
+    when 2
+      get_uint16
+    when 3
+      get_uint24
+    when 4
+      get_uint32
+    when 8
+      get_uint64
+    else
+      raise "Not implemented"
+    end
+  end
+
   # Read an InnoDB-compressed unsigned 32-bit integer.
   def get_ic_uint32
     flag = peek { get_uint8 }
@@ -179,5 +197,31 @@ class Innodb::Cursor
   def get_i_sint64
     data = read_and_advance(8)
     BinData::Int64be.read(data) ^ (-1 << 63)
+  end
+
+  # Read an InnoDB-munged signed integer given its size in bytes.
+  def get_i_sint_by_size(size)
+    case size
+    when 1
+      get_i_sint8
+    when 2
+      get_i_sint16
+    when 3
+      get_i_sint24
+    when 4
+      get_i_sint32
+    when 8
+      get_i_sint64
+    else
+      raise "Not implemented"
+    end
+  end
+
+  # Read an array of 1-bit integers.
+  def get_bit_array(num_bits)
+    size = (num_bits + 7) / 8
+    data = read_and_advance(size)
+    bit_array = BinData::Array.new(:type => :bit1, :initial_length => size * 8)
+    bit_array.read(data).to_ary
   end
 end

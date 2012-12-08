@@ -222,10 +222,40 @@ class Innodb::Page::Index < Innodb::Page
       info = (bits2 & 0xf0) >> 4
       header[:min_rec] = (info & RECORD_INFO_MIN_REC_FLAG) != 0
       header[:deleted] = (info & RECORD_INFO_DELETED_FLAG) != 0
+      case header[:type]
+      when :conventional, :node_pointer:
+        # The variable-length part of the record header contains a
+        # bit vector indicating NULL fields and the length of each
+        # non-NULL variable-length field.
+        header[:null_bitmap] = record_null_bitmap(c) if record_format
+      end
       header
     when :redundant
       raise "Not implemented"
     end
+  end
+
+  # Return an array indicating which fields are null.
+  def record_null_bitmap(cursor)
+    fields = (record_format[:key] + record_format[:row])
+
+    # The number of bits in the bitmap is the number of nullable fields.
+    size = fields.count do |f| f.nullable end
+
+    # There is no bitmap if there are no nullable fields.
+    return nil unless size > 0
+
+    # To simplify later checks, expand bitmap to one each for each field.
+    bitmap = Array.new(fields.size, false)
+
+    null_bit_array = cursor.get_bit_array(size).reverse!
+
+    # For every nullable field, set whether the field is actually null.
+    fields.each do |f|
+      bitmap[f.position] = f.nullable ? (null_bit_array.shift == 1) : false
+    end
+
+    return bitmap
   end
 
   # Parse and return simple fixed-format system records, such as InnoDB's
@@ -252,10 +282,28 @@ class Innodb::Page::Index < Innodb::Page
     @supremum ||= system_record(pos_supremum)
   end
 
+  # Return a set of field objects that describe the record.
+  def make_record_description
+    description = record_describer.cursor_sendable_description(self)
+
+    fields = []
+
+    (description[:key] + description[:row]).each_with_index do |d, p|
+      fields << Innodb::Field.new(p, *d)
+    end
+
+    n = description[:key].size
+
+    description[:key] = fields.slice(0 .. n-1)
+    description[:row] = fields.slice(n ..  -1)
+
+    return description
+  end
+
   # Return (and cache) the record format provided by an external class.
   def record_format
     if record_describer
-      @record_format ||= record_describer.cursor_sendable_description(self)
+      @record_format ||= make_record_description()
     end
   end
 
@@ -272,6 +320,7 @@ class Innodb::Page::Index < Innodb::Page
     header = record_header(offset)
 
     this_record = {
+      :format => page_header[:format],
       :offset => offset,
       :header => header,
       :next => header[:next] == 0 ? nil : (offset + header[:next]),
@@ -283,7 +332,7 @@ class Innodb::Page::Index < Innodb::Page
       # Read the key fields present in all types of pages.
       this_record[:key] = []
       record_format[:key].each do |f|
-        this_record[:key].push c.send(*f)
+        this_record[:key].push f.read(this_record, c)
       end
 
       # If this is a leaf page of the clustered index, read InnoDB's internal
@@ -300,7 +349,7 @@ class Innodb::Page::Index < Innodb::Page
         # Read the non-key fields.
         this_record[:row] = []
         record_format[:row].each do |f|
-          this_record[:row].push c.send(*f)
+          this_record[:row].push f.read(this_record, c)
         end
       end
 

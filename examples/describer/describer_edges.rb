@@ -7,14 +7,14 @@ class Innodb::RecordDescriber::Edges < Innodb::RecordDescriber
         # PRIMARY KEY (source_id, state, position)
         :type => :clustered,
         :key => [
-          [:get_uint64],    # source_id
-          [:get_i_sint8],   # state
-          [:get_i_sint64],  # position
+          [:BIGINT,  :UNSIGNED, :NOT_NULL],  # source_id
+          [:TINYINT, :NOT_NULL],             # state
+          [:BIGINT,  :NOT_NULL],             # position
         ],
         :row => [
-          [:get_uint32],    # updated_at
-          [:get_uint64],    # destination_id
-          [:get_uint8],     # count
+          [:INT,     :UNSIGNED, :NOT_NULL],  # updated_at
+          [:BIGINT,  :UNSIGNED, :NOT_NULL],  # destination_id
+          [:TINYINT, :UNSIGNED, :NOT_NULL],  # count
         ],
       }
     when [30, 34].include?(bytes_per_record) # Secondary Key
@@ -22,13 +22,13 @@ class Innodb::RecordDescriber::Edges < Innodb::RecordDescriber
         # INDEX (source_id, destination_id)
         :type => :secondary,
         :key => [
-          [:get_uint64],    # source_id
-          [:get_uint64],    # destination_id
+          [:BIGINT, :UNSIGNED, :NOT_NULL],   # source_id
+          [:BIGINT, :UNSIGNED, :NOT_NULL],   # destination_id
         ],
         # PKV ([source_id], state, position)
         :row => [
-          [:get_i_sint8],   # state
-          [:get_i_sint64],  # position
+          [:TINYINT, :UNSIGNED, :NOT_NULL],  # state
+          [:TINYINT, :UNSIGNED, :NOT_NULL],  # position
         ],
       }
     end
