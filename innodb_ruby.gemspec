@@ -32,4 +32,5 @@ Gem::Specification.new do |s|
     'innodb_log',
     'innodb_space',
   ]
+  s.add_dependency('bindata', '>= 1.4.5')
 end

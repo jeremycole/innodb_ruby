@@ -1,3 +1,5 @@
+require "bindata"
+
 # A cursor to walk through InnoDB data structures to read fields.
 class Innodb::Cursor
   def initialize(buffer, offset)
@@ -60,9 +62,8 @@ class Innodb::Cursor
   end
 
   # Read a number of bytes forwards or backwards from the current cursor
-  # position and adjust the cursor position by that amount, optionally
-  # unpacking the data using the provided type.
-  def read_and_advance(length, type=nil)
+  # position and adjust the cursor position by that amount.
+  def read_and_advance(length)
     data = nil
     #print "data(#{@cursor[0]}..."
     case @direction
@@ -74,7 +75,7 @@ class Innodb::Cursor
       data = @buffer.data(@cursor[0], length)
     end
     #puts "#{@cursor[0]}) = #{data.bytes.map { |n| "%02x" % n }.join}"
-    type ? data.unpack(type).first : data
+    data
   end
 
   # Return raw bytes.
@@ -87,50 +88,49 @@ class Innodb::Cursor
     read_and_advance(length).bytes.map { |c| "%02x" % c }.join
   end
 
-  # Return a big-endian unsigned 8-bit integer.
+  # Read an unsigned 8-bit integer.
   def get_uint8(offset=nil)
     seek(offset)
-    read_and_advance(1, "C")
+    data = read_and_advance(1)
+    BinData::Uint8.read(data)
   end
 
-  # Return a big-endian unsigned 16-bit integer.
+  # Read a big-endian unsigned 16-bit integer.
   def get_uint16(offset=nil)
     seek(offset)
-    read_and_advance(2, "n")
+    data = read_and_advance(2)
+    BinData::Uint16be.read(data)
   end
 
-  # Return a big-endian signed 16-bit integer.
+  # Read a big-endian signed 16-bit integer.
   def get_sint16(offset=nil)
     seek(offset)
-    uint = read_and_advance(2, "n")
-    (uint & 32768) == 0 ? uint : -(uint ^ 65535) - 1
+    data = read_and_advance(2)
+    BinData::Int16be.read(data)
   end
 
-  # Return a big-endian unsigned 24-bit integer.
+  # Read a big-endian unsigned 24-bit integer.
   def get_uint24(offset=nil)
     seek(offset)
-    # Ruby 1.8 doesn't support big-endian 24-bit unpack; unpack as one
-    # 8-bit and one 16-bit big-endian instead.
-    high, low = read_and_advance(3).unpack("nC")
-    (high << 8) | low
+    data = read_and_advance(3)
+    BinData::Uint24be.read(data)
   end
 
-  # Return a big-endian unsigned 32-bit integer.
+  # Read a big-endian unsigned 32-bit integer.
   def get_uint32(offset=nil)
     seek(offset)
-    read_and_advance(4, "N")
+    data = read_and_advance(4)
+    BinData::Uint32be.read(data)
   end
 
-  # Return a big-endian unsigned 64-bit integer.
+  # Read a big-endian unsigned 64-bit integer.
   def get_uint64(offset=nil)
     seek(offset)
-    # Ruby 1.8 doesn't support big-endian quad-word unpack; unpack as two
-    # 32-bit big-endian instead.
-    high, low = read_and_advance(8).unpack("NN")
-    (high << 32) | low
+    data = read_and_advance(8)
+    BinData::Uint64be.read(data)
   end
 
-  # Return an InnoDB-compressed unsigned 32-bit integer.
+  # Read an InnoDB-compressed unsigned 32-bit integer.
   def get_ic_uint32
     flag = peek { get_uint8 }
 
@@ -151,15 +151,33 @@ class Innodb::Cursor
     end
   end
 
-  # Return an InnoDB-munged signed 8-bit integer. (This is only implemented
-  # for positive integers at the moment.)
+  # Read an InnoDB-munged signed 8-bit integer.
   def get_i_sint8
-    get_uint8 ^ (1 << 7)
+    data = read_and_advance(1)
+    BinData::Int8.read(data) ^ (-1 << 7)
   end
 
-  # Return an InnoDB-munged signed 64-bit integer. (This is only implemented
-  # for positive integers at the moment.)
+  # Read an InnoDB-munged signed 16-bit integer.
+  def get_i_sint16
+    data = read_and_advance(2)
+    BinData::Int16be.read(data) ^ (-1 << 15)
+  end
+
+  # Read an InnoDB-munged signed 24-bit integer.
+  def get_i_sint24
+    data = read_and_advance(3)
+    BinData::Int24be.read(data) ^ (-1 << 23)
+  end
+
+  # Read an InnoDB-munged signed 32-bit integer.
+  def get_i_sint32
+    data = read_and_advance(4)
+    BinData::Int32be.read(data) ^ (-1 << 31)
+  end
+
+  # Read an InnoDB-munged signed 64-bit integer.
   def get_i_sint64
-    get_uint64 ^ (1 << 63)
+    data = read_and_advance(8)
+    BinData::Int64be.read(data) ^ (-1 << 63)
   end
 end
