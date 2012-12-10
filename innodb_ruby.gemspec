@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.files = [
     'lib/innodb.rb',
     'lib/innodb/cursor.rb',
+    'lib/innodb/field.rb',
     'lib/innodb/free_list.rb',
     'lib/innodb/fseg_entry.rb',
     'lib/innodb/index.rb',
@@ -32,4 +33,5 @@ Gem::Specification.new do |s|
     'innodb_log',
     'innodb_space',
   ]
+  s.add_dependency('bindata', '>= 1.4.5')
 end
