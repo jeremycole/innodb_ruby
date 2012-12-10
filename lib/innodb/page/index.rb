@@ -227,7 +227,10 @@ class Innodb::Page::Index < Innodb::Page
         # The variable-length part of the record header contains a
         # bit vector indicating NULL fields and the length of each
         # non-NULL variable-length field.
-        header[:null_bitmap] = record_null_bitmap(c) if record_format
+        if record_format
+          header[:null_bitmap] = nbmap = record_null_bitmap(c)
+          header[:variable_length] = record_variable_length(c, nbmap)
+        end
       end
       header
     when :redundant
@@ -256,6 +259,31 @@ class Innodb::Page::Index < Innodb::Page
     end
 
     return bitmap
+  end
+
+  # Return an array containing the length of each variable-length field.
+  def record_variable_length(cursor, null_bitmap)
+    fields = (record_format[:key] + record_format[:row])
+
+    len_array = Array.new(fields.size, 0)
+
+    # For each non-NULL variable-length field, the record header contains
+    # the length in one or two bytes.
+    fields.each do |f|
+      next if f.fixed_len > 0 or null_bitmap[f.position]
+
+      len = cursor.get_uint8
+
+      # Two bytes are used only if the length exceeds 127 bytes and the
+      # maximum length exceeds 255 bytes.
+      if len > 127 and f.variable_len > 255
+        len = ((len & 0x3f) << 8) + cursor.get_uint8
+      end
+
+      len_array[f.position] = len
+    end
+
+    return len_array
   end
 
   # Parse and return simple fixed-format system records, such as InnoDB's
