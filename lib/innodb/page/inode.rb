@@ -1,4 +1,4 @@
-require "innodb/free_list"
+require "innodb/list"
 
 class Innodb::Page::Inode < Innodb::Page
   FRAG_ARRAY_N_SLOTS  = 32 # FSP_EXTENT_SIZE / 2
@@ -7,11 +7,11 @@ class Innodb::Page::Inode < Innodb::Page
   MAGIC_N_VALUE	= 97937874
 
   def pos_inode_list
-    pos_fil_header + size_fil_header + Innodb::FreeList::NODE_SIZE
+    pos_fil_header + size_fil_header + Innodb::List::NODE_SIZE
   end
 
   def size_inode
-    (16 + (3 * Innodb::FreeList::BASE_NODE_SIZE) +
+    (16 + (3 * Innodb::List::BASE_NODE_SIZE) +
       (FRAG_ARRAY_N_SLOTS * FRAG_SLOT_SIZE))
   end
 
@@ -27,9 +27,9 @@ class Innodb::Page::Inode < Innodb::Page
     {
       :fseg_id            => cursor.get_uint64,
       :not_full_n_used    => cursor.get_uint32,
-      :free               => Innodb::FreeList.get_base_node(cursor),
-      :not_full           => Innodb::FreeList.get_base_node(cursor),
-      :full               => Innodb::FreeList.get_base_node(cursor),
+      :free               => Innodb::List.get_base_node(cursor),
+      :not_full           => Innodb::List.get_base_node(cursor),
+      :full               => Innodb::List.get_base_node(cursor),
       :magic_n            => cursor.get_uint32,
       :frag_array         => uint32_array(FRAG_ARRAY_N_SLOTS, cursor),
     }
