@@ -22,7 +22,7 @@ class Innodb::Space
     return nil unless (offset + PAGE_SIZE) <= @size
     @file.seek(offset)
     page_data = @file.read(PAGE_SIZE)
-    this_page = Innodb::Page.parse(page_data)
+    this_page = Innodb::Page.parse(self, page_data)
 
     if this_page.type == :INDEX
       this_page.record_describer = @record_describer

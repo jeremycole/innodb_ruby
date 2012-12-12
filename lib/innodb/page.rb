@@ -7,11 +7,11 @@ class Innodb::Page
   # and then attempt to hand off the page to a specialized class to be
   # re-parsed if possible. If there is no specialized class for this type
   # of page, return the generic object.
-  def self.parse(buffer)
-    page = Innodb::Page.new(buffer)
+  def self.parse(space, buffer)
+    page = Innodb::Page.new(space, buffer)
 
     if specialized_class = SPECIALIZED_CLASSES[page.type]
-      page = specialized_class.new(buffer)
+      page = specialized_class.new(space, buffer)
     end
 
     page
@@ -19,7 +19,8 @@ class Innodb::Page
 
   # Initialize a page by passing in a 16kB buffer containing the raw page
   # contents. Currently only 16kB pages are supported.
-  def initialize(buffer)
+  def initialize(space, buffer)
+    @space  = space
     @buffer = buffer
   end
 
