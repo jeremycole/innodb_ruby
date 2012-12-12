@@ -248,7 +248,7 @@ class Innodb::Page::Index < Innodb::Page
     # There is no bitmap if there are no nullable fields.
     return nil unless size > 0
 
-    # To simplify later checks, expand bitmap to one each for each field.
+    # To simplify later checks, expand bitmap to one for each field.
     bitmap = Array.new(fields.size, false)
 
     null_bit_array = cursor.get_bit_array(size).reverse!
