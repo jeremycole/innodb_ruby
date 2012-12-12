@@ -130,6 +130,22 @@ class Innodb::Page
     fil_header[:lsn]
   end
 
+  def inspect
+    if fil_header
+      "#<%s: size=%i, space_id=%i, offset=%i, type=%s, prev=%i, next=%i>" % [
+        self.class,
+        size,
+        fil_header[:space_id],
+        fil_header[:offset],
+        fil_header[:type],
+        fil_header[:prev],
+        fil_header[:next],
+      ]
+    else
+      "#<#{self.class}>"
+    end
+  end
+
   # Dump the contents of a page for debugging purposes.
   def dump
     puts "#{self}:"
