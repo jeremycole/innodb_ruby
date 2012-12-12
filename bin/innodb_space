@@ -70,6 +70,64 @@ def space_page_type_regions(space)
   end
 end
 
+def space_lists(space)
+  fsp = space.page(0).fsp_header
+  puts "%-20s%-12s%-12s%-12s%-12s%-12s" % [
+    "name",
+    "length",
+    "f_page",
+    "f_offset",
+    "l_page",
+    "l_offset",
+  ]
+  fsp.each do |key, list|
+    next unless list.is_a?(Innodb::List)
+    puts "%-20s%-12i%-12i%-12i%-12i%-12i" % [
+      key,
+      list.base[:length],
+      list.base[:first] && list.base[:first][:page],
+      list.base[:first] && list.base[:first][:offset],
+      list.base[:last] && list.base[:last][:page],
+      list.base[:last] && list.base[:last][:offset],
+    ]
+  end
+end
+
+def list_summary(space, list_name)
+  fsp = space.page(0).fsp_header
+
+  unless fsp[list_name] && fsp[list_name].is_a?(Innodb::List)
+    raise "List '#{list_name}' doesn't exist"
+  end
+
+  case fsp[list_name]
+  when Innodb::List::Xdes
+    puts "%-12s%-12s%-12s%-40s" % [
+      "page",
+      "offset",
+      "start_page",
+      "bitmap"
+    ]
+    fsp[list_name].each do |entry|
+      puts "%-12i%-12i%-12i%-40s" % [
+        entry.xdes[:this][:page],
+        entry.xdes[:this][:offset],
+        entry.xdes[:start_page],
+        entry.xdes[:bitmap],
+      ]
+    end
+  when Innodb::List::Inode
+    puts "%-12s" % [
+      "page",
+    ]
+    fsp[list_name].each do |page|
+      puts "%-12i" % [
+        page.offset,
+      ]
+    end
+  end
+end
+
 def space_index_pages_free_plot(space, image)
   unless require "gnuplot"
     raise "Couldn't load gnuplot. Is it installed?"
@@ -225,6 +283,9 @@ Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
   --level, -l <level>
     Operate on the level <level>; may be specified more than once.
 
+  --list, -L <list>
+    Operate  on the list <list>; may be specified more than once.
+
   --require, -r <file>
     Use Ruby's "require" to load the file <file>. This is useful for loading
     classes with record describers.
@@ -255,6 +316,12 @@ The following modes are supported:
     Summarize all contiguous regions of the same page type. This is useful to
     provide an overall view of the space and allocations within it.
 
+  space-lists
+    Print the names of all lists in a space.
+
+  list-summary
+    Summarize the contents of a list.
+
   index-recurse
     Recurse an index, starting at the root (which must be provided in the first
     --page/-p argument), printing the node pages, node pointers (links), leaf
@@ -278,6 +345,7 @@ end
 @options.file   = nil
 @options.pages  = []
 @options.levels = []
+@options.lists  = []
 @options.describer = nil
 
 getopt_options = [
@@ -285,6 +353,7 @@ getopt_options = [
   [ "--file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--page",             "-p",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--level",            "-l",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--list",             "-L",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--require",          "-r",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--describer",        "-d",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
@@ -303,6 +372,8 @@ getopt.each do |opt, arg|
     @options.pages << arg.to_i
   when "--level"
     @options.levels << arg.to_i
+  when "--list"
+    @options.lists << arg.to_sym
   when "--require"
     require arg
   when "--describer"
@@ -343,6 +414,12 @@ ARGV.each do |mode|
     space_index_pages_free_plot(space, name)
   when "space-page-type-regions"
     space_page_type_regions(space)
+  when "space-lists"
+    space_lists(space)
+  when "list-summary"
+    @options.lists.each do |list|
+      list_summary(space, list)
+    end
   when "index-recurse"
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 

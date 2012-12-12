@@ -31,6 +31,11 @@ class Innodb::Space
     this_page
   end
 
+  # Get an Innodb::List object for a specific list by list name.
+  def list(name)
+    page(0).fsp_header[name]
+  end
+
   # Get an Innodb::Index object for a specific index by root page number.
   def index(root_page_number)
     Innodb::Index.new(self, root_page_number)

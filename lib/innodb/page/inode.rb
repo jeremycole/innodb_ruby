@@ -6,6 +6,10 @@ class Innodb::Page::Inode < Innodb::Page
 
   MAGIC_N_VALUE	= 97937874
 
+  def pos_inode_list_entry
+    pos_fil_header + size_fil_header
+  end
+
   def pos_inode_list
     pos_fil_header + size_fil_header + Innodb::List::NODE_SIZE
   end
@@ -19,19 +23,35 @@ class Innodb::Page::Inode < Innodb::Page
     (size - pos_inode_list - 10) / size_inode
   end
 
-  def uint32_array(size, cursor)
-    size.times.map { |n| cursor.get_uint32 }
+  def page_number_array(size, cursor)
+    size.times.map { |n| Innodb::Page.maybe_undefined(cursor.get_uint32) }
+  end
+
+  def list_entry
+    c = cursor(pos_inode_list_entry)
+    Innodb::List.get_node(c)
+  end
+
+  def prev_address
+    list_entry[:prev]
+  end
+
+  def next_address
+    list_entry[:next]
   end
 
   def inode(cursor)
     {
       :fseg_id            => cursor.get_uint64,
       :not_full_n_used    => cursor.get_uint32,
-      :free               => Innodb::List.get_base_node(cursor),
-      :not_full           => Innodb::List.get_base_node(cursor),
-      :full               => Innodb::List.get_base_node(cursor),
+      :free               => Innodb::List::Xdes.new(@space,
+                              Innodb::List.get_base_node(cursor)),
+      :not_full           => Innodb::List::Xdes.new(@space,
+                              Innodb::List.get_base_node(cursor)),
+      :full               => Innodb::List::Xdes.new(@space,
+                              Innodb::List.get_base_node(cursor)),
       :magic_n            => cursor.get_uint32,
-      :frag_array         => uint32_array(FRAG_ARRAY_N_SLOTS, cursor),
+      :frag_array         => page_number_array(FRAG_ARRAY_N_SLOTS, cursor),
     }
   end
 
@@ -45,6 +65,10 @@ class Innodb::Page::Inode < Innodb::Page
 
   def dump
     super
+
+    puts "list entry:"
+    pp list_entry
+    puts
 
     puts "inodes:"
     each_inode do |i|
