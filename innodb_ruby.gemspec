@@ -28,6 +28,7 @@ Gem::Specification.new do |s|
     'lib/innodb/record_describer.rb',
     'lib/innodb/space.rb',
     'lib/innodb/version.rb',
+    'lib/innodb/xdes.rb',
   ]
   s.executables = [
     'innodb_log',
