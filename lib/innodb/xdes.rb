@@ -21,7 +21,7 @@ class Innodb::Xdes
       :this       => {:page => page.offset, :offset => cursor.position},
       :list       => Innodb::List.get_node(cursor),
       :state      => STATES[cursor.get_uint32],
-      :bitmap     => cursor.get_hex(BITMAP_SIZE),
+      :bitmap     => cursor.get_bytes(BITMAP_SIZE),
     }
   end
 
