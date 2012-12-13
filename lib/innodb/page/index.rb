@@ -1,5 +1,13 @@
 require "innodb/fseg_entry"
 
+# A specialized class for handling INDEX pages, which contain a portion of
+# the data from exactly one B+tree. These are typically the most common type
+# of page in any database.
+#
+# The basic structure of an INDEX page is: FIL header, INDEX header, FSEG
+# header, fixed-width system records (infimum and supremum), user records
+# (the actual data) which grow ascending by offset, free space, the page
+# directory which grows descending by offset, and the FIL trailer.
 class Innodb::Page::Index < Innodb::Page
   attr_accessor :record_describer
 
@@ -158,16 +166,26 @@ class Innodb::Page::Index < Innodb::Page
   def fseg_header
     c = cursor(pos_fseg_header)
     @fseg_header ||= {
-      :free_list      => Innodb::FsegEntry.get_entry(c),
-      :btree_segment  => Innodb::FsegEntry.get_entry(c),
+      :leaf     => Innodb::FsegEntry.get_inode(@space, c),
+      :internal => Innodb::FsegEntry.get_inode(@space, c),
     }
   end
 
+  # The size (in bytes) of the bit-packed fields in each record header.
   RECORD_BITS_SIZE  = 3
+
+  # The size (in bytes) of the "next" pointer in each record header.
   RECORD_NEXT_SIZE  = 2
 
+  # The size (in bytes) of the record pointers in each page directory slot.
   PAGE_DIR_SLOT_SIZE          = 2
+
+  # The minimum number of records "owned" by each record with an entry in
+  # the page directory.
   PAGE_DIR_SLOT_MIN_N_OWNED   = 4
+
+  # The maximum number of records "owned" by each record with an entry in
+  # the page directory.
   PAGE_DIR_SLOT_MAX_N_OWNED   = 8
 
   # Return the size of the header for each record.
@@ -205,7 +223,7 @@ class Innodb::Page::Index < Innodb::Page
   # This record has been marked as deleted.
   RECORD_INFO_DELETED_FLAG = 2
 
-  # Return the header from a record. (This is mostly unimplemented.)
+  # Return the header from a record.
   def record_header(offset)
     return nil unless type == :INDEX
 

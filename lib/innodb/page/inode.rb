@@ -1,9 +1,18 @@
 require "innodb/list"
 
+# A specialized class for handling INODE pages, which contain index FSEG (file
+# segment) information. This allows all extents and individual pages assigned
+# to each index to be found.
 class Innodb::Page::Inode < Innodb::Page
+  # The number of "slots" (each representing one page) in the fragment array
+  # within each Inode entry.
   FRAG_ARRAY_N_SLOTS  = 32 # FSP_EXTENT_SIZE / 2
+
+  # The size (in bytes) of each slot in the fragment array.
   FRAG_SLOT_SIZE      = 4
 
+  # A magic number which helps determine if an Inode structure is in use
+  # and populated with valid data.
   MAGIC_N_VALUE	= 97937874
 
   def pos_inode_list_entry
@@ -53,6 +62,10 @@ class Innodb::Page::Inode < Innodb::Page
       :magic_n            => cursor.get_uint32,
       :frag_array         => page_number_array(FRAG_ARRAY_N_SLOTS, cursor),
     }
+  end
+
+  def inode_at(offset)
+    inode(cursor(offset))
   end
 
   def each_inode

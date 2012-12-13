@@ -93,6 +93,63 @@ def space_lists(space)
   end
 end
 
+def space_indexes(space)
+  puts "%-12s%-12s%-12s%-12s%-12s%-12s" % [
+    "id",
+    "root",
+    "fseg",
+    "used",
+    "allocated",
+    "fill_factor",
+  ]
+
+  space.each_index do |index|
+    [:internal, :leaf].each do |fseg_name|
+      fseg = index.root.fseg_header[fseg_name]
+
+      fragments =
+        fseg[:frag_array].inject(0) { |c, i| c += 1 if i; c }
+
+      used =
+        fragments +
+        fseg[:not_full_n_used] +
+        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:full].base[:length]
+
+      allocated =
+        fragments +
+        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:full].base[:length] +
+        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:not_full].base[:length] +
+        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:free].base[:length]
+
+      puts "%-12i%-12i%-12s%-12i%-12i%-12s" % [
+        index.id,
+        index.root.offset,
+        fseg_name,
+        used,
+        allocated,
+        "%.2f%%" % [100.0 * (used.to_f / allocated.to_f)],
+      ]
+    end
+  end
+end
+
+def print_xdes_list(list)
+  puts "%-12s%-64s" % [
+    "start_page",
+    "bitmap"
+  ]
+  list.each do |entry|
+    puts "%-12i%-64s" % [
+      entry.xdes[:start_page],
+      entry.xdes[:bitmap].bytes.map { |byte|
+        [0, 2, 4, 6].map { |shift|
+          ((byte >> shift) & 1 == 1) ? "." : "#"
+        }
+      }.flatten.join,
+    ]
+  end
+end
+
 def list_summary(space, list_name)
   fsp = space.page(0).fsp_header
 
@@ -102,20 +159,7 @@ def list_summary(space, list_name)
 
   case fsp[list_name]
   when Innodb::List::Xdes
-    puts "%-12s%-12s%-12s%-40s" % [
-      "page",
-      "offset",
-      "start_page",
-      "bitmap"
-    ]
-    fsp[list_name].each do |entry|
-      puts "%-12i%-12i%-12i%-40s" % [
-        entry.xdes[:this][:page],
-        entry.xdes[:this][:offset],
-        entry.xdes[:start_page],
-        entry.xdes[:bitmap],
-      ]
-    end
+    print_xdes_list(fsp[list_name])
   when Innodb::List::Inode
     puts "%-12s" % [
       "page",
@@ -126,6 +170,20 @@ def list_summary(space, list_name)
       ]
     end
   end
+end
+
+def index_fseg_summary(index, fseg_name, list_name)
+  fseg_header = index.root.fseg_header
+  unless fseg_header[fseg_name]
+    raise "File segment '#{fseg_name}' doesn't exist"
+  end
+
+  fseg = fseg_header[fseg_name]
+  unless fseg[list_name] && fseg[list_name].is_a?(Innodb::List)
+    raise "List '#{list_name}' doesn't exist"
+  end
+
+  print_xdes_list(fseg[list_name])
 end
 
 def space_index_pages_free_plot(space, image)
@@ -319,6 +377,10 @@ The following modes are supported:
   space-lists
     Print the names of all lists in a space.
 
+  space-indexes
+    Summarize all indexes (actually each segment of the indexes) to show
+    the number of pages used and allocated, and the segment fill factor.
+
   list-summary
     Summarize the contents of a list.
 
@@ -335,6 +397,13 @@ The following modes are supported:
   index-level-summary
     Print a summary of all pages at a given level (provided with the --level/-l
     argument) in an index.
+
+  index-fseg-internal-summary
+  index-fseg-leaf-summary
+    Summarize the file segment (whose name is provided in the first --list/-L
+    argument) for internal or leaf pages for a given index (whose root page
+    is provided in the first --page/-p argument). The lists used for each
+    index are "full", "not_full", and "free".
 
 END_OF_USAGE
 
@@ -416,6 +485,8 @@ ARGV.each do |mode|
     space_page_type_regions(space)
   when "space-lists"
     space_lists(space)
+  when "space-indexes"
+    space_indexes(space)
   when "list-summary"
     @options.lists.each do |list|
       list_summary(space, list)
@@ -454,6 +525,14 @@ ARGV.each do |mode|
     end
 
     index_level_summary(space.index(@options.pages.first), @options.levels)
+  when "index-fseg-leaf-summary"
+    @options.lists.each do |list|
+      index_fseg_summary(space.index(@options.pages.first), :leaf, list)
+    end
+  when "index-fseg-internal-summary"
+    @options.lists.each do |list|
+      index_fseg_summary(space.index(@options.pages.first), :internal, list)
+    end
   else
     usage 1, "Unknown mode: #{mode}"
   end
