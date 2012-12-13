@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
   s.email       = 'jeremy@jcole.us'
   s.homepage    = 'http://jcole.us/'
   s.files = [
+    'README.md',
     'lib/innodb.rb',
     'lib/innodb/cursor.rb',
     'lib/innodb/field.rb',
