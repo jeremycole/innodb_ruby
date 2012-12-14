@@ -75,6 +75,10 @@ class Innodb::Index
 
   # Iterate through all pages at this level starting with the provided page.
   def each_page_from(page)
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_page_from, page)
+    end
+
     while page && page.type == :INDEX
       yield page
       page = @space.page(page.next)
@@ -84,11 +88,19 @@ class Innodb::Index
   # Iterate through all pages at the given level by finding the first page
   # and following the next pointers in each page.
   def each_page_at_level(level)
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_page_at_level, level)
+    end
+
     each_page_from(first_page_at_level(level)) { |page| yield page }
   end
 
   # Iterate through all records on all leaf pages in ascending order.
   def each_record
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_record)
+    end
+
     each_page_at_level(0) do |page|
       page.each_record do |record|
         yield record

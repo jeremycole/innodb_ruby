@@ -141,11 +141,10 @@ def print_xdes_list(list)
   list.each do |entry|
     puts "%-12i%-64s" % [
       entry.xdes[:start_page],
-      entry.xdes[:bitmap].bytes.map { |byte|
-        [0, 2, 4, 6].map { |shift|
-          ((byte >> shift) & 1 == 1) ? "." : "#"
-        }
-      }.flatten.join,
+      entry.each_page_status.inject("") { |bitmap, page_status|
+        bitmap += page_status[:free] ? "." : "#"
+        bitmap
+      },
     ]
   end
 end

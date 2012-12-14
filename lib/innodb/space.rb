@@ -46,6 +46,10 @@ class Innodb::Space
   # root page. This should work fine for IBD files, but not for ibdata
   # files.
   def each_index
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_index)
+    end
+
     (3...@pages).each do |page_number|
       if page(page_number).root?
         yield index(page_number)
@@ -58,6 +62,10 @@ class Innodb::Space
   # Iterate through all pages in a tablespace, returning the page number
   # and an Innodb::Page object for each one.
   def each_page
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_page)
+    end
+
     (0...@pages).each do |page_number|
       current_page = page(page_number)
       yield page_number, current_page if current_page
@@ -67,6 +75,10 @@ class Innodb::Space
   # Iterate through unique regions in the space by page type. This is useful
   # to achieve an overall view of the space.
   def each_page_type_region
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_page_type_region)
+    end
+
     region = nil
     each_page do |page_number, page|
       if region && region[:type] == page.type

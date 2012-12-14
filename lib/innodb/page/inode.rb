@@ -15,40 +15,59 @@ class Innodb::Page::Inode < Innodb::Page
   # and populated with valid data.
   MAGIC_N_VALUE	= 97937874
 
-  def pos_inode_list_entry
+  # Return the byte offset of the list node, which immediately follows the
+  # FIL header.
+  def pos_list_entry
     pos_fil_header + size_fil_header
   end
 
-  def pos_inode_list
-    pos_fil_header + size_fil_header + Innodb::List::NODE_SIZE
+  # Return the byte offset of the list node.
+  def size_list_entry
+    Innodb::List::NODE_SIZE
   end
 
+  # Return the byte offset of the Inode array in the page, which immediately
+  # follows the list entry.
+  def pos_inode_array
+    pos_list_entry + size_list_entry
+  end
+
+  # The size (in bytes) of an Inode entry.
   def size_inode
     (16 + (3 * Innodb::List::BASE_NODE_SIZE) +
       (FRAG_ARRAY_N_SLOTS * FRAG_SLOT_SIZE))
   end
 
+  # The number of Inode entries that fit on a page.
   def inodes_per_page
-    (size - pos_inode_list - 10) / size_inode
+    (size - pos_inode_array - 10) / size_inode
   end
 
-  def page_number_array(size, cursor)
-    size.times.map { |n| Innodb::Page.maybe_undefined(cursor.get_uint32) }
-  end
-
+  # Return the list entry.
   def list_entry
     c = cursor(pos_inode_list_entry)
     Innodb::List.get_node(c)
   end
 
+  # Return the "previous" address pointer from the list entry. This is used
+  # by Innodb::List::Inode to iterate through Inode lists.
   def prev_address
     list_entry[:prev]
   end
 
+  # Return the "next" address pointer from the list entry. This is used
+  # by Innodb::List::Inode to iterate through Inode lists.
   def next_address
     list_entry[:next]
   end
 
+  # Read an array of page numbers (32-bit integers, which may be nil) from
+  # the provided cursor.
+  def page_number_array(size, cursor)
+    size.times.map { |n| Innodb::Page.maybe_undefined(cursor.get_uint32) }
+  end
+
+  # Read a single Inode entry from the provided cursor.
   def inode(cursor)
     {
       :fseg_id            => cursor.get_uint64,
@@ -64,18 +83,22 @@ class Innodb::Page::Inode < Innodb::Page
     }
   end
 
+  # Read a single Inode entry from the provided byte offset by creating a
+  # cursor and reading the inode using the inode method.
   def inode_at(offset)
     inode(cursor(offset))
   end
 
+  # Iterate through all Inodes in the inode array.
   def each_inode
-    inode_cursor = cursor(pos_inode_list)
+    inode_cursor = cursor(pos_inode_array)
     inodes_per_page.times do
       this_inode = inode(inode_cursor)
       yield this_inode if this_inode[:fseg_id] != 0
     end
   end
 
+  # Dump the contents of a page for debugging purposes.
   def dump
     super
 

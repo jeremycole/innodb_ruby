@@ -116,13 +116,13 @@ class Innodb::Page::Index < Innodb::Page
     data(pos_user_records, page_header[:heap_top] - pos_user_records)
   end
 
-  # Page direction values possible in the page_header[:direction] field.
+  # Page direction values possible in the page_header's :direction field.
   PAGE_DIRECTION = {
-    1 => :left,
-    2 => :right,
-    3 => :same_rec,
-    4 => :same_page,
-    5 => :no_direction,
+    1 => :left,           # Inserts have been in descending order.
+    2 => :right,          # Inserts have been in ascending order.
+    3 => :same_rec,       # Unused by InnoDB.
+    4 => :same_page,      # Unused by InnoDB.
+    5 => :no_direction,   # Inserts have been in random order.
   }
 
   # Return the "index" header.
@@ -172,21 +172,21 @@ class Innodb::Page::Index < Innodb::Page
   end
 
   # The size (in bytes) of the bit-packed fields in each record header.
-  RECORD_BITS_SIZE  = 3
+  RECORD_BITS_SIZE = 3
 
   # The size (in bytes) of the "next" pointer in each record header.
-  RECORD_NEXT_SIZE  = 2
+  RECORD_NEXT_SIZE = 2
 
   # The size (in bytes) of the record pointers in each page directory slot.
-  PAGE_DIR_SLOT_SIZE          = 2
+  PAGE_DIR_SLOT_SIZE = 2
 
   # The minimum number of records "owned" by each record with an entry in
   # the page directory.
-  PAGE_DIR_SLOT_MIN_N_OWNED   = 4
+  PAGE_DIR_SLOT_MIN_N_OWNED = 4
 
   # The maximum number of records "owned" by each record with an entry in
   # the page directory.
-  PAGE_DIR_SLOT_MAX_N_OWNED   = 8
+  PAGE_DIR_SLOT_MAX_N_OWNED = 8
 
   # Return the size of the header for each record.
   def size_record_header
@@ -211,10 +211,10 @@ class Innodb::Page::Index < Innodb::Page
 
   # Record types used in the :type field of the record header.
   RECORD_TYPES = {
-    0 => :conventional,
-    1 => :node_pointer,
-    2 => :infimum,
-    3 => :supremum,
+    0 => :conventional,   # A normal user record in a leaf page.
+    1 => :node_pointer,   # A node pointer in a non-leaf page.
+    2 => :infimum,        # The system "infimum" record.
+    3 => :supremum,       # The system "supremum" record.
   }
 
   # This record is the minimum record at this level of the B-tree.
@@ -225,8 +225,6 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return the header from a record.
   def record_header(offset)
-    return nil unless type == :INDEX
-
     c = cursor(offset).backward
     case page_header[:format]
     when :compact
@@ -307,8 +305,6 @@ class Innodb::Page::Index < Innodb::Page
   # Parse and return simple fixed-format system records, such as InnoDB's
   # internal infimum and supremum records.
   def system_record(offset)
-    return nil unless type == :INDEX
-
     header = record_header(offset)
     {
       :offset => offset,
@@ -356,7 +352,6 @@ class Innodb::Page::Index < Innodb::Page
   # Parse and return a record at a given offset.
   def record(offset)
     return nil unless offset
-    return nil unless type == :INDEX
     return infimum  if offset == pos_infimum
     return supremum if offset == pos_supremum
 
@@ -446,6 +441,10 @@ class Innodb::Page::Index < Innodb::Page
 
   # Iterate through all records.
   def each_record
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_record)
+    end
+
     c = record_cursor(infimum[:next])
 
     while rec = c.record
@@ -460,6 +459,10 @@ class Innodb::Page::Index < Innodb::Page
   # record.
   def each_child_page
     return nil if level == 0
+
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_child_page)
+    end
 
     each_record do |rec|
       yield rec[:child_page_number], rec[:key]

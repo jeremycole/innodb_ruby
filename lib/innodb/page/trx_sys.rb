@@ -90,6 +90,7 @@ class Innodb::Page::TrxSys < Innodb::Page
     }
   end
 
+  # Dump the contents of a page for debugging purposes.
   def dump
     super
 

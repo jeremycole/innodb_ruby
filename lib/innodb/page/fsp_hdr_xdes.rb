@@ -61,12 +61,17 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
   # field in the XDES entry indicates which type of list it is present in,
   # although not necessarily which list (e.g. :fseg).
   def each_xdes
+    unless block_given?
+      return Enumerable::Enumerator.new(self, :each_xdes)
+    end
+
     c = cursor(pos_xdes_array)
     XDES_N_ARRAY_ENTRIES.times do
       yield Innodb::Xdes.new(self, c)
     end
   end
 
+  # Dump the contents of a page for debugging purposes.
   def dump
     super
 

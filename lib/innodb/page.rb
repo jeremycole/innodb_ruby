@@ -6,15 +6,25 @@ require "innodb/cursor"
 # A page being handled by Innodb::Page indicates that its type is not currently
 # handled by any more specialized class.
 class Innodb::Page
+  # A hash of page types to specialized classes to handle them. Normally
+  # subclasses will register themselves in this list.
   SPECIALIZED_CLASSES = {}
 
   # Load a page as a generic page in order to make the "fil" header accessible,
   # and then attempt to hand off the page to a specialized class to be
   # re-parsed if possible. If there is no specialized class for this type
   # of page, return the generic object.
+  #
+  # This could be optimized to reach into the page buffer and efficiently
+  # extract the page type in order to avoid throwing away a generic
+  # Innodb::Page object when parsing every specialized page, but this is
+  # a bit cleaner, and we're not particularly performance sensitive.
   def self.parse(space, buffer)
+    # Create a page object as a generic page.
     page = Innodb::Page.new(space, buffer)
 
+    # If there is a specialized class available for this page type, re-create
+    # the page object using that specialized class.
     if specialized_class = SPECIALIZED_CLASSES[page.type]
       page = specialized_class.new(space, buffer)
     end
@@ -53,7 +63,7 @@ class Innodb::Page
 
   # Return the size of the "fil" header, in bytes.
   def size_fil_header
-    38
+    4 + 4 + 4 + 4 + 8 + 2 + 8 + 4
   end
 
   # Return the byte offset of the start of the "fil" trailer, which is at
@@ -64,7 +74,7 @@ class Innodb::Page
 
   # Return the size of the "fil" trailer, in bytes.
   def size_fil_trailer
-    8
+    4 + 4
   end
 
   # InnoDB Page Type constants from include/fil0fil.h.
@@ -136,6 +146,8 @@ class Innodb::Page
     fil_header[:lsn]
   end
 
+  # Implement a custom inspect method to avoid irb printing the contents of
+  # the page buffer, since it's very large and mostly not interesting.
   def inspect
     if fil_header
       "#<%s: size=%i, space_id=%i, offset=%i, type=%s, prev=%i, next=%i>" % [
