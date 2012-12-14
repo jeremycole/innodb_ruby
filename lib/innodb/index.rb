@@ -242,7 +242,7 @@ class Innodb::Index
   def binary_search(key)
     page = @root
 
-    while rec = binary_search_by_directory(page, page.directory.dup, key)
+    while rec = binary_search_by_directory(page, page.directory, key)
       if page.level > 0
         # If we haven't reached a leaf page yet, move down the tree and search
         # again using binary search.
