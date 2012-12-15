@@ -239,7 +239,7 @@ class Innodb::Page::Index < Innodb::Page
       header[:min_rec] = (info & RECORD_INFO_MIN_REC_FLAG) != 0
       header[:deleted] = (info & RECORD_INFO_DELETED_FLAG) != 0
       case header[:type]
-      when :conventional, :node_pointer:
+      when :conventional, :node_pointer
         # The variable-length part of the record header contains a
         # bit vector indicating NULL fields and the length of each
         # non-NULL variable-length field.
