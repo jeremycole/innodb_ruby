@@ -51,7 +51,8 @@ class Innodb::Space
     end
 
     (3...@pages).each do |page_number|
-      if page(page_number).root?
+      page = page(page_number)
+      if page.type == :INDEX && page.root?
         yield index(page_number)
       else
         break
