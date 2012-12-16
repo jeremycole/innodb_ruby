@@ -1,3 +1,6 @@
+# A single field in an InnoDB record (within an INDEX page). This class
+# provides essential information to parse records: the length of the fixed
+# width portion of the field
 class Innodb::Field
   attr_reader :position, :nullable, :fixed_len, :variable_len
 
@@ -15,8 +18,10 @@ class Innodb::Field
       type = data_type.upcase.to_sym
       fixed_len = fixed_len_map[type]
       [type, fixed_len, 0]
-    when /varchar\((\d+)\)$/i
+    when /^varchar\((\d+)\)$/i
       [:VARCHAR, 0, $1.to_i]
+    when /^char\((\d+)\)$/i
+      [:CHAR, $1.to_i, 0]
     else
       raise "Data type '#{data_type}' is not supported"
     end
@@ -60,7 +65,11 @@ class Innodb::Field
       symbol = @unsigned ? :get_uint_by_size : :get_i_sint_by_size
       cursor.send(symbol, @fixed_len)
     when :VARCHAR
-      '\'' + cursor.get_bytes(get_variable_len(record)) + '\''
+      cursor.get_bytes(get_variable_len(record))
+    when :CHAR
+      # Fixed-width character fields will be space-padded up to their length,
+      # so SQL defines that trailing spaces should be removed.
+      cursor.get_bytes(fixed_len).sub(/[ ]+$/, "")
     end
   end
 end
