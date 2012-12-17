@@ -1,10 +1,13 @@
 # An InnoDB index B-tree, given an Innodb::Space and a root page number.
 class Innodb::Index
   attr_reader :root
+  attr_reader :stats
+  attr_accessor :debug
 
   def initialize(space, root_page_number)
     @space = space
     @root = @space.page(root_page_number)
+    @debug = false
 
     unless @root
       raise "Page #{root_page_number} couldn't be read"
@@ -19,6 +22,12 @@ class Innodb::Index
     unless @root.prev.nil? && @root.next.nil?
       raise "Page #{root_page_number} is a node page, but not appear to be the root; it has previous page and next page pointers"
     end
+
+    reset_stats
+  end
+
+  def reset_stats
+    @stats = Hash.new(0)
   end
 
   # A helper function to access the index ID in the page header.
@@ -114,11 +123,14 @@ class Innodb::Index
   #   -1 = a is less than b
   #   +1 = a is greater than b
   def compare_key(a, b)
+    @stats[:compare_key] += 1
+
     return 0 if a.nil? && b.nil?
     return -1 if a.nil? || (!b.nil? && a.size < b.size)
     return +1 if b.nil? || (!a.nil? && a.size > b.size)
 
     a.each_index do |i|
+      @stats[:compare_key_field_comparison] += 1
       return -1 if a[i] < b[i]
       return +1 if a[i] > b[i]
     end
@@ -131,12 +143,30 @@ class Innodb::Index
   # than the key. (If an exact match is desired, compare_key must be used to
   # check if the returned record matches. This makes the function useful for
   # search in both leaf and non-leaf pages.)
-  def linear_search_from_cursor(cursor, key)
+  def linear_search_from_cursor(page, cursor, key)
+    @stats[:linear_search_from_cursor] += 1
+
     this_rec = cursor.record
+
+    if @debug
+      puts "linear_search_from_cursor: start=(%s), page=%i, level=%i" % [
+        this_rec && this_rec[:key].join(", "),
+        page.offset,
+        page.level,
+      ]
+    end
 
     # Iterate through all records until finding either a matching record or
     # one whose key is greater than the desired key.
     while this_rec && next_rec = cursor.record
+      @stats[:linear_search_from_cursor_record_scans] += 1
+
+      if @debug
+        puts "linear_search_from_cursor: scanning: current=(%s)" % [
+          this_rec && this_rec[:key].join(", "),
+        ]
+      end
+
       # If we reach supremum, return the last non-system record we got.
       return this_rec if next_rec[:header][:type] == :supremum
 
@@ -163,7 +193,17 @@ class Innodb::Index
   # desired, the returned record must be checked in the same way as the above
   # linear_search_from_cursor function.)
   def binary_search_by_directory(page, dir, key)
+    @stats[:binary_search_by_directory] += 1
+
     return nil if dir.empty?
+
+    if @debug
+      puts "binary_search_by_directory: page=%i, level=%i, dir.size=%i" % [
+        page.offset,
+        page.level,
+        dir.size,
+      ]
+    end
 
     # Split the directory at the mid-point (using integer math, so the division
     # is rounding down). Retrieve the record that sits at the mid-point.
@@ -175,27 +215,28 @@ class Innodb::Index
     # is the beginning of the page there can't be many records left to check
     # anyway.
     if rec[:header][:type] == :infimum
-      return linear_search_from_cursor(page.record_cursor(rec[:next]), key)
+      return linear_search_from_cursor(page, page.record_cursor(rec[:next]), key)
     end
 
     # Compare the desired key to the mid-point record's key.
     case compare_key(key, rec[:key])
     when 0
       # An exact match for the key was found. Return the record.
+      @stats[:binary_search_by_directory_exact_match] += 1
       rec
     when +1
       # The mid-point record's key is less than the desired key.
       if dir.size == 1
         # This is the last entry remaining from the directory, use linear
-        # search to find the record. We already know that there wasn't an
-        # exact match, so skip the current record and start cursoring from
-        # the next record.
-        linear_search_from_cursor(page.record_cursor(rec[:next]), key)
+        # search to find the record.
+        @stats[:binary_search_by_directory_linear_search] += 1
+        linear_search_from_cursor(page, page.record_cursor(rec[:offset]), key)
       else
         # There are more entries remaining from the directory, recurse again
         # using binary search on the right half of the directory, which
         # represents values greater than or equal to the mid-point record's
         # key.
+        @stats[:binary_search_by_directory_recurse_right] += 1
         binary_search_by_directory(page, dir[mid...dir.size], key)
       end
     when -1
@@ -203,10 +244,12 @@ class Innodb::Index
       if dir.size == 1
         # If this is the last entry remaining from the directory, we didn't
         # find anything workable.
+        @stats[:binary_search_by_directory_empty_result] += 1
         nil
       else
         # Recurse on the left half of the directory, which represents values
         # less than the mid-point record's key.
+        @stats[:binary_search_by_directory_recurse_left] += 1
         binary_search_by_directory(page, dir[0...mid], key)
       end
     end
@@ -218,10 +261,20 @@ class Innodb::Index
   # record is not found, nil is returned (either because linear_search_in_page
   # returns nil breaking the loop, or because compare_key returns non-zero).
   def linear_search(key)
+    @stats[:linear_search] += 1
+
     page = @root
 
+    if @debug
+      puts "linear_search: key=(%s), root=%i, level=%i" % [
+        key.join(", "),
+        page.offset,
+        page.level,
+      ]
+    end
+
     while rec =
-      linear_search_from_cursor(page.record_cursor(page.infimum[:next]), key)
+      linear_search_from_cursor(page, page.record_cursor(page.infimum[:next]), key)
       if page.level > 0
         # If we haven't reached a leaf page yet, move down the tree and search
         # again using linear search.
@@ -240,7 +293,17 @@ class Innodb::Index
   # the page directory to search while making as few record comparisons as
   # possible. If a matching record is not found, nil is returned.
   def binary_search(key)
+    @stats[:binary_search] += 1
+
     page = @root
+
+    if @debug
+      puts "binary_search: key=(%s), root=%i, level=%i" % [
+        key.join(", "),
+        page.offset,
+        page.level,
+      ]
+    end
 
     while rec = binary_search_by_directory(page, page.directory, key)
       if page.level > 0
