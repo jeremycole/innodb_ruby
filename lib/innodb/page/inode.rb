@@ -45,7 +45,7 @@ class Innodb::Page::Inode < Innodb::Page
 
   # Return the list entry.
   def list_entry
-    c = cursor(pos_inode_list_entry)
+    c = cursor(pos_list_entry)
     Innodb::List.get_node(c)
   end
 
