@@ -3,10 +3,6 @@
 #
 # Note the distinction between +XDES+ _entries_ and +XDES+ _pages_.
 class Innodb::Xdes
-  # Number of pages contained in an extent. InnoDB extents are normally
-  # 64 pages, or 1MiB in size.
-  PAGES_PER_EXTENT = 64
-
   # Number of bits per page in the +XDES+ entry bitmap field. Currently
   # +XDES+ entries store two bits per page, with the following meanings:
   #
@@ -22,12 +18,6 @@ class Innodb::Xdes
 
   # The bitwise-OR of all bitmap bit values.
   BITMAP_BV_ALL = (BITMAP_BV_FREE | BITMAP_BV_CLEAN)
-
-  # Size (in bytes) of the bitmap field in the +XDES+ entry.
-  BITMAP_SIZE = (PAGES_PER_EXTENT * BITS_PER_PAGE) / 8
-
-  # Size (in bytes) of the an +XDES+ entry.
-  ENTRY_SIZE = 8 + Innodb::List::NODE_SIZE + 4 + BITMAP_SIZE
 
   # The values used in the +:state+ field indicating what the extent is
   # used for (or what list it is on).
@@ -51,15 +41,30 @@ class Innodb::Xdes
 
   def initialize(page, cursor)
     @page = page
-    extent_number = (cursor.position - page.pos_xdes_array) / ENTRY_SIZE
-    start_page = page.offset + (extent_number * PAGES_PER_EXTENT)
-    @xdes = {
+    @xdes = read_xdes_entry(page, cursor)
+  end
+
+  # Size (in bytes) of the bitmap field in the +XDES+ entry.
+  def size_bitmap
+    (@page.space.pages_per_extent * BITS_PER_PAGE) / 8
+  end
+
+  # Size (in bytes) of the an +XDES+ entry.
+  def size_entry
+    8 + Innodb::List::NODE_SIZE + 4 + size_bitmap
+  end
+
+  # Read an XDES entry from a cursor.
+  def read_xdes_entry(page, cursor)
+    extent_number = (cursor.position - page.pos_xdes_array) / size_entry
+    start_page = page.offset + (extent_number * page.space.pages_per_extent)
+    {
       :start_page => start_page,
       :fseg_id    => cursor.get_uint64,
       :this       => {:page => page.offset, :offset => cursor.position},
       :list       => Innodb::List.get_node(cursor),
       :state      => STATES[cursor.get_uint32],
-      :bitmap     => cursor.get_bytes(BITMAP_SIZE),
+      :bitmap     => cursor.get_bytes(size_bitmap),
     }
   end
 
@@ -104,7 +109,7 @@ class Innodb::Xdes
 
   # Return the count of used pages (free bit is false) on this extent.
   def used_pages
-    PAGES_PER_EXTENT - free_pages
+    @page.space.pages_per_extent - free_pages
   end
 
   # Return the address of the previous list pointer from the list node

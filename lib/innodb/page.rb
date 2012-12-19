@@ -32,12 +32,18 @@ class Innodb::Page
     page
   end
 
-  # Initialize a page by passing in a 16kB buffer containing the raw page
-  # contents. Currently only 16kB pages are supported.
+  # Initialize a page by passing in a buffer containing the raw page contents.
+  # The buffer size should match the space's page size.
   def initialize(space, buffer)
+    unless space.page_size == buffer.size
+      raise "Buffer size #{buffer.size} is different than space page size"
+    end
+
     @space  = space
     @buffer = buffer
   end
+
+  attr_reader :space
 
   # Return the page size, to eventually be able to deal with non-16kB pages.
   def size

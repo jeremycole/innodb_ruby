@@ -113,13 +113,13 @@ def space_indexes(space)
       used =
         fragments +
         fseg[:not_full_n_used] +
-        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:full].base[:length]
+        space.pages_per_extent * fseg[:full].base[:length]
 
       allocated =
         fragments +
-        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:full].base[:length] +
-        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:not_full].base[:length] +
-        Innodb::Xdes::PAGES_PER_EXTENT * fseg[:free].base[:length]
+        space.pages_per_extent * fseg[:full].base[:length] +
+        space.pages_per_extent * fseg[:not_full].base[:length] +
+        space.pages_per_extent * fseg[:free].base[:length]
 
       puts "%-12i%-12i%-12s%-12i%-12i%-12s" % [
         index.id,
@@ -206,7 +206,7 @@ def space_index_pages_free_plot(space, image)
 
   image_file = image + "_free.png"
   # Aim for one horizontal pixel per extent, but min 1k and max 10k width.
-  image_width = [10000, [1000, space.pages / 64].max].min
+  image_width = [10000, [1000, space.pages / space.pages_per_extent].max].min
 
   Gnuplot.open do |gp|
     Gnuplot::Plot.new(gp) do |plot|
@@ -334,6 +334,10 @@ Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
   --file, -f <file>
     Load the tablespace file <file>.
 
+  --page-size, -P <size>
+    Provide the page size (in KiB): 16 (the default), 8, 4, 2, 1. Page sizes
+    other than 16 may not work well, or at all.
+
   --page, -p <page>
     Operate on the page <page>; may be specified more than once.
 
@@ -411,6 +415,7 @@ end
 
 @options = OpenStruct.new
 @options.file   = nil
+@options.page_size = Innodb::Space::DEFAULT_PAGE_SIZE
 @options.pages  = []
 @options.levels = []
 @options.lists  = []
@@ -419,6 +424,7 @@ end
 getopt_options = [
   [ "--help",             "-?",     GetoptLong::NO_ARGUMENT ],
   [ "--file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--page-size",        "-P",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--page",             "-p",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--level",            "-l",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--list",             "-L",     GetoptLong::REQUIRED_ARGUMENT ],
@@ -436,6 +442,11 @@ getopt.each do |opt, arg|
     @options.mode = arg
   when "--file"
     @options.file = arg
+  when "--page-size"
+    unless [1, 2, 4, 8, 16].include?(arg.to_i)
+      usage 1, "Page size #{arg} is not understood"
+    end
+    @options.page_size = arg.to_i * 1024
   when "--page"
     @options.pages << arg.to_i
   when "--level"
@@ -453,7 +464,7 @@ unless @options.file
   usage 1, "File must be provided with -f argument"
 end
 
-space = Innodb::Space.new(@options.file)
+space = Innodb::Space.new(@options.file, @options.page_size)
 
 if @options.describer
   space.record_describer = Innodb::RecordDescriber.const_get(@options.describer)

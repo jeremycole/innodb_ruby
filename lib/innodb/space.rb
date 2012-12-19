@@ -1,27 +1,49 @@
 # An InnoDB tablespace file, which can be either a multi-table ibdataN file
 # or a single-table "innodb_file_per_table" .ibd file.
 class Innodb::Space
+  # InnoDB's default page size is 16KiB.
+  DEFAULT_PAGE_SIZE = 16384
+
+  # Open a tablespace file, providing the page size to use. Pages that aren't
+  # 16 KiB may not be supported well.
+  def initialize(file, page_size=DEFAULT_PAGE_SIZE)
+    @file = File.open(file)
+    @page_size = page_size
+    @size = @file.stat.size
+    @pages = (@size / page_size)
+    @record_describer = nil
+  end
+
+  # An object which can be used to describe records found in pages within
+  # this space.
   attr_accessor :record_describer
+
+  # The size (in bytes) of each page in the space.
+  attr_reader :page_size
+
+  # The size (in bytes) of the space
+  attr_reader :size
+
+  # The number of pages in the space.
   attr_reader :pages
 
-  # Currently only 16kB InnoDB pages are supported.
-  PAGE_SIZE = 16384
+  # The number of pages per extent.
+  def pages_per_extent
+    64
+  end
 
-  # Open a tablespace file.
-  def initialize(file)
-    @file = File.open(file)
-    @size = @file.stat.size
-    @pages = (@size / PAGE_SIZE)
-    @record_describer = nil
+  # The size (in bytes) of an extent.
+  def extent_size
+    page_size * pages_per_extent
   end
 
   # Get an Innodb::Page object for a specific page by page number.
   def page(page_number)
-    offset = page_number.to_i * PAGE_SIZE
+    offset = page_number.to_i * page_size
     return nil unless offset < @size
-    return nil unless (offset + PAGE_SIZE) <= @size
+    return nil unless (offset + page_size) <= @size
     @file.seek(offset)
-    page_data = @file.read(PAGE_SIZE)
+    page_data = @file.read(page_size)
     this_page = Innodb::Page.parse(self, page_data)
 
     if this_page.type == :INDEX

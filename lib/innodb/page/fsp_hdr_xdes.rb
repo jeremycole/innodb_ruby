@@ -11,10 +11,6 @@ require "innodb/xdes"
 # The basic structure of FSP_HDR and XDES pages is: FIL header, FSP header,
 # an array of 256 XDES entries, empty (unused) space, and FIL trailer.
 class Innodb::Page::FspHdrXdes < Innodb::Page
-  # This is actually defined as page size divided by extent size, which is
-  # 16384 / 64 = 256.
-  XDES_N_ARRAY_ENTRIES = 256
-
   # The FSP header immediately follows the FIL header.
   def pos_fsp_header
     pos_fil_header + size_fil_header
@@ -29,6 +25,12 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
   # The XDES entry array immediately follows the FSP header.
   def pos_xdes_array
     pos_fsp_header + size_fsp_header
+  end
+
+  # The number of entries in the XDES array. Defined as page size divided by
+  # extent size.
+  def entries_in_xdes_array
+    size / space.pages_per_extent
   end
 
   # Read the FSP (filespace) header, which contains a few counters and flags,
@@ -66,7 +68,7 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
     end
 
     c = cursor(pos_xdes_array)
-    XDES_N_ARRAY_ENTRIES.times do
+    entries_in_xdes_array.times do
       yield Innodb::Xdes.new(self, c)
     end
   end
