@@ -84,12 +84,12 @@ class Innodb::Space
 
   # Iterate through all pages in a tablespace, returning the page number
   # and an Innodb::Page object for each one.
-  def each_page
+  def each_page(start_page=0)
     unless block_given?
       return Enumerable::Enumerator.new(self, :each_page)
     end
 
-    (0...@pages).each do |page_number|
+    (start_page...@pages).each do |page_number|
       current_page = page(page_number)
       yield page_number, current_page if current_page
     end
@@ -97,13 +97,13 @@ class Innodb::Space
 
   # Iterate through unique regions in the space by page type. This is useful
   # to achieve an overall view of the space.
-  def each_page_type_region
+  def each_page_type_region(start_page=0)
     unless block_given?
       return Enumerable::Enumerator.new(self, :each_page_type_region)
     end
 
     region = nil
-    each_page do |page_number, page|
+    each_page(start_page) do |page_number, page|
       if region && region[:type] == page.type
         region[:end] = page_number
         region[:count] += 1
