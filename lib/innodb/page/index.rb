@@ -380,7 +380,13 @@ class Innodb::Page::Index < Innodb::Page
       # fields, a transaction ID and roll pointer.
       if level == 0 && record_format[:type] == :clustered
         this_record[:transaction_id] = c.get_hex(6)
-        this_record[:roll_pointer]   = c.get_hex(7)
+        first_byte = c.get_uint8
+        this_record[:roll_pointer]   = {
+          :is_insert  => (first_byte & 0x80) == 0x80,
+          :rseg_id    => first_byte & 0x7f,
+          :page       => c.get_uint32,
+          :offset     => c.get_uint16,
+        }
       end
 
       # If this is a leaf page of the clustered index, or any page of a
