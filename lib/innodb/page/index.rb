@@ -384,8 +384,10 @@ class Innodb::Page::Index < Innodb::Page
         this_record[:roll_pointer]   = {
           :is_insert  => (first_byte & 0x80) == 0x80,
           :rseg_id    => first_byte & 0x7f,
-          :page       => c.get_uint32,
-          :offset     => c.get_uint16,
+          :undo_log => {
+            :page       => c.get_uint32,
+            :offset     => c.get_uint16,
+          }
         }
       end
 
