@@ -5,7 +5,7 @@ require "ostruct"
 require "pp"
 require "innodb"
 
-def space_summary(space)
+def space_summary(space, start_page)
   puts "%-12s%-20s%-12s%-12s%-20s" % [
     "page",
     "type",
@@ -14,7 +14,7 @@ def space_summary(space)
     "lsn",
   ]
 
-  space.each_page do |page_number, page|
+  space.each_page(start_page) do |page_number, page|
     puts "%-12i%-20s%-12i%-12i%-20i" % [
       page_number,
       page.type,
@@ -25,7 +25,7 @@ def space_summary(space)
   end
 end
 
-def space_index_pages_summary(space)
+def space_index_pages_summary(space, start_page)
   puts "%-12s%-8s%-8s%-8s%-8s%-8s" % [
     "page",
     "index",
@@ -35,7 +35,7 @@ def space_index_pages_summary(space)
     "records",
   ]
 
-  space.each_page do |page_number, page|
+  space.each_page(start_page) do |page_number, page|
     case page.type
     when :INDEX
       puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [
@@ -52,7 +52,7 @@ def space_index_pages_summary(space)
   end
 end
 
-def space_page_type_regions(space)
+def space_page_type_regions(space, start_page)
   puts "%-12s%-12s%-12s%-20s" % [
     "start",
     "end",
@@ -60,7 +60,7 @@ def space_page_type_regions(space)
     "type",
   ]
 
-  space.each_page_type_region do |region|
+  space.each_page_type_region(start_page) do |region|
     puts "%-12i%-12i%-12i%-20s" % [
       region[:start],
       region[:end],
@@ -185,14 +185,14 @@ def index_fseg_summary(index, fseg_name, list_name)
   print_xdes_list(fseg[list_name])
 end
 
-def space_index_pages_free_plot(space, image)
+def space_index_pages_free_plot(space, image, start_page)
   unless require "gnuplot"
     raise "Couldn't load gnuplot. Is it installed?"
   end
 
   index_data = {0 => {:x => [], :y => []}}
 
-  space.each_page do |page_number, page|
+  space.each_page(start_page) do |page_number, page|
     case page.type
     when :INDEX
       data = (index_data[page.page_header[:index_id]] ||= {:x => [], :y => []})
@@ -360,22 +360,26 @@ The following modes are supported:
     Dump the contents of the page, using the Ruby pp ("pretty-print") module.
 
   space-summary
-    Summarize all pages within a tablespace.
+    Summarize all pages within a tablespace. A starting page number can be
+    provided with the --page/-p argument.
 
   space-index-pages-summary
     Summarize all "INDEX" pages within a tablespace. This is useful to analyze
     page fill rates and record counts per page. In addition to "INDEX" pages,
     "ALLOCATED" pages are also printed and assumed to be completely empty.
+    A starting page number can be provided with the --page/-p argument.
 
   space-index-pages-free-plot
     Use Ruby's gnuplot module to produce a scatterplot of page free space for
     all "INDEX" and "ALLOCATED" pages in a tablespace. More aesthetically
     pleasing plots can be produced with space-index-pages-summary output,
-    but this is a quick and easy way to produce a passable plot.
+    but this is a quick and easy way to produce a passable plot. A starting
+    page number can be provided with the --page/-p argument.
 
   space-page-type-regions
     Summarize all contiguous regions of the same page type. This is useful to
-    provide an overall view of the space and allocations within it.
+    provide an overall view of the space and allocations within it. A starting
+    page number can be provided with the --page/-p argument.
 
   space-lists
     Print the names of all lists in a space.
@@ -485,14 +489,14 @@ ARGV.each do |mode|
       space.page(page).dump
     end
   when "space-summary"
-    space_summary(space)
+    space_summary(space, @options.pages.first || 0)
   when "space-index-pages-summary"
-    space_index_pages_summary(space)
+    space_index_pages_summary(space, @options.pages.first || 0)
   when "space-index-pages-free-plot"
     name = File.basename(@options.file).sub(".ibd", "")
-    space_index_pages_free_plot(space, name)
+    space_index_pages_free_plot(space, name, @options.pages.first || 0)
   when "space-page-type-regions"
-    space_page_type_regions(space)
+    space_page_type_regions(space, @options.pages.first || 0)
   when "space-lists"
     space_lists(space)
   when "space-indexes"
