@@ -1,3 +1,5 @@
+require "enumerator"
+
 # An InnoDB "extent descriptor entry" or "+XDES+". These structures are used
 # in the +XDES+ entry array contained in +FSP_HDR+ and +XDES+ pages.
 #
@@ -86,7 +88,9 @@ class Innodb::Xdes
       return Enumerable::Enumerator.new(self, :each_page_status)
     end
 
-    xdes[:bitmap].bytes.each_with_index do |byte, byte_index|
+    bitmap = Enumerable::Enumerator.new(xdes[:bitmap], :each_byte)
+
+    bitmap.each_with_index do |byte, byte_index|
       (0..3).each_with_index do |page, page_index|
         page_number = xdes[:start_page] + (byte_index * 4) + page_index
         page_bits = ((byte >> (page * BITS_PER_PAGE)) & BITMAP_BV_ALL)
