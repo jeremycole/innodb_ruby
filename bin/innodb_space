@@ -18,9 +18,9 @@ def space_summary(space, start_page)
     puts "%-12i%-20s%-12i%-12i%-20i" % [
       page_number,
       page.type,
-      page.prev,
-      page.next,
-      page.lsn,
+      page.prev || 0,
+      page.next || 0,
+      page.lsn || 0,
     ]
   end
 end
