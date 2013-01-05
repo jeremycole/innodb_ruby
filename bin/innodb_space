@@ -165,13 +165,15 @@ def space_indexes(space)
         space.pages_per_extent * fseg[:not_full].base[:length] +
         space.pages_per_extent * fseg[:free].base[:length]
 
+      fill_factor = allocated > 0 ? 100.0 * (used.to_f / allocated.to_f) : 0.0
+
       puts "%-12i%-12i%-12s%-12i%-12i%-12s" % [
         index.id,
         index.root.offset,
         fseg_name,
         used,
         allocated,
-        "%.2f%%" % [100.0 * (used.to_f / allocated.to_f)],
+        "%.2f%%" % fill_factor,
       ]
     end
   end
