@@ -44,6 +44,33 @@ def print_xdes_list(list)
   end
 end
 
+def print_index_page_summary(pages)
+  puts "%-12s%-8s%-8s%-8s%-8s%-8s" % [
+    "page",
+    "index",
+    "level",
+    "data",
+    "free",
+    "records",
+  ]
+
+  pages.each do |page_number, page|
+    case page.type
+    when :INDEX
+      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [
+        page_number,
+        page.page_header[:index_id],
+        page.level,
+        page.record_space,
+        page.free_space,
+        page.records,
+      ]
+    when :ALLOCATED
+      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0, page.size, 0 ]
+    end
+  end
+end
+
 def space_summary(space, start_page)
   puts "%-12s%-20s%-12s%-12s%-20s" % [
     "page",
@@ -65,30 +92,7 @@ def space_summary(space, start_page)
 end
 
 def space_index_pages_summary(space, start_page)
-  puts "%-12s%-8s%-8s%-8s%-8s%-8s" % [
-    "page",
-    "index",
-    "level",
-    "data",
-    "free",
-    "records",
-  ]
-
-  space.each_page(start_page) do |page_number, page|
-    case page.type
-    when :INDEX
-      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [
-        page_number,
-        page.page_header[:index_id],
-        page.level,
-        page.record_space,
-        page.free_space,
-        page.records,
-      ]
-    when :ALLOCATED
-      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0, page.size, 0 ]
-    end
-  end
+  print_index_page_summary(space.each_page(start_page))
 end
 
 def space_page_type_regions(space, start_page)
@@ -224,7 +228,7 @@ def index_fseg_lists(index, fseg_name)
     raise "File segment '#{fseg_name}' doesn't exist"
   end
 
-  print_lists(index.each_fseg_list(index.fseg(fseg_name)).each)
+  print_lists(index.each_fseg_list(index.fseg(fseg_name)))
 end
 
 def index_fseg_list_iterate(index, fseg_name, list_name)
@@ -238,6 +242,14 @@ def index_fseg_list_iterate(index, fseg_name, list_name)
   end
 
   print_xdes_list(fseg[list_name])
+end
+
+def index_fseg_frags(index, fseg_name)
+  unless index.fseg(fseg_name)
+    raise "File segment '#{fseg_name}' doesn't exist"
+  end
+
+  print_index_page_summary(index.each_fseg_frag_page(index.fseg(fseg_name)))
 end
 
 def index_recurse(index)
@@ -426,6 +438,11 @@ The following modes are supported:
     is provided in the first --page/-p argument). The lists used for each
     index are "full", "not_full", and "free".
 
+  index-fseg-internal-frags
+  index-fseg-leaf-frags
+    Print a summary of all fragment pages in an index file segment. Index root
+    page must be provided with --page/-p.
+
 END_OF_USAGE
 
   exit exit_code
@@ -593,6 +610,18 @@ ARGV.each do |mode|
     @options.lists.each do |list|
       index_fseg_list_iterate(space.index(@options.pages.first), :internal, list)
     end
+  when "index-fseg-leaf-frags"
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided with --page/-p"
+    end
+
+    index_fseg_frags(space.index(@options.pages.first), :leaf)
+  when "index-fseg-internal-frags"
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided with --page/-p"
+    end
+
+    index_fseg_frags(space.index(@options.pages.first), :internal)
   else
     usage 1, "Unknown mode: #{mode}"
   end

@@ -109,6 +109,17 @@ class Innodb::Index
     end
   end
 
+  # Iterate through all frag pages in a given fseg.
+  def each_fseg_frag_page(fseg)
+    unless block_given?
+      return enum_for(:each_fseg_frag_page, fseg)
+    end
+
+    fseg[:frag_array].each do |page_number|
+      yield page_number, @space.page(page_number) if page_number
+    end
+  end
+
   # Iterate through all pages at this level starting with the provided page.
   def each_page_from(page)
     unless block_given?
