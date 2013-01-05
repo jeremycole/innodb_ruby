@@ -82,6 +82,33 @@ class Innodb::Index
     page if page.level == level
   end
 
+  # Return the file segment with the given name from the fseg header.
+  def fseg(name)
+    @root.fseg_header[name]
+  end
+
+  # Iterate through all file segments in the index.
+  def each_fseg
+    unless block_given?
+      return enum_for(:each_fseg)
+    end
+
+    [:internal, :leaf].each do |fseg_name|
+      yield fseg_name, fseg(fseg_name)
+    end
+  end
+
+  # Iterate through all lists in a given fseg.
+  def each_fseg_list(fseg)
+    unless block_given?
+      return enum_for(:each_fseg_list, fseg)
+    end
+
+    [:full, :not_full, :free].each do |list_name|
+      yield list_name, fseg[list_name] if fseg[list_name].is_a?(Innodb::List)
+    end
+  end
+
   # Iterate through all pages at this level starting with the provided page.
   def each_page_from(page)
     unless block_given?

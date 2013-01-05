@@ -58,6 +58,17 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
     }
   end
 
+  # Iterate through all lists in the file space.
+  def each_list
+    unless block_given?
+      return enum_for(:each_list)
+    end
+
+    fsp_header.each do |key, value|
+      yield key, value if value.is_a?(Innodb::List)
+    end
+  end
+
   # Iterate through all XDES entries in order. This is useful for debugging,
   # but each of these entries is actually a node in some other list. The state
   # field in the XDES entry indicates which type of list it is present in,

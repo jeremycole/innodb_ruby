@@ -5,6 +5,45 @@ require "ostruct"
 require "pp"
 require "innodb"
 
+def print_lists(lists)
+  puts "%-20s%-12s%-12s%-12s%-12s%-12s" % [
+    "name",
+    "length",
+    "f_page",
+    "f_offset",
+    "l_page",
+    "l_offset",
+  ]
+
+  lists.each do |name, list|
+    puts "%-20s%-12i%-12i%-12i%-12i%-12i" % [
+      name,
+      list.base[:length],
+      list.base[:first] && list.base[:first][:page]   || 0,
+      list.base[:first] && list.base[:first][:offset] || 0,
+      list.base[:last]  && list.base[:last][:page]    || 0,
+      list.base[:last]  && list.base[:last][:offset]  || 0,
+    ]
+  end
+end
+
+def print_xdes_list(list)
+  puts "%-12s%-64s" % [
+    "start_page",
+    "page_used_bitmap"
+  ]
+
+  list.each do |entry|
+    puts "%-12i%-64s" % [
+      entry.xdes[:start_page],
+      entry.each_page_status.inject("") { |bitmap, page_status|
+        bitmap += page_status[:free] ? "." : "#"
+        bitmap
+      },
+    ]
+  end
+end
+
 def space_summary(space, start_page)
   puts "%-12s%-20s%-12s%-12s%-20s" % [
     "page",
@@ -20,7 +59,7 @@ def space_summary(space, start_page)
       page.type,
       page.prev || 0,
       page.next || 0,
-      page.lsn || 0,
+      page.lsn  || 0,
     ]
   end
 end
@@ -71,25 +110,28 @@ def space_page_type_regions(space, start_page)
 end
 
 def space_lists(space)
+  print_lists(space.page(0).each_list)
+end
+
+def space_list_iterate(space, list_name)
   fsp = space.page(0).fsp_header
-  puts "%-20s%-12s%-12s%-12s%-12s%-12s" % [
-    "name",
-    "length",
-    "f_page",
-    "f_offset",
-    "l_page",
-    "l_offset",
-  ]
-  fsp.each do |key, list|
-    next unless list.is_a?(Innodb::List)
-    puts "%-20s%-12i%-12i%-12i%-12i%-12i" % [
-      key,
-      list.base[:length],
-      list.base[:first] && list.base[:first][:page] || 0,
-      list.base[:first] && list.base[:first][:offset] || 0,
-      list.base[:last] && list.base[:last][:page] || 0,
-      list.base[:last] && list.base[:last][:offset] || 0,
+
+  unless fsp[list_name] && fsp[list_name].is_a?(Innodb::List)
+    raise "List '#{list_name}' doesn't exist"
+  end
+
+  case fsp[list_name]
+  when Innodb::List::Xdes
+    print_xdes_list(fsp[list_name])
+  when Innodb::List::Inode
+    puts "%-12s" % [
+      "page",
     ]
+    fsp[list_name].each do |page|
+      puts "%-12i" % [
+        page.offset,
+      ]
+    end
   end
 end
 
@@ -104,9 +146,7 @@ def space_indexes(space)
   ]
 
   space.each_index do |index|
-    [:internal, :leaf].each do |fseg_name|
-      fseg = index.root.fseg_header[fseg_name]
-
+    index.each_fseg do |fseg_name, fseg|
       fragments =
         fseg[:frag_array].inject(0) { |c, i| c += 1 if i; c }
 
@@ -131,58 +171,6 @@ def space_indexes(space)
       ]
     end
   end
-end
-
-def print_xdes_list(list)
-  puts "%-12s%-64s" % [
-    "start_page",
-    "page_used_bitmap"
-  ]
-  list.each do |entry|
-    puts "%-12i%-64s" % [
-      entry.xdes[:start_page],
-      entry.each_page_status.inject("") { |bitmap, page_status|
-        bitmap += page_status[:free] ? "." : "#"
-        bitmap
-      },
-    ]
-  end
-end
-
-def list_summary(space, list_name)
-  fsp = space.page(0).fsp_header
-
-  unless fsp[list_name] && fsp[list_name].is_a?(Innodb::List)
-    raise "List '#{list_name}' doesn't exist"
-  end
-
-  case fsp[list_name]
-  when Innodb::List::Xdes
-    print_xdes_list(fsp[list_name])
-  when Innodb::List::Inode
-    puts "%-12s" % [
-      "page",
-    ]
-    fsp[list_name].each do |page|
-      puts "%-12i" % [
-        page.offset,
-      ]
-    end
-  end
-end
-
-def index_fseg_summary(index, fseg_name, list_name)
-  fseg_header = index.root.fseg_header
-  unless fseg_header[fseg_name]
-    raise "File segment '#{fseg_name}' doesn't exist"
-  end
-
-  fseg = fseg_header[fseg_name]
-  unless fseg[list_name] && fseg[list_name].is_a?(Innodb::List)
-    raise "List '#{list_name}' doesn't exist"
-  end
-
-  print_xdes_list(fseg[list_name])
 end
 
 def space_index_pages_free_plot(space, image, start_page)
@@ -229,6 +217,27 @@ def space_index_pages_free_plot(space, image, start_page)
       puts "Wrote #{image_file}"
     end
   end
+end
+
+def index_fseg_lists(index, fseg_name)
+  unless index.fseg(fseg_name)
+    raise "File segment '#{fseg_name}' doesn't exist"
+  end
+
+  print_lists(index.each_fseg_list(index.fseg(fseg_name)).each)
+end
+
+def index_fseg_list_iterate(index, fseg_name, list_name)
+  unless index.fseg(fseg_name)
+    raise "File segment '#{fseg_name}' doesn't exist"
+  end
+
+  fseg = index.fseg(fseg_name)
+  unless fseg[list_name] && fseg[list_name].is_a?(Innodb::List)
+    raise "List '#{list_name}' doesn't exist"
+  end
+
+  print_xdes_list(fseg[list_name])
 end
 
 def index_recurse(index)
@@ -381,15 +390,15 @@ The following modes are supported:
     provide an overall view of the space and allocations within it. A starting
     page number can be provided with the --page/-p argument.
 
-  space-lists
-    Print the names of all lists in a space.
-
   space-indexes
     Summarize all indexes (actually each segment of the indexes) to show
     the number of pages used and allocated, and the segment fill factor.
 
-  list-summary
-    Summarize the contents of a list.
+  space-lists
+    Print a summary of all lists in a space.
+
+  space-list-iterate
+    Iterate through the contents of a space list.
 
   index-recurse
     Recurse an index, starting at the root (which must be provided in the first
@@ -405,9 +414,14 @@ The following modes are supported:
     Print a summary of all pages at a given level (provided with the --level/-l
     argument) in an index.
 
-  index-fseg-internal-summary
-  index-fseg-leaf-summary
-    Summarize the file segment (whose name is provided in the first --list/-L
+  index-fseg-internal-lists
+  index-fseg-leaf-lists
+    Print a summary of all lists in an index file segment. Index root page must
+    be provided with --page/-p.
+
+  index-fseg-internal-list-iterate
+  index-fseg-leaf-list-iterate
+    Iterate the file segment list (whose name is provided in the first --list/-L
     argument) for internal or leaf pages for a given index (whose root page
     is provided in the first --page/-p argument). The lists used for each
     index are "full", "not_full", and "free".
@@ -482,7 +496,7 @@ ARGV.each do |mode|
   case mode
   when "page-dump"
     if @options.pages.empty?
-      usage 1, "Page numbers to dump must be provided"
+      usage 1, "Page numbers to dump must be provided with --page/-p"
     end
 
     @options.pages.each do |page|
@@ -511,7 +525,7 @@ ARGV.each do |mode|
     end
     
     if @options.pages.empty?
-      usage 1, "Page number of index root must be provided"
+      usage 1, "Page number of index root must be provided with --page/-p"
     end
 
     @options.pages.each do |page|
@@ -523,7 +537,7 @@ ARGV.each do |mode|
     end
     
     if @options.pages.empty?
-      usage 1, "Page number of index root must be provided"
+      usage 1, "Page number of index root must be provided with --page/-p"
     end
 
     @options.pages.each do |page|
@@ -535,17 +549,45 @@ ARGV.each do |mode|
     end
     
     if @options.pages.empty?
-      usage 1, "Page number of index root must be provided"
+      usage 1, "Page number of index root must be provided with --page/-p"
     end
 
     index_level_summary(space.index(@options.pages.first), @options.levels)
-  when "index-fseg-leaf-summary"
-    @options.lists.each do |list|
-      index_fseg_summary(space.index(@options.pages.first), :leaf, list)
+  when "index-fseg-leaf-lists"
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided with --page/-p"
     end
-  when "index-fseg-internal-summary"
+
+    index_fseg_lists(space.index(@options.pages.first), :leaf)
+  when "index-fseg-internal-lists"
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided with --page/-p"
+    end
+
+    index_fseg_lists(space.index(@options.pages.first), :internal)
+  when "index-fseg-leaf-list-iterate"
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided with --page/-p"
+    end
+
+    if @options.lists.empty?
+      usage 1, "A list name must be provided with --list/-L"
+    end
+
     @options.lists.each do |list|
-      index_fseg_summary(space.index(@options.pages.first), :internal, list)
+      index_fseg_list_iterate(space.index(@options.pages.first), :leaf, list)
+    end
+  when "index-fseg-internal-list-iterate"
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided with --page/-p"
+    end
+
+    if @options.lists.empty?
+      usage 1, "A list name must be provided with --list/-L"
+    end
+
+    @options.lists.each do |list|
+      index_fseg_list_iterate(space.index(@options.pages.first), :internal, list)
     end
   else
     usage 1, "Unknown mode: #{mode}"
