@@ -244,7 +244,7 @@ def index_fseg_list_iterate(index, fseg_name, list_name)
   print_xdes_list(fseg[list_name])
 end
 
-def index_fseg_frags(index, fseg_name)
+def index_fseg_frag_pages(index, fseg_name)
   unless index.fseg(fseg_name)
     raise "File segment '#{fseg_name}' doesn't exist"
   end
@@ -438,8 +438,8 @@ The following modes are supported:
     is provided in the first --page/-p argument). The lists used for each
     index are "full", "not_full", and "free".
 
-  index-fseg-internal-frags
-  index-fseg-leaf-frags
+  index-fseg-internal-frag-pages
+  index-fseg-leaf-frag-pages
     Print a summary of all fragment pages in an index file segment. Index root
     page must be provided with --page/-p.
 
@@ -610,18 +610,18 @@ ARGV.each do |mode|
     @options.lists.each do |list|
       index_fseg_list_iterate(space.index(@options.pages.first), :internal, list)
     end
-  when "index-fseg-leaf-frags"
+  when "index-fseg-leaf-frag-pages"
     if @options.pages.empty?
       usage 1, "Page number of index root must be provided with --page/-p"
     end
 
-    index_fseg_frags(space.index(@options.pages.first), :leaf)
-  when "index-fseg-internal-frags"
+    index_fseg_frag_pages(space.index(@options.pages.first), :leaf)
+  when "index-fseg-internal-frag-pages"
     if @options.pages.empty?
       usage 1, "Page number of index root must be provided with --page/-p"
     end
 
-    index_fseg_frags(space.index(@options.pages.first), :internal)
+    index_fseg_frag_pages(space.index(@options.pages.first), :internal)
   else
     usage 1, "Unknown mode: #{mode}"
   end
