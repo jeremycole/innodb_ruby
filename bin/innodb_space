@@ -85,10 +85,10 @@ def space_lists(space)
     puts "%-20s%-12i%-12i%-12i%-12i%-12i" % [
       key,
       list.base[:length],
-      list.base[:first] && list.base[:first][:page],
-      list.base[:first] && list.base[:first][:offset],
-      list.base[:last] && list.base[:last][:page],
-      list.base[:last] && list.base[:last][:offset],
+      list.base[:first] && list.base[:first][:page] || 0,
+      list.base[:first] && list.base[:first][:offset] || 0,
+      list.base[:last] && list.base[:last][:page] || 0,
+      list.base[:last] && list.base[:last][:offset] || 0,
     ]
   end
 end
