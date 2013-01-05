@@ -514,6 +514,10 @@ ARGV.each do |mode|
   when "space-lists"
     space_lists(space)
   when "space-list-iterate"
+    if @options.lists.empty?
+      usage 1, "A list name must be provided with --list/-L"
+    end
+
     @options.lists.each do |list|
       space_list_iterate(space, list)
     end
