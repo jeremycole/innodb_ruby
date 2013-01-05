@@ -513,12 +513,12 @@ ARGV.each do |mode|
     space_page_type_regions(space, @options.pages.first || 0)
   when "space-lists"
     space_lists(space)
+  when "space-list-iterate"
+    @options.lists.each do |list|
+      space_list_iterate(space, list)
+    end
   when "space-indexes"
     space_indexes(space)
-  when "list-summary"
-    @options.lists.each do |list|
-      list_summary(space, list)
-    end
   when "index-recurse"
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 
