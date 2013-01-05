@@ -450,7 +450,7 @@ class Innodb::Page::Index < Innodb::Page
   # Iterate through all records.
   def each_record
     unless block_given?
-      return Enumerable::Enumerator.new(self, :each_record)
+      return enum_for(:each_record)
     end
 
     c = record_cursor(infimum[:next])
@@ -469,7 +469,7 @@ class Innodb::Page::Index < Innodb::Page
     return nil if level == 0
 
     unless block_given?
-      return Enumerable::Enumerator.new(self, :each_child_page)
+      return enum_for(:each_child_page)
     end
 
     each_record do |rec|

@@ -69,7 +69,7 @@ class Innodb::Space
   # files.
   def each_index
     unless block_given?
-      return Enumerable::Enumerator.new(self, :each_index)
+      return enum_for(:each_index)
     end
 
     (3...@pages).each do |page_number|
@@ -86,7 +86,7 @@ class Innodb::Space
   # and an Innodb::Page object for each one.
   def each_page(start_page=0)
     unless block_given?
-      return Enumerable::Enumerator.new(self, :each_page)
+      return enum_for(:each_page)
     end
 
     (start_page...@pages).each do |page_number|
@@ -99,7 +99,7 @@ class Innodb::Space
   # to achieve an overall view of the space.
   def each_page_type_region(start_page=0)
     unless block_given?
-      return Enumerable::Enumerator.new(self, :each_page_type_region)
+      return enum_for(:each_page_type_region)
     end
 
     region = nil

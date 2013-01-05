@@ -106,7 +106,7 @@ class Innodb::List
   # Iterate through all nodes in the list.
   def each
     unless block_given?
-      return Enumerable::Enumerator.new(self)
+      return enum_for(:each)
     end
 
     c = cursor

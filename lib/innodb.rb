@@ -1,6 +1,8 @@
 # A set of classes for parsing and working with InnoDB data files.
 module Innodb; end
 
+require "enumerator"
+
 require "innodb/version"
 require "innodb/page"
 require "innodb/page/fsp_hdr_xdes"

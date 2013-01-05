@@ -64,7 +64,7 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
   # although not necessarily which list (e.g. :fseg).
   def each_xdes
     unless block_given?
-      return Enumerable::Enumerator.new(self, :each_xdes)
+      return enum_for(:each_xdes)
     end
 
     c = cursor(pos_xdes_array)
