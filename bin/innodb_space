@@ -136,7 +136,7 @@ end
 def print_xdes_list(list)
   puts "%-12s%-64s" % [
     "start_page",
-    "bitmap"
+    "page_used_bitmap"
   ]
   list.each do |entry|
     puts "%-12i%-64s" % [
