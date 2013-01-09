@@ -27,14 +27,25 @@ class Innodb::Space
   # The number of pages in the space.
   attr_reader :pages
 
-  # The number of pages per extent.
-  def pages_per_extent
-    64
-  end
-
   # The size (in bytes) of an extent.
   def extent_size
-    page_size * pages_per_extent
+    1048576
+  end
+
+  # The number of pages per extent.
+  def pages_per_extent
+    extent_size / page_size
+  end
+
+  # The number of pages per FSP_HDR/XDES page. This is crudely mapped to the
+  # page size, and works for pages down to 1KiB.
+  def pages_per_xdes_page
+    page_size
+  end
+
+  # An array of all FSP/XDES page numbers for the space.
+  def xdes_page_numbers
+    (0..(@pages / pages_per_xdes_page)).map { |n| n * pages_per_xdes_page }
   end
 
   # Get an Innodb::Page object for a specific page by page number.
@@ -86,12 +97,41 @@ class Innodb::Space
   # and an Innodb::Page object for each one.
   def each_page(start_page=0)
     unless block_given?
-      return enum_for(:each_page)
+      return enum_for(:each_page, start_page)
     end
 
     (start_page...@pages).each do |page_number|
       current_page = page(page_number)
       yield page_number, current_page if current_page
+    end
+  end
+
+  # Iterate through all FSP_HDR/XDES pages, returning an Innodb::Page object
+  # for each one.
+  def each_xdes_page
+    unless block_given?
+      return enum_for(:each_xdes_page)
+    end
+
+    xdes_page_numbers.each do |page_number|
+      current_page = page(page_number)
+      yield current_page if current_page
+    end
+  end
+
+  # Iterate through all extent descriptors for the space, returning an
+  # Innodb::Xdes object for each one.
+  def each_xdes
+    unless block_given?
+      return enum_for(:each_xdes)
+    end
+
+    each_xdes_page do |xdes_page|
+      xdes_page.each_xdes do |xdes|
+        # Only return initialized XDES entries; :state will be nil for extents
+        # that have not been allocated yet.
+        yield xdes if xdes.xdes[:state]
+      end
     end
   end
 

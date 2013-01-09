@@ -225,6 +225,10 @@ def space_index_pages_free_plot(space, image, start_page)
   end
 end
 
+def space_extents(space)
+  print_xdes_list(space.each_xdes)
+end
+
 def index_fseg_lists(index, fseg_name)
   unless index.fseg(fseg_name)
     raise "File segment '#{fseg_name}' doesn't exist"
@@ -414,6 +418,9 @@ The following modes are supported:
   space-list-iterate
     Iterate through the contents of a space list.
 
+  space-extents
+    Iterate through all extents, printing the extent descriptor bitmap.
+
   index-recurse
     Recurse an index, starting at the root (which must be provided in the first
     --page/-p argument), printing the node pages, node pointers (links), leaf
@@ -542,6 +549,8 @@ ARGV.each do |mode|
     end
   when "space-indexes"
     space_indexes(space)
+  when "space-extents"
+    space_extents(space)
   when "index-recurse"
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 
