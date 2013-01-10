@@ -457,6 +457,9 @@ END_OF_USAGE
   exit exit_code
 end
 
+Signal.trap("INT")  { exit }
+Signal.trap("PIPE") { exit }
+
 @options = OpenStruct.new
 @options.file   = nil
 @options.page_size = Innodb::Space::DEFAULT_PAGE_SIZE
