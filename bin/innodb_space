@@ -362,8 +362,8 @@ Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
     Load the tablespace file <file>.
 
   --page-size, -P <size>
-    Provide the page size (in KiB): 16 (the default), 8, 4, 2, 1. Page sizes
-    other than 16 may not work well, or at all.
+    Provide the page size, overriding auto-detection (in KiB): 16, 8, 4, 2, 1.
+    Page sizes other than 16 may not work well, or at all.
 
   --page, -p <page>
     Operate on the page <page>; may be specified more than once.
@@ -462,7 +462,7 @@ Signal.trap("PIPE") { exit }
 
 @options = OpenStruct.new
 @options.file   = nil
-@options.page_size = Innodb::Space::DEFAULT_PAGE_SIZE
+@options.page_size = nil
 @options.pages  = []
 @options.levels = []
 @options.lists  = []

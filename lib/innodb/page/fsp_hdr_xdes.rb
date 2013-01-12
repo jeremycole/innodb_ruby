@@ -11,6 +11,45 @@ require "innodb/xdes"
 # The basic structure of FSP_HDR and XDES pages is: FIL header, FSP header,
 # an array of 256 XDES entries, empty (unused) space, and FIL trailer.
 class Innodb::Page::FspHdrXdes < Innodb::Page
+  # A value added to the adjusted exponent stored in the page size field of
+  # the flags in the FSP header.
+  FLAGS_PAGE_SIZE_ADJUST = 9
+
+  # Read a given number of bits from an integer at a specific bit offset. The
+  # value returned is 0-based so does not need further shifting or adjustment.
+  def self.read_bits_at_offset(data, bits, offset)
+    ((data & (((1 << bits) - 1) << offset)) >> offset)
+  end
+
+  # Decode the "flags" field in the FSP header, returning a hash of useful
+  # decoded flags. Unfortunately, InnoDB has a fairly weird and broken
+  # implementation of these flags. The flags are:
+  #
+  # Offset    Size    Description
+  # 0         1       Page Format (redundant, compact). This is unfortunately
+  #                   coerced to 0 if it is "compact" and no other flags are
+  #                   set, making it useless to innodb_ruby.
+  # 1         4       Compressed Page Size (zip_size). This is stored as a
+  #                   power of 2, minus 9. Since 0 is reserved to mean "not
+  #                   compressed", the minimum value is 1, thus making the
+  #                   smallest page size 1024 (2 ** (9 + 1)).
+  # 5         1       Table Format (Antelope, Barracuda). This was supposed
+  #                   to reserve 6 bits, but due to a bug in InnoDB only
+  #                   actually reserved 1 bit.
+  #
+  def self.decode_flags(flags)
+    # The page size for compressed pages is stored at bit offset 1 and consumes
+    # 4 bits. Value 0 means the page is not compressed.
+    page_size = read_bits_at_offset(flags, 4, 1)
+    {
+      :compressed => page_size == 0 ? false : true,
+      :page_size => page_size == 0 ?
+        Innodb::Space::DEFAULT_PAGE_SIZE :
+        (1 << (FLAGS_PAGE_SIZE_ADJUST + page_size)),
+      :value => flags,
+    }
+  end
+
   # The FSP header immediately follows the FIL header.
   def pos_fsp_header
     pos_fil_header + size_fil_header
@@ -42,7 +81,7 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
       :unused             => c.get_uint32,
       :size               => c.get_uint32,
       :free_limit         => c.get_uint32,
-      :flags              => c.get_uint32,
+      :flags              => self.class.decode_flags(c.get_uint32),
       :frag_n_used        => c.get_uint32,
       :free               => Innodb::List::Xdes.new(@space,
                               Innodb::List.get_base_node(c)),

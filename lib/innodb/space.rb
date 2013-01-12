@@ -4,13 +4,20 @@ class Innodb::Space
   # InnoDB's default page size is 16KiB.
   DEFAULT_PAGE_SIZE = 16384
 
-  # Open a tablespace file, providing the page size to use. Pages that aren't
-  # 16 KiB may not be supported well.
-  def initialize(file, page_size=DEFAULT_PAGE_SIZE)
+  # Open a tablespace file, optionally providing the page size to use. Pages
+  # that aren't 16 KiB may not be supported well.
+  def initialize(file, page_size=nil)
     @file = File.open(file)
-    @page_size = page_size
     @size = @file.stat.size
-    @pages = (@size / page_size)
+
+    if page_size
+      @page_size = page_size
+    else
+      @page_size = fsp_flags[:page_size]
+    end
+
+    @pages = (@size / @page_size)
+    @compressed = fsp_flags[:compressed]
     @record_describer = nil
   end
 
@@ -26,6 +33,42 @@ class Innodb::Space
 
   # The number of pages in the space.
   attr_reader :pages
+
+  # Read the FSP header "flags" field by byte offset within the space file.
+  # This is useful in order to initialize the page size, as we can't properly
+  # read the FSP_HDR page before we know its size.
+  def raw_fsp_header_flags
+    # A simple sanity check. The FIL header should be initialized in page 0,
+    # to offset 0 and page type :FSP_HDR (8).
+    page_offset = BinData::Uint32be.read(read_at_offset(4, 4))
+    page_type   = BinData::Uint16be.read(read_at_offset(24, 2))
+    unless page_offset == 0 && Innodb::Page::PAGE_TYPE[page_type] == :FSP_HDR
+      raise "Something is very wrong; Page 0 does not seem to be type FSP_HDR"
+    end
+
+    # Another sanity check. The Space ID should be the same in both the FIL
+    # and FSP headers.
+    fil_space = BinData::Uint32be.read(read_at_offset(34, 4))
+    fsp_space = BinData::Uint32be.read(read_at_offset(38, 4))
+    unless fil_space == fsp_space
+      raise "Something is very wrong; FIL and FSP header Space IDs don't match"
+    end
+
+    # Well, we're as sure as we can be. Read the flags field and decode it.
+    flags_value = BinData::Uint32be.read(read_at_offset(54, 4))
+    Innodb::Page::FspHdrXdes.decode_flags(flags_value)
+  end
+
+  # The FSP header flags, decoded. If the page size has not been initialized,
+  # reach into the raw bytes of the FSP_HDR page and attempt to decode the
+  # flags field that way.
+  def fsp_flags
+    if @page_size
+      return fsp[:flags]
+    else
+      raw_fsp_header_flags
+    end
+  end
 
   # The size (in bytes) of an extent.
   def extent_size
@@ -48,14 +91,23 @@ class Innodb::Space
     (0..(@pages / pages_per_xdes_page)).map { |n| n * pages_per_xdes_page }
   end
 
-  # Get an Innodb::Page object for a specific page by page number.
-  def page(page_number)
+  # Get the raw byte buffer of size bytes at offset in the file.
+  def read_at_offset(offset, size)
+    @file.seek(offset)
+    @file.read(size)
+  end
+
+  # Get the raw byte buffer for a specific page by page number.
+  def page_data(page_number)
     offset = page_number.to_i * page_size
     return nil unless offset < @size
     return nil unless (offset + page_size) <= @size
-    @file.seek(offset)
-    page_data = @file.read(page_size)
-    this_page = Innodb::Page.parse(self, page_data)
+    read_at_offset(offset, page_size)
+  end
+
+  # Get an Innodb::Page object for a specific page by page number.
+  def page(page_number)
+    this_page = Innodb::Page.parse(self, page_data(page_number))
 
     if this_page.type == :INDEX
       this_page.record_describer = @record_describer
@@ -64,9 +116,14 @@ class Innodb::Space
     this_page
   end
 
+  # Get (and cache) the FSP header from the FSP_HDR page.
+  def fsp
+    @fsp ||= page(0).fsp_header
+  end
+
   # Get an Innodb::List object for a specific list by list name.
   def list(name)
-    page(0).fsp_header[name]
+    fsp[name]
   end
 
   # Get an Innodb::Index object for a specific index by root page number.
