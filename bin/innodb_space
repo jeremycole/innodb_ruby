@@ -229,6 +229,32 @@ def space_extents(space)
   print_xdes_list(space.each_xdes)
 end
 
+def page_directory_summary(page)
+  puts "%-8s%-8s%-14s%-8s%s" % [
+    "slot",
+    "offset",
+    "type",
+    "owned",
+    "key",
+  ]
+
+  page.directory.each_with_index do |offset, slot|
+    record = page.record(offset)
+    key = if [:conventional, :node_pointer].include? record[:header][:type]
+      if record[:key]
+        "(%s)" % record[:key].join(", ")
+      end
+    end
+    puts "%-8i%-8i%-14s%-8i%s" % [
+      slot,
+      offset,
+      record[:header][:type],
+      record[:header][:n_owned],
+      key,
+    ]
+  end
+end
+
 def index_fseg_lists(index, fseg_name)
   unless index.fseg(fseg_name)
     raise "File segment '#{fseg_name}' doesn't exist"
@@ -383,9 +409,6 @@ Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
 
 The following modes are supported:
 
-  page-dump
-    Dump the contents of the page, using the Ruby pp ("pretty-print") module.
-
   space-summary
     Summarize all pages within a tablespace. A starting page number can be
     provided with the --page/-p argument.
@@ -420,6 +443,13 @@ The following modes are supported:
 
   space-extents
     Iterate through all extents, printing the extent descriptor bitmap.
+
+  page-dump
+    Dump the contents of a page, using the Ruby pp ("pretty-print") module.
+
+  page-directory-summary
+    Summarize the record contents of the page directory in a page. If a record
+    describer is available, the key of each record will be printed.
 
   index-recurse
     Recurse an index, starting at the root (which must be provided in the first
@@ -528,9 +558,20 @@ ARGV.each do |mode|
       usage 1, "Page numbers to dump must be provided with --page/-p"
     end
 
-    @options.pages.each do |page|
-      space.page(page).dump
+    @options.pages.each do |page_number|
+      space.page(page_number).dump
     end
+  when "page-directory-summary"
+    if @options.pages.empty?
+      usage 1, "Page numbers to dump must be provided with --page/-p"
+    end
+
+    page = space.page(@options.pages.first)
+    if page.type != :INDEX
+      usage 1, "Page must be an index page"
+    end
+
+    page_directory_summary(page)
   when "space-summary"
     space_summary(space, @options.pages.first || 0)
   when "space-index-pages-summary"
