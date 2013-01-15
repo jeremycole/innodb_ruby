@@ -187,10 +187,10 @@ class Innodb::Index
     this_rec = cursor.record
 
     if @debug
-      puts "linear_search_from_cursor: start=(%s), page=%i, level=%i" % [
-        this_rec && this_rec[:key].join(", "),
+      puts "linear_search_from_cursor: page=%i, level=%i, start=(%s)" % [
         page.offset,
         page.level,
+        this_rec && this_rec[:key].join(", "),
       ]
     end
 
@@ -200,13 +200,19 @@ class Innodb::Index
       @stats[:linear_search_from_cursor_record_scans] += 1
 
       if @debug
-        puts "linear_search_from_cursor: scanning: current=(%s)" % [
+        puts "linear_search_from_cursor: page=%i, level=%i, current=(%s)" % [
+          page.offset,
+          page.level,
           this_rec && this_rec[:key].join(", "),
         ]
       end
 
       # If we reach supremum, return the last non-system record we got.
       return this_rec if next_rec[:header][:type] == :supremum
+
+      if compare_key(key, this_rec[:key]) < 0
+        return this_rec
+      end
 
       if (compare_key(key, this_rec[:key]) >= 0) &&
         (compare_key(key, next_rec[:key]) < 0)
@@ -235,18 +241,20 @@ class Innodb::Index
 
     return nil if dir.empty?
 
+    # Split the directory at the mid-point (using integer math, so the division
+    # is rounding down). Retrieve the record that sits at the mid-point.
+    mid = ((dir.size-1) / 2)
+    rec = page.record(dir[mid])
+
     if @debug
-      puts "binary_search_by_directory: page=%i, level=%i, dir.size=%i" % [
+      puts "binary_search_by_directory: page=%i, level=%i, dir.size=%i, dir[%i]=(%s)" % [
         page.offset,
         page.level,
         dir.size,
+        mid,
+        rec[:key] && rec[:key].join(", "),
       ]
     end
-
-    # Split the directory at the mid-point (using integer math, so the division
-    # is rounding down). Retrieve the record that sits at the mid-point.
-    mid = dir.size / 2
-    rec = page.record(dir[mid])
 
     # The mid-point record was the infimum record, which is not comparable with
     # compare_key, so we need to just linear scan from here. If the mid-point
@@ -264,18 +272,29 @@ class Innodb::Index
       rec
     when +1
       # The mid-point record's key is less than the desired key.
-      if dir.size == 1
-        # This is the last entry remaining from the directory, use linear
-        # search to find the record.
-        @stats[:binary_search_by_directory_linear_search] += 1
-        linear_search_from_cursor(page, page.record_cursor(rec[:offset]), key)
-      else
+      if dir.size > 2
         # There are more entries remaining from the directory, recurse again
         # using binary search on the right half of the directory, which
         # represents values greater than or equal to the mid-point record's
         # key.
         @stats[:binary_search_by_directory_recurse_right] += 1
         binary_search_by_directory(page, dir[mid...dir.size], key)
+      else
+        next_rec = page.record(dir[mid+1])
+        next_key = next_rec && compare_key(key, next_rec[:key])
+        if dir.size == 1 || next_key == -1 || next_key == 0
+          # This is the last entry remaining from the directory, or our key is
+          # greater than rec and less than rec+1's key. Use linear search to
+          # find the record starting at rec.
+          @stats[:binary_search_by_directory_linear_search] += 1
+          linear_search_from_cursor(page, page.record_cursor(rec[:offset]), key)
+        elsif next_key == +1
+          puts "+1"
+          @stats[:binary_search_by_directory_linear_search] += 1
+          linear_search_from_cursor(page, page.record_cursor(next_rec[:offset]), key)
+        else
+          nil
+        end
       end
     when -1
       # The mid-point record's key is greater than the desired key.
@@ -304,10 +323,10 @@ class Innodb::Index
     page = @root
 
     if @debug
-      puts "linear_search: key=(%s), root=%i, level=%i" % [
-        key.join(", "),
+      puts "linear_search: root=%i, level=%i, key=(%s)" % [
         page.offset,
         page.level,
+        key.join(", "),
       ]
     end
 
@@ -336,14 +355,16 @@ class Innodb::Index
     page = @root
 
     if @debug
-      puts "binary_search: key=(%s), root=%i, level=%i" % [
-        key.join(", "),
+      puts "binary_search: root=%i, level=%i, key=(%s)" % [
         page.offset,
         page.level,
+        key.join(", "),
       ]
     end
 
-    while rec = binary_search_by_directory(page, page.directory, key)
+    # Remove supremum from the page directory, since nothing can be scanned
+    # linearly from there anyway.
+    while rec = binary_search_by_directory(page, page.directory[0...-1], key)
       if page.level > 0
         # If we haven't reached a leaf page yet, move down the tree and search
         # again using binary search.
