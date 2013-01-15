@@ -289,7 +289,6 @@ class Innodb::Index
           @stats[:binary_search_by_directory_linear_search] += 1
           linear_search_from_cursor(page, page.record_cursor(rec[:offset]), key)
         elsif next_key == +1
-          puts "+1"
           @stats[:binary_search_by_directory_linear_search] += 1
           linear_search_from_cursor(page, page.record_cursor(next_rec[:offset]), key)
         else
