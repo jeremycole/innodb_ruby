@@ -4,6 +4,7 @@ module Innodb; end
 require "enumerator"
 
 require "innodb/version"
+require "innodb/checksum"
 require "innodb/page"
 require "innodb/page/fsp_hdr_xdes"
 require "innodb/page/inode"
