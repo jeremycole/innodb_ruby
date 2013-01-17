@@ -83,6 +83,18 @@ class Innodb::Cursor
     read_and_advance(length)
   end
 
+  def each_byte_as_uint8(length)
+    unless block_given?
+      return enum_for(:each_byte_as_uint8, length)
+    end
+
+    read_and_advance(length).bytes.each do |byte|
+      yield byte
+    end
+
+    nil
+  end
+
   # Return raw bytes as hex.
   def get_hex(length)
     read_and_advance(length).bytes.map { |c| "%02x" % c }.join

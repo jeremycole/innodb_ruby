@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.files = [
     'README.md',
     'lib/innodb.rb',
+    'lib/innodb/checksum.rb',
     'lib/innodb/cursor.rb',
     'lib/innodb/field.rb',
     'lib/innodb/fseg_entry.rb',

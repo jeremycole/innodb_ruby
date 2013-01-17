@@ -83,6 +83,12 @@ class Innodb::Page
     4 + 4
   end
 
+  # Return the position of the "body" of the page, which starts after the FIL
+  # header.
+  def pos_page_body
+    pos_fil_header + size_fil_header
+  end
+
   # InnoDB Page Type constants from include/fil0fil.h.
   PAGE_TYPE = {
     0     => :ALLOCATED,      # Freshly allocated page
@@ -121,10 +127,10 @@ class Innodb::Page
     }
   end
 
-  # A helper function to return the page type from the "fil" header, for easier
+  # A helper function to return the checksum from the "fil" header, for easier
   # access.
-  def type
-    fil_header[:type]
+  def checksum
+    fil_header[:checksum]
   end
 
   # A helper function to return the page offset from the "fil" header, for
@@ -150,6 +156,50 @@ class Innodb::Page
   # A helper function to return the LSN, for easier access.
   def lsn
     fil_header[:lsn]
+  end
+
+  # A helper function to return the page type from the "fil" header, for easier
+  # access.
+  def type
+    fil_header[:type]
+  end
+
+  # Calculate the checksum of the page using InnoDB's algorithm. Two sections
+  # of the page are checksummed separately, and then added together to produce
+  # the final checksum.
+  def calculate_checksum
+    unless size == 16384
+      raise "Checksum calculation is only supported for 16 KiB pages"
+    end
+
+    # Calculate the checksum of the FIL header, except for the following:
+    #   :checksum   (offset 4, size 4)
+    #   :flush_lsn  (offset 26, size 8)
+    #   :space_id   (offset 34, size 4)
+    c_partial_header =
+      Innodb::Checksum.fold_enumerator(
+        cursor(pos_fil_header + 4).each_byte_as_uint8(
+          size_fil_header - 4 - 8 - 4
+        )
+      )
+
+    # Calculate the checksum of the page body, except for the FIL header and
+    # the FIL trailer.
+    c_page_body =
+      Innodb::Checksum.fold_enumerator(
+        cursor(pos_page_body).each_byte_as_uint8(
+          size - size_fil_trailer - size_fil_header
+        )
+      )
+
+    # Add the two checksums together, and mask the result back to 32 bits.
+    (c_partial_header + c_page_body) & Innodb::Checksum::MAX
+  end
+
+  # Is the page corrupt? Calculate the checksum of the page and compare to
+  # the stored checksum; return true or false.
+  def corrupt?
+    checksum != calculate_checksum
   end
 
   # Implement a custom inspect method to avoid irb printing the contents of
