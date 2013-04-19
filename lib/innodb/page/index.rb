@@ -127,22 +127,26 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return the "index" header.
   def page_header
-    c = cursor(pos_index_header)
-    @page_header ||= {
-      :n_dir_slots  => c.get_uint16,
-      :heap_top     => c.get_uint16,
-      :n_heap       => ((n_heap = c.get_uint16) & (2**15-1)),
-      :free         => c.get_uint16,
-      :garbage      => c.get_uint16,
-      :last_insert  => c.get_uint16,
-      :direction    => PAGE_DIRECTION[c.get_uint16],
-      :n_direction  => c.get_uint16,
-      :n_recs       => c.get_uint16,
-      :max_trx_id   => c.get_uint64,
-      :level        => c.get_uint16,
-      :index_id     => c.get_uint64,
-      :format       => (n_heap & 1<<15) == 0 ? :redundant : :compact,
-    }
+    @page_header ||= cursor(pos_index_header).name("index") do |c|
+      index = {
+        :n_dir_slots  => c.name("n_dir_slots") { c.get_uint16 },
+        :heap_top     => c.name("heap_top") { c.get_uint16 },
+        :n_heap_format => c.name("n_heap_format") { c.get_uint16 },
+        :free         => c.name("free") { c.get_uint16 },
+        :garbage      => c.name("garbage") { c.get_uint16 },
+        :last_insert  => c.name("last_insert") { c.get_uint16 },
+        :direction    => c.name("direction") { PAGE_DIRECTION[c.get_uint16] },
+        :n_direction  => c.name("n_direction") { c.get_uint16 },
+        :n_recs       => c.name("n_recs") { c.get_uint16 },
+        :max_trx_id   => c.name("max_trx_id") { c.get_uint64 },
+        :level        => c.name("level") { c.get_uint16 },
+        :index_id     => c.name("index_id") { c.get_uint64 },
+      }
+      index[:n_heap] = index[:n_heap_format] & (2**15-1)
+      index[:format] = (index[:n_heap_format] & 1<<15) == 0 ?
+        :redundant : :compact
+      index
+    end
   end
 
   # A helper function to return the page level from the "page" header, for
@@ -164,11 +168,16 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return the "fseg" header.
   def fseg_header
-    c = cursor(pos_fseg_header)
-    @fseg_header ||= {
-      :leaf     => Innodb::FsegEntry.get_inode(@space, c),
-      :internal => Innodb::FsegEntry.get_inode(@space, c),
-    }
+    @fseg_header ||= cursor(pos_fseg_header).name("fseg") do |c|
+      {
+        :leaf     => c.name("fseg[leaf]") {
+          Innodb::FsegEntry.get_inode(@space, c)
+        },
+        :internal => c.name("fseg[internal]") {
+          Innodb::FsegEntry.get_inode(@space, c)
+        },
+      }
+    end
   end
 
   # The size (in bytes) of the bit-packed fields in each record header.
@@ -224,33 +233,38 @@ class Innodb::Page::Index < Innodb::Page
   RECORD_INFO_DELETED_FLAG = 2
 
   # Return the header from a record.
-  def record_header(offset)
-    c = cursor(offset).backward
-    case page_header[:format]
-    when :compact
-      header = {}
-      header[:next] = c.get_sint16
-      bits1 = c.get_uint16
-      header[:type] = RECORD_TYPES[bits1 & 0x07]
-      header[:order] = (bits1 & 0xf8) >> 3
-      bits2 = c.get_uint8
-      header[:n_owned] = bits2 & 0x0f
-      info = (bits2 & 0xf0) >> 4
-      header[:min_rec] = (info & RECORD_INFO_MIN_REC_FLAG) != 0
-      header[:deleted] = (info & RECORD_INFO_DELETED_FLAG) != 0
-      case header[:type]
-      when :conventional, :node_pointer
-        # The variable-length part of the record header contains a
-        # bit vector indicating NULL fields and the length of each
-        # non-NULL variable-length field.
-        if record_format
-          header[:null_bitmap] = nbmap = record_null_bitmap(c)
-          header[:variable_length] = record_variable_length(c, nbmap)
+  def record_header(cursor)
+    cursor.backward.name("header") do |c|
+      case page_header[:format]
+      when :compact
+        header = {}
+        header[:next] = c.name("next") { c.get_sint16 }
+        bits1 = c.name("bits1") { c.get_uint16 }
+        header[:type] = RECORD_TYPES[bits1 & 0x07]
+        header[:order] = (bits1 & 0xf8) >> 3
+        bits2 = c.name("bits2") { c.get_uint8 }
+        header[:n_owned] = bits2 & 0x0f
+        info = (bits2 & 0xf0) >> 4
+        header[:min_rec] = (info & RECORD_INFO_MIN_REC_FLAG) != 0
+        header[:deleted] = (info & RECORD_INFO_DELETED_FLAG) != 0
+        case header[:type]
+        when :conventional, :node_pointer
+          # The variable-length part of the record header contains a
+          # bit vector indicating NULL fields and the length of each
+          # non-NULL variable-length field.
+          if record_format
+            header[:null_bitmap] = nbmap = c.name("null_bitmap") {
+              record_null_bitmap(c)
+            }
+            header[:variable_length] = c.name("variable_length") {
+              record_variable_length(c, nbmap)
+            }
+          end
         end
+        header
+      when :redundant
+        raise "Not implemented"
       end
-      header
-    when :redundant
-      raise "Not implemented"
     end
   end
 
@@ -305,13 +319,15 @@ class Innodb::Page::Index < Innodb::Page
   # Parse and return simple fixed-format system records, such as InnoDB's
   # internal infimum and supremum records.
   def system_record(offset)
-    header = record_header(offset)
-    {
-      :offset => offset,
-      :header => header,
-      :next => offset + header[:next],
-      :data => cursor(offset).get_bytes(size_mum_record),
-    }
+    cursor(offset).name("record[#{offset}]") do |c|
+      header = c.peek { record_header(c) }
+      {
+        :offset => offset,
+        :header => header,
+        :next => offset + header[:next],
+        :data => c.name("data") { c.get_bytes(size_mum_record) },
+      }
+    end
   end
 
   # Return the infimum record on a page.
@@ -355,62 +371,67 @@ class Innodb::Page::Index < Innodb::Page
     return infimum  if offset == pos_infimum
     return supremum if offset == pos_supremum
 
-    c = cursor(offset).forward
+    cursor(offset).forward.name("record[#{offset}]") do |c|
+      # There is a header preceding the row itself, so back up and read it.
+      header = c.peek { record_header(c) }
 
-    # There is a header preceding the row itself, so back up and read it.
-    header = record_header(offset)
+      this_record = {
+        :format => page_header[:format],
+        :offset => offset,
+        :header => header,
+        :next => header[:next] == 0 ? nil : (offset + header[:next]),
+      }
 
-    this_record = {
-      :format => page_header[:format],
-      :offset => offset,
-      :header => header,
-      :next => header[:next] == 0 ? nil : (offset + header[:next]),
-    }
+      if record_format
+        this_record[:type] = record_format[:type]
 
-    if record_format
-      this_record[:type] = record_format[:type]
+        # Read the key fields present in all types of pages.
+        this_record[:key] = []
+        record_format[:key].each do |f|
+          this_record[:key].push f.read(this_record, c)
+        end
 
-      # Read the key fields present in all types of pages.
-      this_record[:key] = []
-      record_format[:key].each do |f|
-        this_record[:key].push f.read(this_record, c)
-      end
+        # If this is a leaf page of the clustered index, read InnoDB's internal
+        # fields, a transaction ID and roll pointer.
+        if level == 0 && record_format[:type] == :clustered
+          this_record[:transaction_id] = c.name("transaction_id") { c.get_hex(6) }
+          c.name("roll_pointer") do
+            rseg_id_insert_flag = c.name("rseg_id_insert_flag") { c.get_uint8 }
+            this_record[:roll_pointer]   = {
+              :is_insert  => (rseg_id_insert_flag & 0x80) == 0x80,
+              :rseg_id    => rseg_id_insert_flag & 0x7f,
+              :undo_log => c.name("undo_log") {
+                {
+                  :page       => c.name("page")   { c.get_uint32 },
+                  :offset     => c.name("offset") { c.get_uint16 },
+                }
+              }
+            }
+          end
+        end
 
-      # If this is a leaf page of the clustered index, read InnoDB's internal
-      # fields, a transaction ID and roll pointer.
-      if level == 0 && record_format[:type] == :clustered
-        this_record[:transaction_id] = c.get_hex(6)
-        first_byte = c.get_uint8
-        this_record[:roll_pointer]   = {
-          :is_insert  => (first_byte & 0x80) == 0x80,
-          :rseg_id    => first_byte & 0x7f,
-          :undo_log => {
-            :page       => c.get_uint32,
-            :offset     => c.get_uint16,
-          }
-        }
-      end
+        # If this is a leaf page of the clustered index, or any page of a
+        # secondary index, read the non-key fields.
+        if (level == 0 && record_format[:type] == :clustered) ||
+          (record_format[:type] == :secondary)
+          # Read the non-key fields.
+          this_record[:row] = []
+          record_format[:row].each do |f|
+            this_record[:row].push f.read(this_record, c)
+          end
+        end
 
-      # If this is a leaf page of the clustered index, or any page of a
-      # secondary index, read the non-key fields.
-      if (level == 0 && record_format[:type] == :clustered) ||
-        (record_format[:type] == :secondary)
-        # Read the non-key fields.
-        this_record[:row] = []
-        record_format[:row].each do |f|
-          this_record[:row].push f.read(this_record, c)
+        # If this is a node (non-leaf) page, it will have a child page number
+        # (or "node pointer") stored as the last field.
+        if level > 0
+          # Read the node pointer in a node (non-leaf) page.
+          this_record[:child_page_number] =
+            c.name("child_page_number") { c.get_uint32 }
         end
       end
 
-      # If this is a node (non-leaf) page, it will have a child page number
-      # (or "node pointer") stored as the last field.
-      if level > 0
-        # Read the node pointer in a node (non-leaf) page.
-        this_record[:child_page_number] = c.get_uint32
-      end
+      this_record
     end
-
-    this_record
   end
 
   # A class for cursoring through records starting from an arbitrary point.
@@ -484,9 +505,10 @@ class Innodb::Page::Index < Innodb::Page
     return @directory if @directory
 
     @directory = []
-    c = cursor(pos_directory).backward
-    directory_slots.times do
-      @directory.push c.get_uint16
+    cursor(pos_directory).backward.name("page_directory") do |c|
+      directory_slots.times do |n|
+        @directory.push c.name("slot[#{n}]") { c.get_uint16 }
+      end
     end
 
     @directory

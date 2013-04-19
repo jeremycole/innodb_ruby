@@ -58,14 +58,16 @@ class Innodb::Xdes
   def read_xdes_entry(page, cursor)
     extent_number = (cursor.position - page.pos_xdes_array) / size_entry
     start_page = page.offset + (extent_number * page.space.pages_per_extent)
-    {
-      :start_page => start_page,
-      :fseg_id    => cursor.get_uint64,
-      :this       => {:page => page.offset, :offset => cursor.position},
-      :list       => Innodb::List.get_node(cursor),
-      :state      => STATES[cursor.get_uint32],
-      :bitmap     => cursor.get_bytes(size_bitmap),
-    }
+    cursor.name("xdes[#{extent_number}]") do |c|
+      {
+        :start_page => start_page,
+        :fseg_id    => c.name("fseg_id") { c.get_uint64 },
+        :this       => {:page => page.offset, :offset => c.position},
+        :list       => c.name("list") { Innodb::List.get_node(c) },
+        :state      => c.name("state") { STATES[c.get_uint32] },
+        :bitmap     => c.name("bitmap") { c.get_bytes(size_bitmap) },
+      }
+    end
   end
 
   # Return the stored extent descriptor entry.

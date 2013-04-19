@@ -500,6 +500,7 @@ Signal.trap("PIPE") { exit }
 
 getopt_options = [
   [ "--help",             "-?",     GetoptLong::NO_ARGUMENT ],
+  [ "--trace",            "-t",     GetoptLong::NO_ARGUMENT ],
   [ "--file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--page-size",        "-P",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--page",             "-p",     GetoptLong::REQUIRED_ARGUMENT ],
@@ -515,6 +516,8 @@ getopt.each do |opt, arg|
   case opt
   when "--help"
     usage 0
+  when "--trace"
+    Innodb::Cursor.trace!
   when "--mode"
     @options.mode = arg
   when "--file"

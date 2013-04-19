@@ -36,13 +36,14 @@ class Innodb::Page::TrxSys < Innodb::Page
   MYSQL_LOG_MAGIC_N = 873422344
 
   # Read a MySQL binary log information structure from a given position.
-  def mysql_log_info(offset)
-    c = cursor(offset)
-    if c.get_uint32 == MYSQL_LOG_MAGIC_N
-      {
-        :offset => c.get_uint64,
-        :name => c.get_bytes(100),
-      }
+  def mysql_log_info(cursor, offset)
+    cursor.peek(offset) do |c|
+      if c.name("magic_n") { c.get_uint32 } == MYSQL_LOG_MAGIC_N
+        {
+          :offset => c.name("offset") { c.get_uint64 },
+          :name   => c.name("name")   { c.get_bytes(100) },
+        }
+      end
     end
   end
 
@@ -53,10 +54,10 @@ class Innodb::Page::TrxSys < Innodb::Page
   # Read a single doublewrite buffer information structure from a given cursor.
   def doublewrite_page_info(cursor)
     {
-      :magic_n => cursor.get_uint32,
+      :magic_n => cursor.name("magic_n") { cursor.get_uint32 },
       :page_number => [
-        cursor.get_uint32,
-        cursor.get_uint32,
+        cursor.name("page[0]") { cursor.get_uint32 },
+        cursor.name("page[1]") { cursor.get_uint32 },
       ],
     }
   end
@@ -66,28 +67,40 @@ class Innodb::Page::TrxSys < Innodb::Page
   DOUBLEWRITE_SPACE_ID_STORED_MAGIC_N = 1783657386
 
   # Read the overall doublewrite buffer structures
-  def doublewrite_info
-    c = cursor(pos_doublewrite_info)
-    {
-      :fseg => Innodb::FsegEntry.get_inode(@space, c),
-      :page_info => [
-        doublewrite_page_info(c),
-        doublewrite_page_info(c),
-      ],
-      :space_id_stored => c.get_uint32 == DOUBLEWRITE_SPACE_ID_STORED_MAGIC_N,
-    }
+  def doublewrite_info(cursor)
+    cursor.peek(pos_doublewrite_info) do |c_doublewrite|
+      c_doublewrite.name("doublewrite") do |c|
+        {
+          :fseg => c.name("fseg") { Innodb::FsegEntry.get_inode(@space, c) },
+          :page_info => [
+            c.name("group[0]") { doublewrite_page_info(c) },
+            c.name("group[1]") { doublewrite_page_info(c) },
+          ],
+          :space_id_stored =>
+            (c.name("space_id_stored") { c.get_uint32 } ==
+               DOUBLEWRITE_SPACE_ID_STORED_MAGIC_N),
+        }
+      end
+    end
   end
 
   # Read the TRX_SYS headers and other information.
   def trx_sys
-    c = cursor(pos_trx_sys_header)
-    @trx_sys ||= {
-      :trx_id       => c.get_uint64,
-      :fseg         => Innodb::FsegEntry.get_inode(@space, c),
-      :binary_log   => mysql_log_info(pos_mysql_binary_log_info),
-      :master_log   => mysql_log_info(pos_mysql_master_log_info),
-      :doublewrite  => doublewrite_info,
-    }
+    @trx_sys ||= cursor(pos_trx_sys_header).name("trx_sys") do |c|
+      {
+        :trx_id       => c.name("trx_id") { c.get_uint64 },
+        :fseg         => c.name("fseg") {
+          Innodb::FsegEntry.get_inode(@space, c)
+        },
+        :binary_log   => c.name("binary_log") {
+          mysql_log_info(c, pos_mysql_binary_log_info)
+        },
+        :master_log   => c.name("master_log") {
+          mysql_log_info(c, pos_mysql_master_log_info)
+        },
+        :doublewrite  => doublewrite_info(c),
+      }
+    end
   end
 
   # Dump the contents of a page for debugging purposes.

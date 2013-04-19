@@ -45,8 +45,9 @@ class Innodb::Page::Inode < Innodb::Page
 
   # Return the list entry.
   def list_entry
-    c = cursor(pos_list_entry)
-    Innodb::List.get_node(c)
+    cursor(pos_list_entry).name("list") do |c|
+      Innodb::List.get_node(c)
+    end
   end
 
   # Return the "previous" address pointer from the list entry. This is used
@@ -64,37 +65,50 @@ class Innodb::Page::Inode < Innodb::Page
   # Read an array of page numbers (32-bit integers, which may be nil) from
   # the provided cursor.
   def page_number_array(size, cursor)
-    size.times.map { |n| Innodb::Page.maybe_undefined(cursor.get_uint32) }
+    size.times.map do |n|
+      cursor.name("page[#{n}]") do |c|
+        Innodb::Page.maybe_undefined(c.get_uint32)
+      end
+    end
   end
 
   # Read a single Inode entry from the provided cursor.
   def inode(cursor)
     {
-      :fseg_id            => cursor.get_uint64,
-      :not_full_n_used    => cursor.get_uint32,
-      :free               => Innodb::List::Xdes.new(@space,
-                              Innodb::List.get_base_node(cursor)),
-      :not_full           => Innodb::List::Xdes.new(@space,
-                              Innodb::List.get_base_node(cursor)),
-      :full               => Innodb::List::Xdes.new(@space,
-                              Innodb::List.get_base_node(cursor)),
-      :magic_n            => cursor.get_uint32,
-      :frag_array         => page_number_array(FRAG_ARRAY_N_SLOTS, cursor),
+      :fseg_id            => cursor.name("fseg_id") { cursor.get_uint64 },
+      :not_full_n_used    => cursor.name("not_full_n_used") { cursor.get_uint32 },
+      :free               => cursor.name("list[free]") { 
+        Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(cursor))
+      },
+      :not_full           => cursor.name("list[not_full]") { 
+        Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(cursor))
+      },
+      :full               => cursor.name("list[full]") { 
+        Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(cursor))
+      },
+      :magic_n            => cursor.name("magic_n") { cursor.get_uint32 },
+      :frag_array         => cursor.name("frag_array") { 
+        page_number_array(FRAG_ARRAY_N_SLOTS, cursor)
+      },
     }
   end
 
   # Read a single Inode entry from the provided byte offset by creating a
   # cursor and reading the inode using the inode method.
-  def inode_at(offset)
-    inode(cursor(offset))
+  def inode_at(cursor, offset)
+    cursor.peek do
+      cursor.seek(offset).name("inode") { |c| inode(c) }
+    end
   end
 
   # Iterate through all Inodes in the inode array.
   def each_inode
     inode_cursor = cursor(pos_inode_array)
-    inodes_per_page.times do
-      this_inode = inode(inode_cursor)
-      yield this_inode if this_inode[:fseg_id] != 0
+    inodes_per_page.times do |n|
+      inode_cursor.name("inode[#{n}]") do |c|
+        this_inode = inode(c)
+        yield this_inode if this_inode[:fseg_id] != 0
+      end
     end
   end
 

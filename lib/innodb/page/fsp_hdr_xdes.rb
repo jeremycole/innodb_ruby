@@ -75,26 +75,34 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
   # Read the FSP (filespace) header, which contains a few counters and flags,
   # as well as list base nodes for each list maintained in the filespace.
   def fsp_header
-    c = cursor(pos_fsp_header)
-    @fsp_header ||= {
-      :space_id           => c.get_uint32,
-      :unused             => c.get_uint32,
-      :size               => c.get_uint32,
-      :free_limit         => c.get_uint32,
-      :flags              => self.class.decode_flags(c.get_uint32),
-      :frag_n_used        => c.get_uint32,
-      :free               => Innodb::List::Xdes.new(@space,
-                              Innodb::List.get_base_node(c)),
-      :free_frag          => Innodb::List::Xdes.new(@space,
-                              Innodb::List.get_base_node(c)),
-      :full_frag          => Innodb::List::Xdes.new(@space,
-                              Innodb::List.get_base_node(c)),
-      :first_unused_seg   => c.get_uint64,
-      :full_inodes        => Innodb::List::Inode.new(@space,
-                              Innodb::List.get_base_node(c)),
-      :free_inodes        => Innodb::List::Inode.new(@space,
-                              Innodb::List.get_base_node(c)),
-    }
+    @fsp_header ||= cursor(pos_fsp_header).name("fsp") do |c|
+      {
+        :space_id           => c.name("space_id") { c.get_uint32 },
+        :unused             => c.name("unused") { c.get_uint32 },
+        :size               => c.name("size") { c.get_uint32 },
+        :free_limit         => c.name("free_limit") { c.get_uint32 },
+        :flags              => c.name("flags") { 
+          self.class.decode_flags(c.get_uint32)
+        },
+        :frag_n_used        => c.name("frag_n_used") { c.get_uint32 },
+        :free               => c.name("list[free]") {
+          Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c))
+        },
+        :free_frag          => c.name("list[free_frag]") {
+          Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c))
+        },
+        :full_frag          => c.name("list[full_frag]") {
+          Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c))
+        },
+        :first_unused_seg   => c.name("first_unused_seg") { c.get_uint64 },
+        :full_inodes        => c.name("list[full_inodes]") {
+          Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c))
+        },
+        :free_inodes        => c.name("list[free_inodes]") {
+          Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c))
+        },
+      }
+    end
   end
 
   # Iterate through all lists in the file space.
@@ -117,9 +125,10 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
       return enum_for(:each_xdes)
     end
 
-    c = cursor(pos_xdes_array)
-    entries_in_xdes_array.times do
-      yield Innodb::Xdes.new(self, c)
+    cursor(pos_xdes_array).name("xdes_array") do |c|
+      entries_in_xdes_array.times do |n|
+        yield Innodb::Xdes.new(self, c)
+      end
     end
   end
 

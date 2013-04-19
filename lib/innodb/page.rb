@@ -114,17 +114,22 @@ class Innodb::Page
 
   # Return the "fil" header from the page, which is common for all page types.
   def fil_header
-    c = cursor(pos_fil_header)
-    @fil_header ||= {
-      :checksum   => c.get_uint32,
-      :offset     => c.get_uint32,
-      :prev       => Innodb::Page.maybe_undefined(c.get_uint32),
-      :next       => Innodb::Page.maybe_undefined(c.get_uint32),
-      :lsn        => c.get_uint64,
-      :type       => PAGE_TYPE[c.get_uint16],
-      :flush_lsn  => c.get_uint64,
-      :space_id   => c.get_uint32,
-    }
+    @fil_header ||= cursor(pos_fil_header).name("fil") do |c|
+      {
+        :checksum   => c.name("checksum") { c.get_uint32 },
+        :offset     => c.name("offset") { c.get_uint32 },
+        :prev       => c.name("prev") {
+          Innodb::Page.maybe_undefined(c.get_uint32)
+        },
+        :next       => c.name("next") {
+          Innodb::Page.maybe_undefined(c.get_uint32)
+        },
+        :lsn        => c.name("lsn") { c.get_uint64 },
+        :type       => c.name("type") { PAGE_TYPE[c.get_uint16] },
+        :flush_lsn  => c.name("flush_lsn") { c.get_uint64 },
+        :space_id   => c.name("space_id") { c.get_uint32 },
+      }
+    end
   end
 
   # A helper function to return the checksum from the "fil" header, for easier

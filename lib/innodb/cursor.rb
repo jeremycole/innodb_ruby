@@ -2,21 +2,63 @@ require "bindata"
 
 # A cursor to walk through InnoDB data structures to read fields.
 class Innodb::Cursor
+  @@tracing = false
+
+  def self.trace!(bool=true)
+    @@tracing = bool
+  end
+
+
   def initialize(buffer, offset)
     @buffer = buffer
     @cursor = [ offset ]
-    @direction = :forward
+    @direction = [ :forward ]
+    @name = []
+
+    trace_with(:print_trace)
+  end
+
+  def print_trace(position, bytes, name)
+    puts "%06i = %-32s  %s" % [
+      position,
+      bytes.map { |n| "%02x" % n }.join,
+      name.join("."),
+    ]
+  end
+
+  def trace_with(arg)
+    if arg.class == Proc
+      @trace_proc = arg
+    else
+      @trace_proc = lambda { |position, bytes, name| self.send(arg, position, bytes, name) }
+    end
+  end
+
+  def trace(position, bytes, name)
+    @trace_proc.call(position, bytes, name)
+  end
+
+  # Set the field name.
+  def name(name_arg=nil)
+    unless block_given?
+      raise "No block given"
+    end
+
+    @name << name_arg
+    ret = yield(self)
+    @name.pop
+    ret
   end
 
   # Set the direction of the cursor to "forward".
   def forward
-    @direction = :forward
+    @direction[0] = :forward
     self
   end
 
   # Set the direction of the cursor to "backward".
   def backward
-    @direction = :backward
+    @direction[0] = :backward
     self
   end
 
@@ -40,6 +82,7 @@ class Innodb::Cursor
   # Save the current cursor position and start a new (nested, stacked) cursor.
   def push(offset=nil)
     @cursor.unshift(offset.nil? ? @cursor[0] : offset)
+    @direction.unshift(@direction[0])
     self
   end
 
@@ -47,16 +90,18 @@ class Innodb::Cursor
   def pop
     raise "No cursors to pop" unless @cursor.size > 1
     @cursor.shift
+    @direction.shift
     self
   end
 
   # Execute a block and restore the cursor to the previous position after
   # the block returns. Return the block's return value after restoring the
-  # cursor.
-  def peek
+  # cursor. Optionally seek to provided position before executing block.
+  def peek(position=nil)
     raise "No block given" unless block_given?
     push
-    result = yield
+    seek(position) if position
+    result = yield(self)
     pop
     result
   end
@@ -65,8 +110,8 @@ class Innodb::Cursor
   # position and adjust the cursor position by that amount.
   def read_and_advance(length)
     data = nil
-    #print "data(#{@cursor[0]}..."
-    case @direction
+    cursor_start = @cursor[0]
+    case @direction[0]
     when :forward
       data = @buffer.data(@cursor[0], length)
       adjust(length)
@@ -74,7 +119,11 @@ class Innodb::Cursor
       adjust(-length)
       data = @buffer.data(@cursor[0], length)
     end
-    #puts "#{@cursor[0]}) = #{data.bytes.map { |n| "%02x" % n }.join}"
+
+    if @@tracing
+      trace(cursor_start, data.bytes, @name)
+    end
+
     data
   end
 
