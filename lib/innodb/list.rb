@@ -101,8 +101,8 @@ class Innodb::List
   end
 
   # Return a list cursor for the list.
-  def cursor(node=nil)
-    Cursor.new(self, node)
+  def list_cursor(node=nil)
+    ListCursor.new(self, node)
   end
 
   # Iterate through all nodes in the list.
@@ -111,7 +111,7 @@ class Innodb::List
       return enum_for(:each)
     end
 
-    c = cursor
+    c = list_cursor
     while e = c.next
       yield e
     end
@@ -119,7 +119,7 @@ class Innodb::List
 
   # A list iteration cursor used primarily by the Innodb::List #cursor method
   # implicitly. Keeps its own state for iterating through lists efficiently.
-  class Cursor
+  class ListCursor
     def initialize(list, node=nil)
       @list   = list
       @cursor = node

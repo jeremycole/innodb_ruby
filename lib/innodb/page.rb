@@ -35,6 +35,10 @@ class Innodb::Page
   # Initialize a page by passing in a buffer containing the raw page contents.
   # The buffer size should match the space's page size.
   def initialize(space, buffer)
+    unless space && buffer
+      raise "Page can't be initialized from nil space or buffer (space: #{space}, buffer: #{buffer})"
+    end
+
     unless space.page_size == buffer.size
       raise "Buffer size #{buffer.size} is different than space page size"
     end

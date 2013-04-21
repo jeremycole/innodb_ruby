@@ -19,7 +19,7 @@ class Innodb::FsegEntry
     address = cursor.name("address") { get_entry_address(cursor) }
     page = space.page(address[:page_number])
     if page.type == :INODE
-      page.inode_at(cursor, address[:offset])
+      page.inode_at(page.cursor(address[:offset]))
     end
   end
 end

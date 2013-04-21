@@ -95,10 +95,8 @@ class Innodb::Page::Inode < Innodb::Page
 
   # Read a single Inode entry from the provided byte offset by creating a
   # cursor and reading the inode using the inode method.
-  def inode_at(cursor, offset)
-    cursor.peek do
-      cursor.seek(offset).name("inode") { |c| inode(c) }
-    end
+  def inode_at(cursor)
+    cursor.name("inode") { |c| inode(c) }
   end
 
   # Iterate through all Inodes in the inode array.
