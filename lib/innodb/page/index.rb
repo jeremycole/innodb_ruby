@@ -145,6 +145,8 @@ class Innodb::Page::Index < Innodb::Page
       index[:n_heap] = index[:n_heap_format] & (2**15-1)
       index[:format] = (index[:n_heap_format] & 1<<15) == 0 ?
         :redundant : :compact
+      index.delete :n_heap_format
+
       index
     end
   end

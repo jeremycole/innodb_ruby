@@ -8,7 +8,6 @@ class Innodb::Cursor
     @@tracing = bool
   end
 
-
   def initialize(buffer, offset)
     @buffer = buffer
     @cursor = [ offset ]
@@ -40,6 +39,10 @@ class Innodb::Cursor
 
   # Set the field name.
   def name(name_arg=nil)
+    if name_arg.nil?
+      return @name[0]
+    end
+
     unless block_given?
       raise "No block given"
     end
@@ -48,6 +51,11 @@ class Innodb::Cursor
     ret = yield(self)
     @name.pop
     ret
+  end
+
+  # Return the direction of the current cursor.
+  def direction
+    @direction[0]
   end
 
   # Set the direction of the cursor to "forward".

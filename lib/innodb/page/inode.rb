@@ -101,6 +101,10 @@ class Innodb::Page::Inode < Innodb::Page
 
   # Iterate through all Inodes in the inode array.
   def each_inode
+    unless block_given?
+      return enum_for(:each_inode)
+    end
+
     inode_cursor = cursor(pos_inode_array)
     inodes_per_page.times do |n|
       inode_cursor.name("inode[#{n}]") do |c|
