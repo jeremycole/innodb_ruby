@@ -2,103 +2,140 @@ require "bindata"
 
 # A cursor to walk through InnoDB data structures to read fields.
 class Innodb::Cursor
-  @@tracing = false
 
-  def self.trace!(bool=true)
-    @@tracing = bool
-  end
+  # An entry in a stack of cursors. The cursor position, direction, and
+  # name array are each attributes of the current cursor stack and are
+  # manipulated together.
+  class StackEntry
+    attr_accessor :cursor
+    attr_accessor :position
+    attr_accessor :direction
+    attr_accessor :name
 
-  def initialize(buffer, offset)
-    @buffer = buffer
-    @cursor = [ offset ]
-    @direction = [ :forward ]
-    @name = []
+    def initialize(cursor, position=0, direction=:forward, name=nil)
+      @cursor = cursor
+      @position = position
+      @direction = direction
+      @name = name || []
+    end
 
-    trace_with(:print_trace)
-  end
-
-  def print_trace(position, bytes, name)
-    puts "%06i = %-32s  %s" % [
-      position,
-      bytes.map { |n| "%02x" % n }.join,
-      name.join("."),
-    ]
-  end
-
-  def trace_with(arg)
-    if arg.class == Proc
-      @trace_proc = arg
-    else
-      @trace_proc = lambda { |position, bytes, name| self.send(arg, position, bytes, name) }
+    def dup
+      StackEntry.new(cursor, position, direction, name.dup)
     end
   end
 
+  @@tracing = false
+
+  # Enable tracing for all Innodb::Cursor objects.
+  def self.trace!(arg=true)
+    @@tracing = arg
+  end
+
+  # Initialize a cursor within a buffer at the given position.
+  def initialize(buffer, position)
+    @buffer = buffer
+    @stack = [ StackEntry.new(self, position) ]
+
+    trace_with :print_trace
+  end
+
+  # Print a trace output for this cursor. The method is passed a cursor object,
+  # position, raw byte buffer, and array of names.
+  def print_trace(cursor, position, bytes, name)
+    puts "%06i = %-32s  %s" % [
+      position,
+      bytes ? bytes.map { |n| "%02x" % n }.join : "nil",
+      name ? name.join(".") : "nil",
+    ]
+  end
+
+  # Set a Proc or method on self to trace with.
+  def trace_with(arg=nil)
+    if arg.nil?
+      @trace_proc = nil
+    elsif arg.class == Proc
+      @trace_proc = arg
+    elsif arg.class == Symbol
+      @trace_proc = lambda { |cursor, position, bytes, name| self.send(arg, cursor, position, bytes, name) }
+    else
+      raise "Don't know how to trace with #{arg}"
+    end
+  end
+
+  # Generate a trace record from the current cursor.
   def trace(position, bytes, name)
-    @trace_proc.call(position, bytes, name)
+    @trace_proc.call(self, position, bytes, name) if @@tracing && @trace_proc
+  end
+
+  # The current cursor object; the top of the stack.
+  def current
+    @stack.last
   end
 
   # Set the field name.
   def name(name_arg=nil)
     if name_arg.nil?
-      return @name[0]
+      return current.name
     end
 
     unless block_given?
       raise "No block given"
     end
 
-    @name << name_arg
+    current.name.push name_arg
     ret = yield(self)
-    @name.pop
+    current.name.pop
     ret
   end
 
   # Return the direction of the current cursor.
-  def direction
-    @direction[0]
+  def direction(direction_arg=nil)
+    if direction_arg.nil?
+      return current.direction
+    end
+
+    current.direction = direction_arg
+    self
   end
 
   # Set the direction of the cursor to "forward".
   def forward
-    @direction[0] = :forward
-    self
+    direction(:forward)
   end
 
   # Set the direction of the cursor to "backward".
   def backward
-    @direction[0] = :backward
-    self
+    direction(:backward)
   end
 
   # Return the position of the current cursor.
   def position
-    @cursor[0]
+    current.position
   end
 
   # Move the current cursor to a new absolute position.
-  def seek(offset)
-    @cursor[0] = offset if offset
+  def seek(position)
+    current.position = position if position
     self
   end
 
   # Adjust the current cursor to a new relative position.
-  def adjust(relative_offset)
-    @cursor[0] += relative_offset
+  def adjust(relative_position)
+    current.position += relative_position
     self
   end
 
   # Save the current cursor position and start a new (nested, stacked) cursor.
-  def push(offset=nil)
-    @cursor.unshift(offset.nil? ? @cursor[0] : offset)
-    @direction.unshift(@direction[0])
+  def push(position=nil)
+    @stack.push current.dup
+    seek(position)
     self
   end
 
   # Restore the last cursor position.
   def pop
-    raise "No cursors to pop" unless @cursor.size > 1
-    @cursor.shift
-    @direction.shift
+    raise "No cursors to pop" unless @stack.size > 1
+    @stack.pop
     self
   end
 
@@ -107,8 +144,7 @@ class Innodb::Cursor
   # cursor. Optionally seek to provided position before executing block.
   def peek(position=nil)
     raise "No block given" unless block_given?
-    push
-    seek(position) if position
+    push(position)
     result = yield(self)
     pop
     result
@@ -118,20 +154,17 @@ class Innodb::Cursor
   # position and adjust the cursor position by that amount.
   def read_and_advance(length)
     data = nil
-    cursor_start = @cursor[0]
-    case @direction[0]
+    cursor_start = current.position
+    case current.direction
     when :forward
-      data = @buffer.data(@cursor[0], length)
+      data = @buffer.data(current.position, length)
       adjust(length)
     when :backward
       adjust(-length)
-      data = @buffer.data(@cursor[0], length)
+      data = @buffer.data(current.position, length)
     end
 
-    if @@tracing
-      trace(cursor_start, data.bytes, @name)
-    end
-
+    trace(cursor_start, data.bytes, current.name)
     data
   end
 
@@ -158,43 +191,43 @@ class Innodb::Cursor
   end
 
   # Read an unsigned 8-bit integer.
-  def get_uint8(offset=nil)
-    seek(offset)
+  def get_uint8(position=nil)
+    seek(position)
     data = read_and_advance(1)
     BinData::Uint8.read(data)
   end
 
   # Read a big-endian unsigned 16-bit integer.
-  def get_uint16(offset=nil)
-    seek(offset)
+  def get_uint16(position=nil)
+    seek(position)
     data = read_and_advance(2)
     BinData::Uint16be.read(data)
   end
 
   # Read a big-endian signed 16-bit integer.
-  def get_sint16(offset=nil)
-    seek(offset)
+  def get_sint16(position=nil)
+    seek(position)
     data = read_and_advance(2)
     BinData::Int16be.read(data)
   end
 
   # Read a big-endian unsigned 24-bit integer.
-  def get_uint24(offset=nil)
-    seek(offset)
+  def get_uint24(position=nil)
+    seek(position)
     data = read_and_advance(3)
     BinData::Uint24be.read(data)
   end
 
   # Read a big-endian unsigned 32-bit integer.
-  def get_uint32(offset=nil)
-    seek(offset)
+  def get_uint32(position=nil)
+    seek(position)
     data = read_and_advance(4)
     BinData::Uint32be.read(data)
   end
 
   # Read a big-endian unsigned 64-bit integer.
-  def get_uint64(offset=nil)
-    seek(offset)
+  def get_uint64(position=nil)
+    seek(position)
     data = read_and_advance(8)
     BinData::Uint64be.read(data)
   end
