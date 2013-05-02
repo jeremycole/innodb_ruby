@@ -265,7 +265,7 @@ class Innodb::Page::Index < Innodb::Page
         end
         header
       when :redundant
-        raise "Not implemented"
+        raise "The redundant table format is not yet implemented"
       end
     end
   end
