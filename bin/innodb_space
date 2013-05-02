@@ -547,7 +547,9 @@ end
 space = Innodb::Space.new(@options.file, @options.page_size)
 
 if @options.describer
-  space.record_describer = Innodb::RecordDescriber.const_get(@options.describer)
+  unless space.record_describer = eval(@options.describer)
+    space.record_describer = Innodb::RecordDescriber.const_get(@options.describer)
+  end
 end
 
 if ARGV.empty?
