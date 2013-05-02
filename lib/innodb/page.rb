@@ -26,10 +26,15 @@ class Innodb::Page
     # If there is a specialized class available for this page type, re-create
     # the page object using that specialized class.
     if specialized_class = SPECIALIZED_CLASSES[page.type]
-      page = specialized_class.new(space, buffer)
+      page = specialized_class.handle(page, space, buffer)
     end
 
     page
+  end
+
+  # Allow the specialized class to do something that isn't 'new' with this page.
+  def self.handle(page, space, buffer)
+    self.new(space, buffer)
   end
 
   # Initialize a page by passing in a buffer containing the raw page contents.
