@@ -127,8 +127,8 @@ class Innodb::Space
   end
 
   # Get an Innodb::Index object for a specific index by root page number.
-  def index(root_page_number)
-    Innodb::Index.new(self, root_page_number)
+  def index(root_page_number, record_describer=nil)
+    Innodb::Index.new(self, root_page_number, record_describer || @record_describer)
   end
 
   # Iterate through each index by guessing that the root pages will be

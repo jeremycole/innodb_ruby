@@ -3,11 +3,14 @@ class Innodb::Index
   attr_reader :root
   attr_reader :stats
   attr_accessor :debug
+  attr_accessor :record_describer
 
-  def initialize(space, root_page_number)
-    @space = space
-    @root = @space.page(root_page_number)
+  def initialize(space, root_page_number, record_describer=nil)
     @debug = false
+    @space = space
+    @record_describer = record_describer || space.record_describer
+
+    @root = page(root_page_number)
 
     unless @root
       raise "Page #{root_page_number} couldn't be read"
@@ -24,6 +27,12 @@ class Innodb::Index
     end
 
     reset_stats
+  end
+
+  def page(page_number)
+    page = @space.page(page_number)
+    page.record_describer = @record_describer
+    page
   end
 
   def reset_stats
@@ -53,7 +62,7 @@ class Innodb::Index
     end
 
     parent_page.each_child_page do |child_page_number, child_min_key|
-      child_page = @space.page(child_page_number)
+      child_page = page(child_page_number)
       child_page.record_describer = @space.record_describer
       if child_page.type == :INDEX
         if link_proc
@@ -76,7 +85,7 @@ class Innodb::Index
     page = @root
     record = @root.first_record
     while record && page.level > level
-      page = @space.page(record[:child_page_number])
+      page = page(record[:child_page_number])
       record = page.first_record
     end
     page if page.level == level
@@ -116,7 +125,7 @@ class Innodb::Index
     end
 
     fseg[:frag_array].each do |page_number|
-      yield page_number, @space.page(page_number) if page_number
+      yield page_number, page(page_number) if page_number
     end
   end
 
@@ -128,7 +137,7 @@ class Innodb::Index
 
     while page && page.type == :INDEX
       yield page
-      page = @space.page(page.next)
+      page = page(page.next)
     end
   end
 
@@ -334,7 +343,7 @@ class Innodb::Index
       if page.level > 0
         # If we haven't reached a leaf page yet, move down the tree and search
         # again using linear search.
-        page = @space.page(rec[:child_page_number])
+        page = page(rec[:child_page_number])
       else
         # We're on a leaf page, so return the page and record if there is a
         # match. If there is no match, break the loop and cause nil to be
@@ -367,7 +376,7 @@ class Innodb::Index
       if page.level > 0
         # If we haven't reached a leaf page yet, move down the tree and search
         # again using binary search.
-        page = @space.page(rec[:child_page_number])
+        page = page(rec[:child_page_number])
       else
         # We're on a leaf page, so return the page and record if there is a
         # match. If there is no match, break the loop and cause nil to be
