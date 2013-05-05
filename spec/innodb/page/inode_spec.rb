@@ -40,19 +40,19 @@ describe Innodb::Page::Inode do
   end
 
   describe "#each_inode" do
-    it "yields Hashes" do
-      @page.each_inode.to_a.map { |v| v.class}.uniq.should eql [Hash]
+    it "yields Innodb::Inode objects" do
+      @page.each_inode.to_a.map { |v| v.class}.uniq.should eql [Innodb::Inode]
     end
 
     it "yields Hashes with the right keys and values" do
       inode = @page.each_inode.to_a.first
-      inode[:fseg_id].should eql 1
-      inode[:not_full_n_used].should eql 0
-      inode[:free].should be_an_instance_of Innodb::List::Xdes
-      inode[:not_full].should be_an_instance_of Innodb::List::Xdes
-      inode[:full].should be_an_instance_of Innodb::List::Xdes
-      inode[:magic_n].should eql Innodb::Page::Inode::MAGIC_N_VALUE
-      inode[:frag_array].should be_an_instance_of Array
+      inode.fseg_id.should eql 1
+      inode.not_full_n_used.should eql 0
+      inode.free.should be_an_instance_of Innodb::List::Xdes
+      inode.not_full.should be_an_instance_of Innodb::List::Xdes
+      inode.full.should be_an_instance_of Innodb::List::Xdes
+      inode.magic_n.should eql Innodb::Inode::MAGIC_N_VALUE
+      inode.frag_array.should be_an_instance_of Array
     end
   end
 end

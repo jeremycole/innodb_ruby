@@ -77,8 +77,8 @@ describe Innodb::Page::Index do
     
     it "has the right keys and values" do
       @page.fseg_header.keys.size.should eql 2
-      @page.fseg_header[:leaf].should be_an_instance_of Hash
-      @page.fseg_header[:internal].should be_an_instance_of Hash
+      @page.fseg_header[:leaf].should be_an_instance_of Innodb::Inode
+      @page.fseg_header[:internal].should be_an_instance_of Innodb::Inode
     end
   end
 
