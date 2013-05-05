@@ -6,7 +6,7 @@ class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
 
   # The size of the data dictionary header.
   def size_data_dictionary_header
-    ((8 * 3) + (4 * 7)) # TODO: Missing FSEG header?
+    ((8 * 3) + (4 * 7) + 4 + Innodb::FsegEntry::SIZE)
   end
 
   # Parse the data dictionary header from the page.
@@ -33,6 +33,8 @@ class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
             :PRIMARY => c.name("PRIMARY") { c.get_uint32 },
           }}
         }},
+        :unused_space => c.name("unused_space") { c.get_bytes(4) },
+        :fseg => c.name("fseg") { Innodb::FsegEntry.get_inode(@space, c) },
       }
     end
   end
