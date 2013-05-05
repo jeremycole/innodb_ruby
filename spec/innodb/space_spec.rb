@@ -6,11 +6,23 @@ describe Innodb::Space do
     @space_ibd = Innodb::Space.new("spec/data/t_empty.ibd")
   end
 
+  describe "DEFAULT_PAGE_SIZE" do
+    it "is a Fixnum" do
+      Innodb::Space::DEFAULT_PAGE_SIZE.should be_an_instance_of Fixnum
+    end
+  end
+
+  describe "SYSTEM_SPACE_PAGE_MAP" do
+    it "is a Hash" do
+      Innodb::Space::SYSTEM_SPACE_PAGE_MAP.should be_an_instance_of Hash
+    end
+  end
+
   describe "#new" do
     it "defines a class" do
       Innodb::Space.should be_an_instance_of Class
     end
-  
+
     it "returns an Innodb::Space" do
       @space.should be_an_instance_of Innodb::Space
     end
@@ -74,6 +86,36 @@ describe Innodb::Space do
     end
   end
 
+  describe "#system_space?" do
+    it "can identify a system space" do
+      @space.system_space?.should eql true
+    end
+
+    it "can identify a non-system space" do
+      @space_ibd.system_space?.should eql false
+    end
+  end
+
+  describe "#trx_sys" do
+    it "should return a page for a system space" do
+      @space.trx_sys.should be_an_instance_of Innodb::Page::TrxSys
+    end
+
+    it "should return nil for a non-system space" do
+      @space_ibd.trx_sys.should eql nil
+    end
+  end
+
+  describe "#data_dictionary" do
+    it "should return a page for a system space" do
+      @space.data_dictionary.should be_an_instance_of Innodb::Page::SysDataDictionaryHeader
+    end
+
+    it "should return nil for a non-system space" do
+      @space_ibd.data_dictionary.should eql nil
+    end
+  end
+
   describe "#index" do
     it "is an Innodb::Index" do
       @space_ibd.index(3).should be_an_instance_of Innodb::Index
@@ -108,6 +150,66 @@ describe Innodb::Space do
       first_page.should be_an_instance_of Array
       first_page[0].should eql 0
       first_page[1].should be_an_instance_of Innodb::Page::FspHdrXdes
+    end
+  end
+
+  describe "#xdes_page_numbers" do
+    it "is an Array" do
+      @space.xdes_page_numbers.should be_an_instance_of Array
+    end
+  end
+
+  describe "#xdes_page_for_page" do
+    it "is a Fixnum" do
+      @space.xdes_page_for_page(0).should be_an_instance_of Fixnum
+    end
+
+    it "calculates the correct page number" do
+      @space.xdes_page_for_page(0).should eql 0
+      @space.xdes_page_for_page(1).should eql 0
+      @space.xdes_page_for_page(63).should eql 0
+      @space.xdes_page_for_page(64).should eql 0
+      @space.xdes_page_for_page(16383).should eql 0
+      @space.xdes_page_for_page(16384).should eql 16384
+      @space.xdes_page_for_page(32767).should eql 16384
+      @space.xdes_page_for_page(32768).should eql 32768
+    end
+  end
+
+  describe "#xdes_entry_for_page" do
+    it "is a Fixnum" do
+      @space.xdes_entry_for_page(0).should be_an_instance_of Fixnum
+    end
+
+    it "calculates the correct entry number" do
+      @space.xdes_entry_for_page(0).should eql 0
+      @space.xdes_entry_for_page(1).should eql 0
+      @space.xdes_entry_for_page(63).should eql 0
+      @space.xdes_entry_for_page(64).should eql 1
+      @space.xdes_entry_for_page(65).should eql 1
+      @space.xdes_entry_for_page(127).should eql 1
+      @space.xdes_entry_for_page(128).should eql 2
+      @space.xdes_entry_for_page(16383).should eql 255
+      @space.xdes_entry_for_page(16384).should eql 0
+      @space.xdes_entry_for_page(16385).should eql 0
+      @space.xdes_entry_for_page(16448).should eql 1
+      @space.xdes_entry_for_page(16511).should eql 1
+      @space.xdes_entry_for_page(16512).should eql 2
+      @space.xdes_entry_for_page(16576).should eql 3
+      @space.xdes_entry_for_page(32767).should eql 255
+    end
+  end
+
+  describe "#xdes_for_page" do
+    it "is an Innodb::Xdes" do
+      @space.xdes_for_page(0).should be_an_instance_of Innodb::Xdes
+    end
+
+    it "returns the correct XDES entry" do
+      xdes = @space.xdes_for_page(0)
+      (0 >= xdes.start_page).should eql true
+      (0 <= xdes.end_page).should eql true
+      xdes.page_status(0)[:page].should eql 0
     end
   end
 
