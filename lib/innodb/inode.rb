@@ -33,13 +33,13 @@ class Innodb::Inode
         cursor.get_uint32
       },
       :free => cursor.name("list[free]") { 
-        Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(cursor))
+        Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor))
       },
       :not_full => cursor.name("list[not_full]") { 
-        Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(cursor))
+        Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor))
       },
       :full => cursor.name("list[full]") { 
-        Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(cursor))
+        Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor))
       },
       :magic_n => cursor.name("magic_n") {
         cursor.get_uint32
