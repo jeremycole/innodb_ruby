@@ -61,7 +61,7 @@ class Innodb::Page::Inode < Innodb::Page
     inodes_per_page.times do |n|
       inode_cursor.name("inode[#{n}]") do |c|
         this_inode = Innodb::Inode.new_from_cursor(@space, c)
-        yield this_inode if this_inode.fseg_id != 0
+        yield this_inode if this_inode.allocated?
       end
     end
   end

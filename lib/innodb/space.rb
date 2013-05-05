@@ -1,10 +1,24 @@
-# An InnoDB tablespace file, which can be either a multi-table ibdataN file
+# An InnoDB space file, which can be either a multi-table ibdataN file
 # or a single-table "innodb_file_per_table" .ibd file.
 class Innodb::Space
   # InnoDB's default page size is 16KiB.
   DEFAULT_PAGE_SIZE = 16384
 
-  # Open a tablespace file, optionally providing the page size to use. Pages
+  # A map of InnoDB system space fixed-allocation pages. This can be used to
+  # check whether a space is a system space or not, as non-system spaces will
+  # not match this pattern.
+  SYSTEM_SPACE_PAGE_MAP = {
+    0 => :FSP_HDR,
+    1 => :IBUF_BITMAP,
+    2 => :INODE,
+    3 => :SYS,
+    4 => :INDEX,
+    5 => :TRX_SYS,
+    6 => :SYS,
+    7 => :SYS,
+  }
+
+  # Open a space file, optionally providing the page size to use. Pages
   # that aren't 16 KiB may not be supported well.
   def initialize(file, page_size=nil)
     @file = File.open(file)
@@ -91,6 +105,24 @@ class Innodb::Space
     (0..(@pages / pages_per_xdes_page)).map { |n| n * pages_per_xdes_page }
   end
 
+  # The FSP_HDR/XDES page which will contain the XDES entry for a given page.
+  def xdes_page_for_page(page_number)
+    page_number - (page_number % pages_per_xdes_page)
+  end
+
+  # The XDES entry offset for a given page within its FSP_HDR/XDES page's
+  # XDES array.
+  def xdes_entry_for_page(page_number)
+    relative_page_number = page_number - xdes_page_for_page(page_number)
+    relative_page_number / pages_per_extent
+  end
+
+  # Return the Innodb::Xdes entry which represents a given page.
+  def xdes_for_page(page_number)
+    xdes_array = page(xdes_page_for_page(page_number)).each_xdes.to_a
+    xdes_array[xdes_entry_for_page(page_number)]
+  end
+
   # Get the raw byte buffer of size bytes at offset in the file.
   def read_at_offset(offset, size)
     @file.seek(offset)
@@ -116,14 +148,36 @@ class Innodb::Space
     this_page
   end
 
+  # Determine whether this space looks like a system space. If the initial
+  # pages in the space match the SYSTEM_SPACE_PAGE_MAP, it is likely to be
+  # a system space.
+  def system_space?
+    SYSTEM_SPACE_PAGE_MAP.each do |page_number, type|
+      return false unless page(page_number).type == type
+    end
+    true
+  end
+
   # Get (and cache) the FSP header from the FSP_HDR page.
   def fsp
     @fsp ||= page(0).fsp_header
   end
 
+  # Get the Innodb::Page::TrxSys page for a system space.
+  def trx_sys
+    page(5) if system_space?
+  end
+
+  # Get the Innodb::Page::SysDataDictionaryHeader page for a system space.
+  def data_dictionary
+    page(7) if system_space?
+  end
+
   # Get an Innodb::List object for a specific list by list name.
   def list(name)
-    fsp[name]
+    if xdes_lists.include?(name) || inode_lists.include?(name)
+      fsp[name]
+    end
   end
 
   # Get an Innodb::Index object for a specific index by root page number.
@@ -140,18 +194,55 @@ class Innodb::Space
       return enum_for(:each_index)
     end
 
-    (3...@pages).each do |page_number|
-      page = page(page_number)
-      if page.type == :INDEX && page.root?
-        yield index(page_number)
-      else
-        break
+    if system_space?
+      data_dictionary.each_index do |table_name, index_name, index|
+        yield index
+      end
+    else
+      (3...@pages).each do |page_number|
+        page = page(page_number)
+        if page.type == :INDEX && page.root?
+          yield index(page_number)
+        else
+          break
+        end
       end
     end
   end
 
-  # Iterate through all pages in a tablespace, returning the page number
-  # and an Innodb::Page object for each one.
+  # An array of Innodb::Inode list names.
+  def inode_lists
+    [:full_inodes, :free_inodes]
+  end
+
+  # Iterate through Innodb::Inode lists in the space.
+  def each_inode_list
+    unless block_given?
+      return enum_for(:each_inode_list)
+    end
+
+    inode_lists.each do |name|
+      yield name, list(name)
+    end
+  end
+
+  # Iterate through Innodb::Inode objects in the space.
+  def each_inode
+    unless block_given?
+      return enum_for(:each_inode)
+    end
+
+    each_inode_list.each do |name, list|
+      list.each do |page|
+        page.each_inode do |inode|
+          yield inode
+        end
+      end
+    end
+  end
+
+  # Iterate through all pages in a space, returning the page number and an
+  # Innodb::Page object for each one.
   def each_page(start_page=0)
     unless block_given?
       return enum_for(:each_page, start_page)
@@ -160,6 +251,22 @@ class Innodb::Space
     (start_page...@pages).each do |page_number|
       current_page = page(page_number)
       yield page_number, current_page if current_page
+    end
+  end
+
+  # An array of Innodb::Xdes list names. 
+  def xdes_lists
+    [:free, :free_frag, :full_frag]
+  end
+
+  # Iterate through Innodb::Xdes lists in the space.
+  def each_xdes_list
+    unless block_given?
+      return enum_for(:each_xdes_list)
+    end
+
+    xdes_lists.each do |name|
+      yield name, list(name)
     end
   end
 

@@ -39,6 +39,20 @@ class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
     end
   end
 
+  # Iterate through all indexes in the data dictionary, yielding the table
+  # name, index name, and the index itself as an Innodb::Index.
+  def each_index
+    unless block_given?
+      return enum_for(:each_index)
+    end
+
+    data_dictionary_header[:indexes].each do |table_name, indexes|
+      indexes.each do |index_name, root_page_number|
+        yield table_name, index_name, @space.index(root_page_number)
+      end
+    end
+  end
+
   def dump
     super
 

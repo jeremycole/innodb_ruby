@@ -113,8 +113,8 @@ class Innodb::Index
       return enum_for(:each_fseg_list, fseg)
     end
 
-    [:full, :not_full, :free].each do |list_name|
-      yield list_name, fseg[list_name] if fseg[list_name].is_a?(Innodb::List)
+    fseg.each_list do |list_name, list|
+      yield list_name, list
     end
   end
 
@@ -124,8 +124,8 @@ class Innodb::Index
       return enum_for(:each_fseg_frag_page, fseg)
     end
 
-    fseg[:frag_array].each do |page_number|
-      yield page_number, page(page_number) if page_number
+    fseg.frag_array_pages.each do |page_number|
+      yield page_number, page(page_number)
     end
   end
 

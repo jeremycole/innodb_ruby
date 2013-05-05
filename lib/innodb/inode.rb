@@ -24,6 +24,7 @@ class Innodb::Inode
     end
   end
 
+  # Construct a new Inode by reading an FSEG header from a cursor.
   def self.new_from_cursor(space, cursor)
     data = {
       :fseg_id => cursor.name("fseg_id") {
@@ -52,6 +53,8 @@ class Innodb::Inode
     Innodb::Inode.new(space, data)
   end
 
+  attr_accessor :space
+
   def initialize(space, data)
     @space = space
     @data = data
@@ -65,6 +68,64 @@ class Innodb::Inode
   def magic_n;          @data[:magic_n];          end
   def frag_array;       @data[:frag_array];       end
 
+  # Helper method to determine if an Inode is in use. Inodes that are not in
+  # use have an fseg_id of 0.
+  def allocated?
+    fseg_id != 0
+  end
+
+  # Helper method to return an array of only non-nil fragment pages.
+  def frag_array_pages
+    frag_array.select { |n| ! n.nil? }
+  end
+
+  # Helper method to count non-nil fragment pages.
+  def frag_array_n_used
+    frag_array.inject(0) { |n, i| n += 1 if i; n }
+  end
+
+  # Calculate the total number of pages in use (not free) within this fseg.
+  def used_pages
+    frag_array_n_used + not_full_n_used
+      (full.length * @space.pages_per_extent)
+  end
+
+  # Calculate the total number of pages within this fseg.
+  def total_pages
+    frag_array_n_used +
+      (free.length * @space.pages_per_extent) +
+      (not_full.length * @space.pages_per_extent) +
+      (full.length * @space.pages_per_extent)
+  end
+
+  # Calculate the fill factor of this fseg, in percent.
+  def fill_factor
+    total_pages > 0 ? 100.0 * (used_pages.to_f / total_pages.to_f) : 0.0
+  end
+
+  # Return an array of lists within an fseg.
+  def lists
+    [:free, :not_full, :full]
+  end
+
+  # Return a list from the fseg, given its name as a symbol.
+  def list(name)
+    @data[name] if lists.include? name
+  end
+
+  # Iterate through all lists, yielding the list name and the list itself.
+  def each_list
+    lists.each do |name|
+      yield name, list(name)
+    end
+  end
+
+  # Compare one Innodb::Inode to another.
+  def ==(other)
+    fseg_id == other.fseg_id
+  end
+
+  # Dump a summary of this object for debugging purposes.
   def dump
     pp @data
   end

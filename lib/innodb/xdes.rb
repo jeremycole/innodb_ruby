@@ -61,6 +61,7 @@ class Innodb::Xdes
     cursor.name("xdes[#{extent_number}]") do |c|
       {
         :start_page => start_page,
+        :end_page   => start_page + page.space.pages_per_extent - 1,
         :fseg_id    => c.name("fseg_id") { c.get_uint64 },
         :this       => {:page => page.offset, :offset => c.position},
         :list       => c.name("list") { Innodb::List.get_node(c) },
@@ -73,6 +74,27 @@ class Innodb::Xdes
   # Return the stored extent descriptor entry.
   def xdes
     @xdes
+  end
+
+  def start_page; @xdes[:start_page]; end
+  def end_page;   @xdes[:end_page];   end
+  def fseg_id;    @xdes[:fseg_id];    end
+  def this;       @xdes[:this];       end
+  def list;       @xdes[:list];       end
+  def state;      @xdes[:state];      end
+  def bitmap;     @xdes[:bitmap];     end
+
+  # Return whether this XDES entry is allocated to an fseg (the whole extent
+  # then belongs to the fseg).
+  def allocated_to_fseg?
+    fseg_id != 0
+  end
+
+  # Return the status for a given page. This is relatively inefficient as
+  # implemented and could be done better.
+  def page_status(page_number)
+    page_status_array = each_page_status.to_a
+    page_status_array[page_number - xdes[:start_page]]
   end
 
   # Iterate through all pages represented by this extent descriptor,
@@ -128,5 +150,11 @@ class Innodb::Xdes
   # to iterate through XDES entries in a list.
   def next_address
     xdes[:list][:next]
+  end
+
+  # Compare one Innodb::Xdes to another.
+  def ==(other)
+    xdes[:this][:page] == other.xdes[:this][:page] &&
+      xdes[:this][:offset] == other.xdes[:this][:offset]
   end
 end

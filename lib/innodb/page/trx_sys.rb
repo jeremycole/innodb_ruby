@@ -103,6 +103,12 @@ class Innodb::Page::TrxSys < Innodb::Page
     end
   end
 
+  def trx_id;       trx_sys[:trx_id];       end
+  def fseg;         trx_sys[:fseg];         end
+  def binary_log;   trx_sys[:binary_log];   end
+  def master_log;   trx_sys[:master_log];   end
+  def doublewrite;  trx_sys[:doublewrite];  end
+
   # Dump the contents of a page for debugging purposes.
   def dump
     super

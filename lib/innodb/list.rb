@@ -88,6 +88,11 @@ class Innodb::List
     object_from_address(object.next_address)
   end
 
+  # Return the number of items in the list.
+  def length
+    @base[:length]
+  end
+
   # Return the first object in the list using the list base node "first"
   # address pointer.
   def first
@@ -103,6 +108,14 @@ class Innodb::List
   # Return a list cursor for the list.
   def list_cursor(node=nil)
     ListCursor.new(self, node)
+  end
+
+  # Return whether the given item is present in the list. This depends on the
+  # item and the items in the list implementing some sufficient == method.
+  # This is implemented rather inefficiently by constructing an array and
+  # leaning on Array#include? to do the real work.
+  def include?(item)
+    each.to_a.include? item
   end
 
   # Iterate through all nodes in the list.

@@ -151,29 +151,13 @@ def space_indexes(space)
 
   space.each_index do |index|
     index.each_fseg do |fseg_name, fseg|
-      fragments =
-        fseg[:frag_array].inject(0) { |c, i| c += 1 if i; c }
-
-      used =
-        fragments +
-        fseg[:not_full_n_used] +
-        space.pages_per_extent * fseg[:full].base[:length]
-
-      allocated =
-        fragments +
-        space.pages_per_extent * fseg[:full].base[:length] +
-        space.pages_per_extent * fseg[:not_full].base[:length] +
-        space.pages_per_extent * fseg[:free].base[:length]
-
-      fill_factor = allocated > 0 ? 100.0 * (used.to_f / allocated.to_f) : 0.0
-
       puts "%-12i%-12i%-12s%-12i%-12i%-12s" % [
         index.id,
         index.root.offset,
         fseg_name,
-        used,
-        allocated,
-        "%.2f%%" % fill_factor,
+        fseg.used_pages,
+        fseg.total_pages,
+        "%.2f%%" % fseg.fill_factor,
       ]
     end
   end
@@ -229,6 +213,127 @@ def space_extents(space)
   print_xdes_list(space.each_xdes)
 end
 
+def print_inode_summary(inode)
+  puts "INODE fseg_id=%d, pages=%d, frag=%d, full=%d, not_full=%d, free=%d" % [
+    inode.fseg_id,
+    inode.total_pages,
+    inode.frag_array_n_used,
+    inode.full.length,
+    inode.not_full.length,
+    inode.free.length,
+  ]
+end
+
+def print_inode_detail(inode)
+  puts "INODE fseg_id=%d, pages=%d, frag=%d pages (%s), full=%d extents (%s), not_full=%d extents (%s) (%d/%d pages used), free=%d extents (%s)" % [
+    inode.fseg_id,
+    inode.total_pages,
+    inode.frag_array_n_used,
+    inode.frag_array_pages.join(", "),
+    inode.full.length,
+    inode.full.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(", "),
+    inode.not_full.length,
+    inode.not_full.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(", "),
+    inode.not_full_n_used,
+    inode.not_full.length * inode.space.pages_per_extent,
+    inode.free.length,
+    inode.free.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(", "),
+  ]
+end
+
+def space_inodes_summary(space)
+  space.each_inode do |inode|
+    print_inode_summary(inode)
+  end
+end
+
+def space_inodes_detail(space)
+  space.each_inode do |inode|
+    print_inode_detail(inode)
+  end
+end
+
+def page_account(space, page_number)
+  puts "Accounting for page #{page_number}:"
+
+  if page_number > space.pages
+    puts "  Page does not exist."
+    return
+  end
+
+  page = space.page(page_number)
+  puts "  Page type is #{page.type}."
+
+  xdes = space.xdes_for_page(page_number)
+  puts "  Extent descriptor for pages %d-%d is at page %d, offset %d." % [
+    xdes.start_page,
+    xdes.end_page,
+    xdes.this[:page],
+    xdes.this[:offset],
+  ]
+
+  if xdes.allocated_to_fseg?
+    puts "  Extent is fully allocated to fseg #{xdes.fseg_id}."
+  else
+    puts "  Extent is not fully allocated to an fseg; may be a fragment extent."
+  end
+
+  xdes_status = xdes.page_status(page_number)
+  puts "  Page is marked as %s in extent descriptor." % [
+    xdes_status[:free] ? 'free' : 'used'
+  ]
+
+  space.each_xdes_list do |name, list|
+    if list.include? xdes
+      puts "  Extent is in #{name} list of space."
+    end
+  end
+
+  page_inode = nil
+  space.each_inode do |inode|
+    inode.each_list do |name, list|
+      if list.include? xdes
+        page_inode = inode
+        puts "  Extent is in #{name} list of fseg #{inode.fseg_id}."
+      end
+    end
+
+    if inode.frag_array.include? page_number
+      page_inode = inode
+      puts "  Page is in fragment array of fseg %d." % [
+        inode.fseg_id,
+      ]
+    end
+  end
+
+  space.each_index do |index|
+    index.each_fseg do |fseg_name, fseg|
+      if page_inode == fseg
+        puts "  Fseg is in #{fseg_name} fseg of index #{index.id}."
+        puts "  Index root is page #{index.root.offset}."
+      end
+    end
+  end
+
+  if space.system_space?
+    if page_inode == space.trx_sys.fseg
+      puts "  Fseg is trx_sys."
+    end
+
+    if page_inode == space.trx_sys.doublewrite[:fseg]
+      puts "  Fseg is doublewrite buffer."
+    end
+
+    space.data_dictionary.each_index do |table_name, index_name, index|
+      index.each_fseg do |fseg_name, fseg|
+        if page_inode == fseg
+          puts "  Index is #{table_name}.#{index_name} of data dictionary."
+        end
+      end
+    end
+  end
+end
+
 def page_directory_summary(page)
   puts "%-8s%-8s%-14s%-8s%s" % [
     "slot",
@@ -264,16 +369,15 @@ def index_fseg_lists(index, fseg_name)
 end
 
 def index_fseg_list_iterate(index, fseg_name, list_name)
-  unless index.fseg(fseg_name)
+  unless fseg = index.fseg(fseg_name)
     raise "File segment '#{fseg_name}' doesn't exist"
   end
 
-  fseg = index.fseg(fseg_name)
-  unless fseg[list_name] && fseg[list_name].is_a?(Innodb::List)
+  unless list = fseg.list(list_name)
     raise "List '#{list_name}' doesn't exist"
   end
 
-  print_xdes_list(fseg[list_name])
+  print_xdes_list(list)
 end
 
 def index_fseg_frag_pages(index, fseg_name)
@@ -444,8 +548,17 @@ The following modes are supported:
   space-extents
     Iterate through all extents, printing the extent descriptor bitmap.
 
+  space-inodes-summary
+    Iterate through all inodes, printing a short summary of each FSEG.
+
+  space-inodes-detail
+    Iterate through all inodes, printing a detailed report of each FSEG.
+
   page-dump
     Dump the contents of a page, using the Ruby pp ("pretty-print") module.
+
+  page-account
+    Account for a page's usage in FSEGs.
 
   page-directory-summary
     Summarize the record contents of the page directory in a page. If a record
@@ -566,6 +679,14 @@ ARGV.each do |mode|
     @options.pages.each do |page_number|
       space.page(page_number).dump
     end
+  when "page-account"
+    if @options.pages.empty?
+      usage 1, "Page numbers to dump must be provided with --page/-p"
+    end
+
+    @options.pages.each do |page_number|
+      page_account(space, page_number)
+    end
   when "page-directory-summary"
     if @options.pages.empty?
       usage 1, "Page numbers to dump must be provided with --page/-p"
@@ -600,6 +721,10 @@ ARGV.each do |mode|
     space_indexes(space)
   when "space-extents"
     space_extents(space)
+  when "space-inodes-summary"
+    space_inodes_summary(space)
+  when "space-inodes-detail"
+    space_inodes_detail(space)
   when "index-recurse"
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 
