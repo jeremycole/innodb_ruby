@@ -62,22 +62,21 @@ class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
   end
 
   # A record describer for SYS_TABLES clustered records.
-  # This will be useless until redundant format indexes are supported.
   class SYS_TABLES_PRIMARY
     def self.cursor_sendable_description(page)
       {
         :type => :clustered,
         :key => [
-          ["VARCHAR(100)", :NOT_NULL],  # NAME
+          ["VARCHAR(100)",      :NOT_NULL],       # NAME
         ],
         :row => [
-          ["VARCHAR(100)", :NOT_NULL], # ID
-          [:INT, :NOT_NULL], # N_COLS
-          [:INT, :NOT_NULL], # TYPE
-          ["VARCHAR(100)", :NOT_NULL], # MIX_ID
-          [:INT, :NOT_NULL], # MIX_LEN
-          ["VARCHAR(100)", :NOT_NULL], # CLUSTER_NAME
-          [:INT, :NOT_NULL], # SPACE
+          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # ID
+          [:INT,    :UNSIGNED,  :NOT_NULL],       # N_COLS
+          [:INT,    :UNSIGNED,  :NOT_NULL],       # TYPE
+          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # MIX_ID
+          [:INT,    :UNSIGNED,  :NOT_NULL],       # MIX_LEN
+          ["VARCHAR(100)"],                       # CLUSTER_NAME
+          [:INT,    :UNSIGNED,  :NOT_NULL],       # SPACE
         ]
       }
     end

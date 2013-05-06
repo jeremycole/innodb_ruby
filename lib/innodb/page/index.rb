@@ -11,6 +11,60 @@ require "innodb/fseg_entry"
 class Innodb::Page::Index < Innodb::Page
   attr_accessor :record_describer
 
+  # The size (in bytes) of the "next" pointer in each record header.
+  RECORD_NEXT_SIZE = 2
+
+  # The size (in bytes) of the bit-packed fields in each record header for
+  # "redundant" record format.
+  RECORD_REDUNDANT_BITS_SIZE = 4
+
+  # Masks for 1-byte record end-offsets within "redundant" records.
+  RECORD_REDUNDANT_OFF1_OFFSET_MASK   = 0x7f
+  RECORD_REDUNDANT_OFF1_NULL_MASK     = 0x80
+
+  # Masks for 2-byte record end-offsets within "redundant" records.
+  RECORD_REDUNDANT_OFF2_OFFSET_MASK   = 0x3fff
+  RECORD_REDUNDANT_OFF2_NULL_MASK     = 0x8000
+  RECORD_REDUNDANT_OFF2_EXTERN_MASK   = 0x4000
+
+  # The size (in bytes) of the bit-packed fields in each record header for
+  # "compact" record format.
+  RECORD_COMPACT_BITS_SIZE = 3
+
+  # Page direction values possible in the page_header's :direction field.
+  PAGE_DIRECTION = {
+    1 => :left,           # Inserts have been in descending order.
+    2 => :right,          # Inserts have been in ascending order.
+    3 => :same_rec,       # Unused by InnoDB.
+    4 => :same_page,      # Unused by InnoDB.
+    5 => :no_direction,   # Inserts have been in random order.
+  }
+
+  # Record types used in the :type field of the record header.
+  RECORD_TYPES = {
+    0 => :conventional,   # A normal user record in a leaf page.
+    1 => :node_pointer,   # A node pointer in a non-leaf page.
+    2 => :infimum,        # The system "infimum" record.
+    3 => :supremum,       # The system "supremum" record.
+  }
+
+  # This record is the minimum record at this level of the B-tree.
+  RECORD_INFO_MIN_REC_FLAG = 1
+
+  # This record has been marked as deleted.
+  RECORD_INFO_DELETED_FLAG = 2
+
+  # The size (in bytes) of the record pointers in each page directory slot.
+  PAGE_DIR_SLOT_SIZE = 2
+
+  # The minimum number of records "owned" by each record with an entry in
+  # the page directory.
+  PAGE_DIR_SLOT_MIN_N_OWNED = 4
+
+  # The maximum number of records "owned" by each record with an entry in
+  # the page directory.
+  PAGE_DIR_SLOT_MAX_N_OWNED = 8
+
   # Return the byte offset of the start of the "index" page header, which
   # immediately follows the "fil" header.
   def pos_index_header
@@ -19,7 +73,7 @@ class Innodb::Page::Index < Innodb::Page
 
   # The size of the "index" header.
   def size_index_header
-    36
+    2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 8 + 2 + 8
   end
 
   # Return the byte offset of the start of the "fseg" header, which immediately
@@ -33,10 +87,27 @@ class Innodb::Page::Index < Innodb::Page
     2 * Innodb::FsegEntry::SIZE
   end
 
-  # Return the byte offset of the start of records within the page (the
-  # position immediately after the page header).
-  def pos_records
-    size_fil_header + size_index_header + size_fseg_header
+  # Return the size of the header for each record.
+  def size_record_header
+    case page_header[:format]
+    when :compact
+      RECORD_NEXT_SIZE + RECORD_COMPACT_BITS_SIZE
+    when :redundant
+      RECORD_NEXT_SIZE + RECORD_REDUNDANT_BITS_SIZE
+    end
+  end
+
+  # The size of the additional data structures in the header of the system
+  # records, which is just 1 byte in redundant format to store the offset
+  # of the end of the field. This is needed specifically here since we need
+  # to be able to calculate the fixed positions of these system records.
+  def size_mum_record_header_additional
+    case page_header[:format]
+    when :compact
+      0 # No additional data is stored in compact format.
+    when :redundant
+      1 # A 1-byte offset for 1 field is stored in redundant format.
+    end
   end
 
   # The size of the data from the supremum or infimum records.
@@ -49,7 +120,9 @@ class Innodb::Page::Index < Innodb::Page
   # page, and represents a record with a "lower value than any possible user
   # record". The infimum record immediately follows the page header.
   def pos_infimum
-    pos_records + size_record_header + size_record_undefined
+    pos_records +
+      size_record_header +
+      size_mum_record_header_additional
   end
 
   # Return the byte offset of the start of the "origin" of the supremum record,
@@ -57,7 +130,18 @@ class Innodb::Page::Index < Innodb::Page
   # page, and represents a record with a "higher value than any possible user
   # record". The supremum record immediately follows the infimum record.
   def pos_supremum
-    pos_infimum + size_record_header + size_record_undefined + size_mum_record
+    pos_infimum +
+      size_record_header +
+      size_mum_record_header_additional +
+      size_mum_record
+  end
+
+  # Return the byte offset of the start of records within the page (the
+  # position immediately after the page header).
+  def pos_records
+    size_fil_header +
+      size_index_header +
+      size_fseg_header
   end
 
   # Return the byte offset of the start of the user records in a page, which
@@ -116,31 +200,22 @@ class Innodb::Page::Index < Innodb::Page
     data(pos_user_records, page_header[:heap_top] - pos_user_records)
   end
 
-  # Page direction values possible in the page_header's :direction field.
-  PAGE_DIRECTION = {
-    1 => :left,           # Inserts have been in descending order.
-    2 => :right,          # Inserts have been in ascending order.
-    3 => :same_rec,       # Unused by InnoDB.
-    4 => :same_page,      # Unused by InnoDB.
-    5 => :no_direction,   # Inserts have been in random order.
-  }
-
   # Return the "index" header.
   def page_header
     @page_header ||= cursor(pos_index_header).name("index") do |c|
       index = {
-        :n_dir_slots  => c.name("n_dir_slots") { c.get_uint16 },
-        :heap_top     => c.name("heap_top") { c.get_uint16 },
-        :n_heap_format => c.name("n_heap_format") { c.get_uint16 },
-        :free         => c.name("free") { c.get_uint16 },
-        :garbage      => c.name("garbage") { c.get_uint16 },
-        :last_insert  => c.name("last_insert") { c.get_uint16 },
-        :direction    => c.name("direction") { PAGE_DIRECTION[c.get_uint16] },
-        :n_direction  => c.name("n_direction") { c.get_uint16 },
-        :n_recs       => c.name("n_recs") { c.get_uint16 },
-        :max_trx_id   => c.name("max_trx_id") { c.get_uint64 },
-        :level        => c.name("level") { c.get_uint16 },
-        :index_id     => c.name("index_id") { c.get_uint64 },
+        :n_dir_slots    => c.name("n_dir_slots") { c.get_uint16 },
+        :heap_top       => c.name("heap_top") { c.get_uint16 },
+        :n_heap_format  => c.name("n_heap_format") { c.get_uint16 },
+        :free           => c.name("free") { c.get_uint16 },
+        :garbage        => c.name("garbage") { c.get_uint16 },
+        :last_insert    => c.name("last_insert") { c.get_uint16 },
+        :direction      => c.name("direction") { PAGE_DIRECTION[c.get_uint16] },
+        :n_direction    => c.name("n_direction") { c.get_uint16 },
+        :n_recs         => c.name("n_recs") { c.get_uint16 },
+        :max_trx_id     => c.name("max_trx_id") { c.get_uint64 },
+        :level          => c.name("level") { c.get_uint16 },
+        :index_id       => c.name("index_id") { c.get_uint64 },
       }
       index[:n_heap] = index[:n_heap_format] & (2**15-1)
       index[:format] = (index[:n_heap_format] & 1<<15) == 0 ?
@@ -182,96 +257,76 @@ class Innodb::Page::Index < Innodb::Page
     end
   end
 
-  # The size (in bytes) of the bit-packed fields in each record header.
-  RECORD_BITS_SIZE = 3
-
-  # The size (in bytes) of the "next" pointer in each record header.
-  RECORD_NEXT_SIZE = 2
-
-  # The size (in bytes) of the record pointers in each page directory slot.
-  PAGE_DIR_SLOT_SIZE = 2
-
-  # The minimum number of records "owned" by each record with an entry in
-  # the page directory.
-  PAGE_DIR_SLOT_MIN_N_OWNED = 4
-
-  # The maximum number of records "owned" by each record with an entry in
-  # the page directory.
-  PAGE_DIR_SLOT_MAX_N_OWNED = 8
-
-  # Return the size of the header for each record.
-  def size_record_header
-    case page_header[:format]
-    when :compact
-      RECORD_BITS_SIZE + RECORD_NEXT_SIZE
-    when :redundant
-      RECORD_BITS_SIZE + RECORD_NEXT_SIZE + 1
-    end
-  end
-
-  # Return the size of a field in the record header for which no description
-  # could be found (but must be skipped anyway).
-  def size_record_undefined
-    case page_header[:format]
-    when :compact
-      0
-    when :redundant
-      1
-    end
-  end
-
-  # Record types used in the :type field of the record header.
-  RECORD_TYPES = {
-    0 => :conventional,   # A normal user record in a leaf page.
-    1 => :node_pointer,   # A node pointer in a non-leaf page.
-    2 => :infimum,        # The system "infimum" record.
-    3 => :supremum,       # The system "supremum" record.
-  }
-
-  # This record is the minimum record at this level of the B-tree.
-  RECORD_INFO_MIN_REC_FLAG = 1
-
-  # This record has been marked as deleted.
-  RECORD_INFO_DELETED_FLAG = 2
-
   # Return the header from a record.
   def record_header(cursor)
+    origin = cursor.position
+    header = {}
     cursor.backward.name("header") do |c|
       case page_header[:format]
       when :compact
-        header = {}
-        header[:next] = c.name("next") { c.get_sint16 }
+        # The "next" pointer is a relative offset from the current record.
+        header[:next] = c.name("next") { origin + c.get_sint16 }
+
+        # Fields packed in a 16-bit integer (LSB first):
+        #   3 bits for type
+        #   13 bits for heap_number
         bits1 = c.name("bits1") { c.get_uint16 }
         header[:type] = RECORD_TYPES[bits1 & 0x07]
-        header[:order] = (bits1 & 0xf8) >> 3
-        bits2 = c.name("bits2") { c.get_uint8 }
-        header[:n_owned] = bits2 & 0x0f
-        info = (bits2 & 0xf0) >> 4
-        header[:min_rec] = (info & RECORD_INFO_MIN_REC_FLAG) != 0
-        header[:deleted] = (info & RECORD_INFO_DELETED_FLAG) != 0
-        case header[:type]
-        when :conventional, :node_pointer
-          # The variable-length part of the record header contains a
-          # bit vector indicating NULL fields and the length of each
-          # non-NULL variable-length field.
-          if record_format
-            header[:null_bitmap] = nbmap = c.name("null_bitmap") {
-              record_null_bitmap(c)
-            }
-            header[:variable_length] = c.name("variable_length") {
-              record_variable_length(c, nbmap)
-            }
-          end
-        end
-        header
+        header[:heap_number] = (bits1 & 0xf8) >> 3
       when :redundant
-        raise "The redundant table format is not yet implemented"
+        # The "next" pointer is an absolute offset within the page.
+        header[:next] = c.name("next") { c.get_uint16 }
+
+        # Fields packed in a 24-bit integer (LSB first):
+        #   1 bit for offset_size (0 = 2 bytes, 1 = 1 byte)
+        #   10 bits for n_fields
+        #   13 bits for heap_number
+        bits1 = c.name("bits1") { c.get_uint24 }
+        header[:offset_size]  = (bits1 & 1) == 0 ? 2 : 1
+        header[:n_fields]     = (bits1 & (((1 << 10) - 1) <<  1)) >>  1
+        header[:heap_number]  = (bits1 & (((1 << 13) - 1) << 11)) >> 11
+      end
+
+      # Fields packed in an 8-bit integer (LSB first):
+      #   4 bits for n_owned
+      #   4 bits for flags
+      bits2 = c.name("bits2") { c.get_uint8 }
+      header[:n_owned] = bits2 & 0x0f
+      info = (bits2 & 0xf0) >> 4
+      header[:min_rec] = (info & RECORD_INFO_MIN_REC_FLAG) != 0
+      header[:deleted] = (info & RECORD_INFO_DELETED_FLAG) != 0
+
+      case page_header[:format]
+      when :compact
+        record_header_compact_additional(header, cursor)
+      when :redundant
+        record_header_redundant_additional(header, cursor)
+      end
+    end
+
+    header
+  end
+
+  # Read additional header information from a compact format record header.
+  def record_header_compact_additional(header, cursor)
+    case header[:type]
+    when :conventional, :node_pointer
+      # The variable-length part of the record header contains a
+      # bit vector indicating NULL fields and the length of each
+      # non-NULL variable-length field.
+      if record_format
+        header[:field_nulls] = cursor.name("field_nulls") {
+          record_header_compact_null_bitmap(cursor)
+        }
+        header[:field_lengths] = cursor.name("field_lengths") {
+          record_header_compact_variable_lengths(cursor, header[:field_nulls])
+        }
       end
     end
   end
 
   # Return an array indicating which fields are null.
-  def record_null_bitmap(cursor)
+  def record_header_compact_null_bitmap(cursor)
     fields = (record_format[:key] + record_format[:row])
 
     # The number of bits in the bitmap is the number of nullable fields.
@@ -294,7 +349,7 @@ class Innodb::Page::Index < Innodb::Page
   end
 
   # Return an array containing the length of each variable-length field.
-  def record_variable_length(cursor, null_bitmap)
+  def record_header_compact_variable_lengths(cursor, null_bitmap)
     fields = (record_format[:key] + record_format[:row])
 
     len_array = Array.new(fields.size, 0)
@@ -318,6 +373,43 @@ class Innodb::Page::Index < Innodb::Page
     return len_array
   end
 
+  # Read additional header information from a redundant format record header.
+  def record_header_redundant_additional(header, cursor)
+    header[:field_lengths] = []
+    header[:field_nulls] = []
+    header[:field_externs] = []
+
+    field_offsets = record_header_redundant_field_end_offsets(header, cursor)
+
+    this_field_offset = 0
+    field_offsets.each do |n|
+      case header[:offset_size]
+      when 1
+        next_field_offset = (n & RECORD_REDUNDANT_OFF1_OFFSET_MASK)
+        header[:field_lengths]  << (next_field_offset - this_field_offset)
+        header[:field_nulls]    << ((n & RECORD_REDUNDANT_OFF1_NULL_MASK) != 0)
+        header[:field_externs]  << false
+      when 2
+        next_field_offset = (n & RECORD_REDUNDANT_OFF2_OFFSET_MASK)
+        header[:field_lengths]  << (next_field_offset - this_field_offset)
+        header[:field_nulls]    << ((n & RECORD_REDUNDANT_OFF2_NULL_MASK) != 0)
+        header[:field_externs]  << ((n & RECORD_REDUNDANT_OFF2_EXTERN_MASK) != 0)
+      end
+      this_field_offset = next_field_offset
+    end
+  end
+
+  # Read field end offsets from the provided cursor for each field as counted
+  # by n_fields.
+  def record_header_redundant_field_end_offsets(header, cursor)
+    (0...header[:n_fields]).to_a.inject([]) do |offsets, n|
+      cursor.name("field_end_offset[#{n}]") {
+        offsets << cursor.get_uint_by_size(header[:offset_size])
+      }
+      offsets
+    end
+  end
+
   # Parse and return simple fixed-format system records, such as InnoDB's
   # internal infimum and supremum records.
   def system_record(offset)
@@ -326,7 +418,7 @@ class Innodb::Page::Index < Innodb::Page
       {
         :offset => offset,
         :header => header,
-        :next => offset + header[:next],
+        :next => header[:next],
         :data => c.name("data") { c.get_bytes(size_mum_record) },
       }
     end
@@ -346,18 +438,23 @@ class Innodb::Page::Index < Innodb::Page
   def make_record_description
     description = record_describer.cursor_sendable_description(self)
 
-    fields = []
+    position = 0
+    fields = {:type => description[:type], :key => [], :row => []}
 
-    (description[:key] + description[:row]).each_with_index do |d, p|
-      fields << Innodb::Field.new(p, *d)
+    description[:key].each_with_index do |d|
+      fields[:key] << Innodb::Field.new(position, *d)
+      position += 1
     end
 
-    n = description[:key].size
+    # Account for TRX_ID and ROLL_PTR.
+    position += 2
 
-    description[:key] = fields.slice(0 .. n-1)
-    description[:row] = fields.slice(n ..  -1)
+    description[:row].each_with_index do |d|
+      fields[:row] << Innodb::Field.new(position, *d)
+      position += 1
+    end
 
-    return description
+    fields
   end
 
   # Return (and cache) the record format provided by an external class.
@@ -381,7 +478,7 @@ class Innodb::Page::Index < Innodb::Page
         :format => page_header[:format],
         :offset => offset,
         :header => header,
-        :next => header[:next] == 0 ? nil : (offset + header[:next]),
+        :next => header[:next] == 0 ? nil : (header[:next]),
       }
 
       if record_format
@@ -389,8 +486,10 @@ class Innodb::Page::Index < Innodb::Page
 
         # Read the key fields present in all types of pages.
         this_record[:key] = []
-        record_format[:key].each do |f|
-          this_record[:key].push f.read(this_record, c)
+        c.name("key") do
+          record_format[:key].each do |f|
+            this_record[:key].push f.read(this_record, c)
+          end
         end
 
         # If this is a leaf page of the clustered index, read InnoDB's internal
@@ -402,10 +501,10 @@ class Innodb::Page::Index < Innodb::Page
             this_record[:roll_pointer]   = {
               :is_insert  => (rseg_id_insert_flag & 0x80) == 0x80,
               :rseg_id    => rseg_id_insert_flag & 0x7f,
-              :undo_log => c.name("undo_log") {
+              :undo_log   => c.name("undo_log") {
                 {
-                  :page       => c.name("page")   { c.get_uint32 },
-                  :offset     => c.name("offset") { c.get_uint16 },
+                  :page   => c.name("page")   { c.get_uint32 },
+                  :offset => c.name("offset") { c.get_uint16 },
                 }
               }
             }
@@ -418,8 +517,10 @@ class Innodb::Page::Index < Innodb::Page
           (record_format[:type] == :secondary)
           # Read the non-key fields.
           this_record[:row] = []
-          record_format[:row].each do |f|
-            this_record[:row].push f.read(this_record, c)
+          c.name("row") do
+            record_format[:row].each do |f|
+              this_record[:row].push f.read(this_record, c)
+            end
           end
         end
 

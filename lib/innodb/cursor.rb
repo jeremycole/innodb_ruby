@@ -225,6 +225,13 @@ class Innodb::Cursor
     BinData::Uint32be.read(data)
   end
 
+  # Read a big-endian unsigned 48-bit integer.
+  def get_uint48(position=nil)
+    seek(position)
+    data = read_and_advance(6)
+    BinData::Uint48be.read(data)
+  end
+
   # Read a big-endian unsigned 64-bit integer.
   def get_uint64(position=nil)
     seek(position)
@@ -243,11 +250,17 @@ class Innodb::Cursor
       get_uint24
     when 4
       get_uint32
+    when 6
+      get_uint48
     when 8
       get_uint64
     else
       raise "Not implemented"
     end
+  end
+
+  def get_uint_array_by_size(size, count)
+    (0...count).to_a.inject([]) { |a, n| a << get_uint_by_size(size); a }
   end
 
   # Read an InnoDB-compressed unsigned 32-bit integer.
@@ -295,6 +308,12 @@ class Innodb::Cursor
     BinData::Int32be.read(data) ^ (-1 << 31)
   end
 
+  # Read an InnoDB-munged signed 48-bit integer.
+  def get_i_sint48
+    data = read_and_advance(6)
+    BinData::Int48be.read(data) ^ (-1 << 47)
+  end
+
   # Read an InnoDB-munged signed 64-bit integer.
   def get_i_sint64
     data = read_and_advance(8)
@@ -312,6 +331,8 @@ class Innodb::Cursor
       get_i_sint24
     when 4
       get_i_sint32
+    when 6
+      get_i_sint48
     when 8
       get_i_sint64
     else
