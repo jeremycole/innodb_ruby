@@ -65,9 +65,20 @@ class Innodb::Page
     @buffer[offset...(offset + length)]
   end
 
-  # Return an Innodb::Cursor object positioned at a specific offset.
+  # If no block is passed, return an Innodb::Cursor object positioned at a
+  # specific offset. If a block is passed, create a cursor at the provided
+  # offset and yield it to the provided block one time, and then return the
+  # return value of the block.
   def cursor(offset)
-    Innodb::Cursor.new(self, offset)
+    new_cursor = Innodb::Cursor.new(self, offset)
+
+    if block_given?
+      # Call the block once and return its return value.
+      yield new_cursor
+    else
+      # Return the cursor itself.
+      new_cursor
+    end
   end
 
   # Return the byte offset of the start of the "fil" header, which is at the
