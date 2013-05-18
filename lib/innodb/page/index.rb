@@ -362,13 +362,13 @@ class Innodb::Page::Index < Innodb::Page
     # For each non-NULL variable-length field, the record header contains
     # the length in one or two bytes.
     fields.each do |f|
-      next if f.fixed_len > 0 or null_bitmap[f.position]
+      next if f.fixed_length > 0 or (null_bitmap && null_bitmap[f.position])
 
       len = cursor.get_uint8
 
       # Two bytes are used only if the length exceeds 127 bytes and the
       # maximum length exceeds 255 bytes.
-      if len > 127 and f.variable_len > 255
+      if len > 127 and f.variable_length > 255
         len = ((len & 0x3f) << 8) + cursor.get_uint8
       end
 
