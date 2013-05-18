@@ -180,7 +180,7 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return the amount of free space in the page.
   def free_space
-    page_header[:garbage] +
+    page_header[:garbage_size] +
       (size - size_fil_trailer - directory_space - page_header[:heap_top])
   end
 
@@ -204,18 +204,18 @@ class Innodb::Page::Index < Innodb::Page
   def page_header
     @page_header ||= cursor(pos_index_header).name("index") do |c|
       index = {
-        :n_dir_slots    => c.name("n_dir_slots") { c.get_uint16 },
-        :heap_top       => c.name("heap_top") { c.get_uint16 },
-        :n_heap_format  => c.name("n_heap_format") { c.get_uint16 },
-        :free           => c.name("free") { c.get_uint16 },
-        :garbage        => c.name("garbage") { c.get_uint16 },
-        :last_insert    => c.name("last_insert") { c.get_uint16 },
-        :direction      => c.name("direction") { PAGE_DIRECTION[c.get_uint16] },
-        :n_direction    => c.name("n_direction") { c.get_uint16 },
-        :n_recs         => c.name("n_recs") { c.get_uint16 },
-        :max_trx_id     => c.name("max_trx_id") { c.get_uint64 },
-        :level          => c.name("level") { c.get_uint16 },
-        :index_id       => c.name("index_id") { c.get_uint64 },
+        :n_dir_slots            => c.name("n_dir_slots") { c.get_uint16 },
+        :heap_top               => c.name("heap_top") { c.get_uint16 },
+        :n_heap_format          => c.name("n_heap_format") { c.get_uint16 },
+        :garbage_offset         => c.name("garbage_offset") { c.get_uint16 },
+        :garbage_size           => c.name("garbage_size") { c.get_uint16 },
+        :last_insert_offset     => c.name("last_insert_offset") { c.get_uint16 },
+        :direction              => c.name("direction") { PAGE_DIRECTION[c.get_uint16] },
+        :n_direction            => c.name("n_direction") { c.get_uint16 },
+        :n_recs                 => c.name("n_recs") { c.get_uint16 },
+        :max_trx_id             => c.name("max_trx_id") { c.get_uint64 },
+        :level                  => c.name("level") { c.get_uint16 },
+        :index_id               => c.name("index_id") { c.get_uint64 },
       }
       index[:n_heap] = index[:n_heap_format] & (2**15-1)
       index[:format] = (index[:n_heap_format] & 1<<15) == 0 ?
@@ -241,6 +241,11 @@ class Innodb::Page::Index < Innodb::Page
   # at their level.
   def root?
     self.prev.nil? && self.next.nil?
+  end
+
+  # A helper function to return the offset to the first free record.
+  def garbage_offset
+    page_header && page_header[:garbage_offset]
   end
 
   # Return the "fseg" header.
@@ -552,7 +557,13 @@ class Innodb::Page::Index < Innodb::Page
       record = @page.record(@offset)
 
       if record == @page.supremum
+        # We've reached the end of the linked list at supremum.
         @offset = nil
+      elsif record[:next] == @offset
+        # The record links to itself; go ahead and return it (once), but set
+        # the next offset to nil to end the loop.
+        @offset = nil
+        record
       else
         @offset = record[:next]
         record
@@ -578,6 +589,24 @@ class Innodb::Page::Index < Innodb::Page
     end
 
     c = record_cursor(infimum[:next])
+
+    while rec = c.record
+      yield rec
+    end
+
+    nil
+  end
+
+  def each_garbage_record
+    unless block_given?
+      return enum_for(:each_garbage_record)
+    end
+
+    if garbage_offset == 0
+      return nil
+    end
+
+    c = record_cursor(garbage_offset)
 
     while rec = c.record
       yield rec
@@ -645,6 +674,12 @@ class Innodb::Page::Index < Innodb::Page
     puts "system records:"
     pp infimum
     pp supremum
+    puts
+
+    puts "garbage records:"
+    each_garbage_record do |rec|
+      pp rec
+    end
     puts
 
     puts "page directory:"

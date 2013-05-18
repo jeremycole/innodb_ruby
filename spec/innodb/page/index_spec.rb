@@ -31,9 +31,9 @@ describe Innodb::Page::Index do
       @page.page_header.keys.size.should eql 13
       @page.page_header[:n_dir_slots].should eql 2
       @page.page_header[:heap_top].should eql 120
-      @page.page_header[:free].should eql 0
-      @page.page_header[:garbage].should eql 0
-      @page.page_header[:last_insert].should eql 0
+      @page.page_header[:garbage_offset].should eql 0
+      @page.page_header[:garbage_size].should eql 0
+      @page.page_header[:last_insert_offset].should eql 0
       @page.page_header[:direction].should eql :no_direction
       @page.page_header[:n_direction].should eql 0
       @page.page_header[:n_recs].should eql 0
