@@ -43,12 +43,15 @@ class Innodb::Cursor
   # Print a trace output for this cursor. The method is passed a cursor object,
   # position, raw byte buffer, and array of names.
   def print_trace(cursor, position, bytes, name)
-    puts "%06i %s %-32s  %s" % [
-      position,
-      direction == :backward ? "←" : "→",
-      bytes ? bytes.map { |n| "%02x" % n }.join : "nil",
-      name ? name.join(".") : "nil",
-    ]
+    slice_size = 16
+    bytes.each_slice(slice_size).each_with_index do |slice_bytes, slice_count|
+      puts "%06i %s %-32s  %s" % [
+        position + (slice_count * slice_size),
+        direction == :backward ? "←" : "→",
+        slice_bytes.map { |n| "%02x" % n }.join,
+        slice_count == 0 ? name.join(".") : "↵",
+      ]
+    end
   end
 
   # Set a Proc or method on self to trace with.
