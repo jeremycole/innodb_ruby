@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "bindata"
 
 # A cursor to walk through InnoDB data structures to read fields.
@@ -42,8 +43,9 @@ class Innodb::Cursor
   # Print a trace output for this cursor. The method is passed a cursor object,
   # position, raw byte buffer, and array of names.
   def print_trace(cursor, position, bytes, name)
-    puts "%06i = %-32s  %s" % [
+    puts "%06i %s %-32s  %s" % [
       position,
+      direction == :backward ? "←" : "→",
       bytes ? bytes.map { |n| "%02x" % n }.join : "nil",
       name ? name.join(".") : "nil",
     ]

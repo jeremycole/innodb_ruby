@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 class Innodb::Checksum
   MAX   = 0xFFFFFFFF.freeze
   MASK1 = 1463735687.freeze

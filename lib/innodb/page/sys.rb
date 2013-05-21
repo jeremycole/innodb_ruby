@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "innodb/page/sys_data_dictionary_header"
 
 # Another layer of indirection for pages of type SYS, as they have multiple

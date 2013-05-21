@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 # An abstract InnoDB "free list" or FLST (renamed to just "list" here as it
 # frequently is used for structures that aren't free lists). This class must
 # be sub-classed to provide an appropriate #object_from_address method.

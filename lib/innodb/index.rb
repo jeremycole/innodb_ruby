@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 # An InnoDB index B-tree, given an Innodb::Space and a root page number.
 class Innodb::Index
   attr_reader :root

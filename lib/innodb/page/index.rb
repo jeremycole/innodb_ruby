@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "innodb/fseg_entry"
 
 # A specialized class for handling INDEX pages, which contain a portion of

@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 # A specialized class for TRX_SYS pages, which contain various information
 # about the transaction system within InnoDB. Only one TRX_SYS page exists in
 # any given InnoDB installation, and it is page 5 of the system tablespace

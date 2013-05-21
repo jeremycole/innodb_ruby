@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 class Innodb::LogGroup
   def initialize
     @files = []

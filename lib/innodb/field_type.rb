@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 class Innodb::FieldType
   class GenericType
     attr_reader :type

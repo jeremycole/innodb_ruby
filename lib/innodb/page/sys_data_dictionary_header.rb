@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
   # The position of the data dictionary header within the page.
   def pos_data_dictionary_header

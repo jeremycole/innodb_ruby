@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 # An InnoDB space file, which can be either a multi-table ibdataN file
 # or a single-table "innodb_file_per_table" .ibd file.
 class Innodb::Space

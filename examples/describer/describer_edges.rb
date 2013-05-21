@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 class Innodb::RecordDescriber::Edges < Innodb::RecordDescriber
   def self.cursor_sendable_description(page)
     bytes_per_record = (page.record_space / page.page_header[:n_recs])

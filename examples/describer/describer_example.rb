@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 class Innodb::RecordDescriber::Example < Innodb::RecordDescriber
   def self.cursor_sendable_description(page)
     case 1

@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "innodb/field_type"
 
 # A single field in an InnoDB record (within an INDEX page). This class

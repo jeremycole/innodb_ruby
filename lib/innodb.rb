@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 # A set of classes for parsing and working with InnoDB data files.
 module Innodb; end
 
