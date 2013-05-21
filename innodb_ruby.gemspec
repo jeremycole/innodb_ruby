@@ -17,6 +17,7 @@ Gem::Specification.new do |s|
     'lib/innodb/checksum.rb',
     'lib/innodb/cursor.rb',
     'lib/innodb/field.rb',
+    'lib/innodb/field_type.rb',
     'lib/innodb/fseg_entry.rb',
     'lib/innodb/index.rb',
     'lib/innodb/list.rb',

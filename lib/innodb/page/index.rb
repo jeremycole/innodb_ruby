@@ -335,7 +335,7 @@ class Innodb::Page::Index < Innodb::Page
     fields = (record_format[:key] + record_format[:row])
 
     # The number of bits in the bitmap is the number of nullable fields.
-    size = fields.count do |f| f.nullable end
+    size = fields.count { |f| f.type.nullable? }
 
     # There is no bitmap if there are no nullable fields.
     return nil unless size > 0
@@ -347,7 +347,7 @@ class Innodb::Page::Index < Innodb::Page
 
     # For every nullable field, set whether the field is actually null.
     fields.each do |f|
-      bitmap[f.position] = f.nullable ? (null_bit_array.shift == 1) : false
+      bitmap[f.position] = f.type.nullable? ? (null_bit_array.shift == 1) : false
     end
 
     return bitmap
@@ -362,13 +362,13 @@ class Innodb::Page::Index < Innodb::Page
     # For each non-NULL variable-length field, the record header contains
     # the length in one or two bytes.
     fields.each do |f|
-      next if f.fixed_length > 0 or (null_bitmap && null_bitmap[f.position])
+      next if !f.type.variable? or (null_bitmap && null_bitmap[f.position])
 
       len = cursor.get_uint8
 
       # Two bytes are used only if the length exceeds 127 bytes and the
       # maximum length exceeds 255 bytes.
-      if len > 127 and f.variable_length > 255
+      if len > 127 && f.type.variable && f.type.length > 255
         len = ((len & 0x3f) << 8) + cursor.get_uint8
       end
 
@@ -446,7 +446,7 @@ class Innodb::Page::Index < Innodb::Page
     position = 0
     fields = {:type => description[:type], :key => [], :row => []}
 
-    description[:key].each_with_index do |d|
+    description[:key].each do |d|
       fields[:key] << Innodb::Field.new(position, *d)
       position += 1
     end
@@ -454,7 +454,7 @@ class Innodb::Page::Index < Innodb::Page
     # Account for TRX_ID and ROLL_PTR.
     position += 2
 
-    description[:row].each_with_index do |d|
+    description[:row].each do |d|
       fields[:row] << Innodb::Field.new(position, *d)
       position += 1
     end
