@@ -672,6 +672,11 @@ class Innodb::Page::Index < Innodb::Page
     ]
     puts
 
+    puts "page directory:"
+    pp directory
+    puts
+
+    puts "records:"
     puts "system records:"
     pp infimum
     pp supremum
@@ -680,16 +685,13 @@ class Innodb::Page::Index < Innodb::Page
     puts "garbage records:"
     each_garbage_record do |rec|
       pp rec
+      puts
     end
     puts
 
-    puts "page directory:"
-    pp directory
-    puts
-
-    puts "records:"
     each_record do |rec|
       pp rec
+      puts
     end
     puts
   end
