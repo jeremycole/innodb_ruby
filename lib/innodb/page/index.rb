@@ -676,7 +676,6 @@ class Innodb::Page::Index < Innodb::Page
     pp directory
     puts
 
-    puts "records:"
     puts "system records:"
     pp infimum
     pp supremum
@@ -689,6 +688,7 @@ class Innodb::Page::Index < Innodb::Page
     end
     puts
 
+    puts "records:"
     each_record do |rec|
       pp rec
       puts
