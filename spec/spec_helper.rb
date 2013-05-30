@@ -1,2 +1,2 @@
 # -*- encoding : utf-8 -*-
-require_relative "../lib/innodb"
+require File.join(File.dirname(__FILE__), '..', 'lib', 'innodb')
