@@ -125,7 +125,7 @@ describe Innodb::Space do
 
   describe "#each_index" do
     it "is enumerable" do
-      @space_ibd.each_index.should be_an_instance_of Enumerator
+      @space_ibd.each_index.should be_an_instance_of Enumerable::Enumerator
     end
 
     it "iterates through indexes" do
@@ -139,7 +139,7 @@ describe Innodb::Space do
 
   describe "#each_page" do
     it "is enumerable" do
-      @space_ibd.each_page.should be_an_instance_of Enumerator
+      @space_ibd.each_page.should be_an_instance_of Enumerable::Enumerator
     end
 
     it "iterates through pages" do
@@ -216,7 +216,7 @@ describe Innodb::Space do
 
   describe "#each_xdes_page" do
     it "is enumerable" do
-      @space_ibd.each_xdes_page.should be_an_instance_of Enumerator
+      @space_ibd.each_xdes_page.should be_an_instance_of Enumerable::Enumerator
     end
 
     it "iterates through extent descriptor pages" do
@@ -230,7 +230,7 @@ describe Innodb::Space do
 
   describe "#each_xdes" do
     it "is enumerable" do
-      @space_ibd.each_xdes.should be_an_instance_of Enumerator
+      @space_ibd.each_xdes.should be_an_instance_of Enumerable::Enumerator
     end
 
     it "iterates through extent descriptor entries" do
@@ -244,7 +244,7 @@ describe Innodb::Space do
 
   describe "#each_page_type_region" do
     it "is enumerable" do
-      @space_ibd.each_page_type_region.should be_an_instance_of Enumerator
+      @space_ibd.each_page_type_region.should be_an_instance_of Enumerable::Enumerator
     end
 
     it "iterates through page type regions" do

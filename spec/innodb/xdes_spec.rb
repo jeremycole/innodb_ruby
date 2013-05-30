@@ -78,7 +78,7 @@ describe Innodb::Xdes do
 
   describe "#each_page_status" do
     it "is an Enumerator" do
-      @xdes0.each_page_status.should be_an_instance_of Enumerator
+      @xdes0.each_page_status.should be_an_instance_of Enumerable::Enumerator
     end
 
     it "yields Hashes" do
