@@ -5,20 +5,29 @@ class Innodb::FieldType
     def initialize(type)
       @type = type
     end
-    def read(record, cursor, length)
+    def read(cursor, length)
       cursor.get_bytes(length)
+    end
+    def read_extern(cursor)
+      # An extern field contains the page address and the length
+      # of the externally stored part of the blob.
+      space_id  = cursor.get_uint32
+      page_no   = cursor.get_uint32
+      offset    = cursor.get_uint32
+      length    = cursor.get_uint64 & 0x3fffffff
+      [space_id, page_no, offset, length]
     end
   end
 
   class IntegerType < GenericType
-    def read(record, cursor, length)
+    def read(cursor, length)
       method = type.unsigned? ? :get_uint_by_size : :get_i_sint_by_size
       cursor.send(method, type.length)
     end
   end
 
   class VariableStringType < GenericType
-    def read(record, cursor, length)
+    def read(cursor, length)
       # The SQL standard defines that VARCHAR fields should have end-spaces
       # stripped off.
       super.sub(/[ ]+$/, "")
@@ -35,6 +44,7 @@ class Innodb::FieldType
     :BIGINT     => { :class => IntegerType, :length => 8 },
     :CHAR       => { :class => GenericType },
     :VARCHAR    => { :class => VariableStringType },
+    :BLOB       => { :class => GenericType },
   }
 
   def self.parse_base_type_and_modifiers(type_string)
@@ -58,6 +68,7 @@ class Innodb::FieldType
     @nullable = !properties.include?(:NOT_NULL)
     @unsigned = properties.include?(:UNSIGNED)
     @variable = false
+    @blob = false
     case
     when TYPES[base_type][:class] == IntegerType
       @length = TYPES[base_type][:length]
@@ -65,6 +76,9 @@ class Innodb::FieldType
       @length = modifiers[0]
     when base_type == :VARCHAR
       @length = modifiers[0]
+      @variable = true
+    when base_type == :BLOB
+      @blob = true
       @variable = true
     else
       raise "Data type '#{type_string}' is not supported"
@@ -82,6 +96,10 @@ class Innodb::FieldType
 
   def variable?
     @variable
+  end
+
+  def blob?
+    @blob
   end
 
   def name_suffix
