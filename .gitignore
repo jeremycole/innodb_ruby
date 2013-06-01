@@ -1,5 +1,6 @@
 *.gem
 *.png
 *.ibd
+!spec/data/*.ibd
 *.page_info
 ._*
