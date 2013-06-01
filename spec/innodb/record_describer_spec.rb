@@ -36,7 +36,7 @@ describe Innodb::RecordDescriber do
 
   describe "#each_record" do
     it "iterates through records" do
-      @space.index(3).each_record.to_a.size.should eql 1
+      @space.index(3).each_record.to_a.size.should eql 2
     end
   end
 
