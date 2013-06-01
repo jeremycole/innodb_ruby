@@ -138,6 +138,7 @@ class Innodb::Index
 
     while page && page.type == :INDEX
       yield page
+      break unless page.next
       page = page(page.next)
     end
   end

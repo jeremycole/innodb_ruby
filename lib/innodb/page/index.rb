@@ -324,9 +324,11 @@ class Innodb::Page::Index < Innodb::Page
         header[:field_nulls] = cursor.name("field_nulls") {
           record_header_compact_null_bitmap(cursor)
         }
-        header[:field_lengths] = cursor.name("field_lengths") {
-          record_header_compact_variable_lengths(cursor, header[:field_nulls])
-        }
+        header[:field_lengths], header[:field_externs] =
+          cursor.name("field_lengths_and_externs") {
+            record_header_compact_variable_lengths_and_externs(cursor,
+              header[:field_nulls])
+          }
       end
     end
   end
@@ -342,7 +344,7 @@ class Innodb::Page::Index < Innodb::Page
     return nil unless size > 0
 
     # To simplify later checks, expand bitmap to one for each field.
-    bitmap = Array.new(fields.size, false)
+    bitmap = Array.new(fields.last.position + 1, false)
 
     null_bit_array = cursor.get_bit_array(size).reverse!
 
@@ -354,11 +356,13 @@ class Innodb::Page::Index < Innodb::Page
     return bitmap
   end
 
-  # Return an array containing the length of each variable-length field.
-  def record_header_compact_variable_lengths(cursor, null_bitmap)
+  # Return an array containing an array of the length of each variable-length
+  # field and an array indicating which fields are stored externally.
+  def record_header_compact_variable_lengths_and_externs(cursor, null_bitmap)
     fields = (record_format[:key] + record_format[:row])
 
-    len_array = Array.new(fields.size, 0)
+    len_array = Array.new(fields.last.position + 1, 0)
+    ext_array = Array.new(fields.last.position + 1, false)
 
     # For each non-NULL variable-length field, the record header contains
     # the length in one or two bytes.
@@ -366,17 +370,20 @@ class Innodb::Page::Index < Innodb::Page
       next if !f.type.variable? or (null_bitmap && null_bitmap[f.position])
 
       len = cursor.get_uint8
+      ext = false
 
       # Two bytes are used only if the length exceeds 127 bytes and the
-      # maximum length exceeds 255 bytes.
-      if len > 127 && f.type.variable && f.type.length > 255
+      # maximum length exceeds 255 bytes (or the field is a BLOB type).
+      if len > 127 && (f.type.blob? || f.type.length > 255)
+        ext = (0x40 & len) != 0
         len = ((len & 0x3f) << 8) + cursor.get_uint8
       end
 
       len_array[f.position] = len
+      ext_array[f.position] = ext
     end
 
-    return len_array
+    return len_array, ext_array
   end
 
   # Read additional header information from a redundant format record header.
@@ -492,9 +499,11 @@ class Innodb::Page::Index < Innodb::Page
 
         # Read the key fields present in all types of pages.
         this_record[:key] = []
+        this_record[:key_ext] = []
         c.name("key") do
           record_format[:key].each do |f|
             this_record[:key].push f.read(this_record, c)
+            this_record[:key_ext].push f.read_extern(this_record, c)
           end
         end
 
@@ -523,9 +532,11 @@ class Innodb::Page::Index < Innodb::Page
           (record_format[:type] == :secondary)
           # Read the non-key fields.
           this_record[:row] = []
+          this_record[:row_ext] = []
           c.name("row") do
             record_format[:row].each do |f|
               this_record[:row].push f.read(this_record, c)
+              this_record[:row_ext].push f.read_extern(this_record, c)
             end
           end
         end
