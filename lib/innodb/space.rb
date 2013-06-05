@@ -154,7 +154,13 @@ class Innodb::Space
   # a system space.
   def system_space?
     SYSTEM_SPACE_PAGE_MAP.each do |page_number, type|
-      return false unless page(page_number).type == type
+      # We can't use page() here, because system_space? need to be used
+      # in the Innodb::Page::Sys.parse to determine what type of page
+      # is being looked at. Using page() would cause us to keep recurse
+      # infinitely. Use Innodb::Page.new instead to load the page as
+      # simply as possible.
+      test_page = Innodb::Page.new(self, page_data(page_number))
+      return false unless test_page.type == type
     end
     true
   end
@@ -167,6 +173,15 @@ class Innodb::Space
   # Get the Innodb::Page::TrxSys page for a system space.
   def trx_sys
     page(5) if system_space?
+  end
+
+  def rseg_page?(page_number)
+    if trx_sys
+      trx_sys.rsegs.include?({
+        :space_id => 0,
+        :page_number => page_number,
+      })
+    end
   end
 
   # Get the Innodb::Page::SysDataDictionaryHeader page for a system space.

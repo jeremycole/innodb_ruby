@@ -76,7 +76,7 @@ describe Innodb::Space do
       @space.page(3).should be_an_instance_of Innodb::Page
       @space.page(4).should be_an_instance_of Innodb::Page::Index
       @space.page(5).should be_an_instance_of Innodb::Page::TrxSys
-      @space.page(6).should be_an_instance_of Innodb::Page
+      @space.page(6).should be_an_instance_of Innodb::Page::SysRsegHeader
       @space.page(7).should be_an_instance_of Innodb::Page::SysDataDictionaryHeader
     end
   end

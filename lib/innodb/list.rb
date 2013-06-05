@@ -191,3 +191,19 @@ class Innodb::List::Inode < Innodb::List
     end
   end
 end
+
+class Innodb::List::UndoPage < Innodb::List
+  def object_from_address(address)
+    if address && page = @space.page(address[:page])
+      page
+    end
+  end
+end
+
+class Innodb::List::History < Innodb::List
+  def object_from_address(address)
+    if address && page = @space.page(address[:page])
+      Innodb::UndoLog.new(page, address[:offset] - 34)
+    end
+  end
+end
