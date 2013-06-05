@@ -72,19 +72,6 @@ class Innodb::Page::UndoLog < Innodb::Page
     Innodb::UndoLog.new(self, pos)
   end
 
-  def dump_hex(string)
-    slice_size = 16
-    bytes = string.split("").map { |s| s.ord }
-    string.split("").each_slice(slice_size).each_with_index do |slice_bytes, slice_count|
-      puts "%08i  %-23s  %-23s  |%-16s|" % [
-        (slice_count * slice_size),
-        slice_bytes[0..8].map { |n| "%02x" % n.ord }.join(" "),
-        slice_bytes[8..16].map { |n| "%02x" % n.ord }.join(" "),
-        slice_bytes.join(""),
-      ]
-    end
-  end
-
   # Dump the contents of a page for debugging purposes.
   def dump
     super
