@@ -36,6 +36,25 @@ class Innodb::Page::TrxSys < Innodb::Page
   # which helps identify whether the structure is populated or not.
   MYSQL_LOG_MAGIC_N = 873422344
 
+  def rsegs_array(cursor)
+    @rsegs_array ||= (0...256).to_a.inject([]) do |a, n|
+      cursor.name("slot[#{n}]") do |c|
+        slot = {
+          :space_id => c.name("space_id") {
+            Innodb::Page.maybe_undefined(c.get_uint32)
+          },
+          :page_number => c.name("page_number") {
+            Innodb::Page.maybe_undefined(c.get_uint32)
+          },
+        }
+        if slot[:space_id] && slot[:page_number]
+          a << slot
+        end
+      end
+      a
+    end
+  end
+
   # Read a MySQL binary log information structure from a given position.
   def mysql_log_info(cursor, offset)
     cursor.peek(offset) do |c|
@@ -93,6 +112,9 @@ class Innodb::Page::TrxSys < Innodb::Page
         :fseg         => c.name("fseg") {
           Innodb::FsegEntry.get_inode(@space, c)
         },
+        :rsegs        => c.name("rsegs") {
+          rsegs_array(c)
+        },
         :binary_log   => c.name("binary_log") {
           mysql_log_info(c, pos_mysql_binary_log_info)
         },
@@ -106,6 +128,7 @@ class Innodb::Page::TrxSys < Innodb::Page
 
   def trx_id;       trx_sys[:trx_id];       end
   def fseg;         trx_sys[:fseg];         end
+  def rsegs;        trx_sys[:rsegs];        end
   def binary_log;   trx_sys[:binary_log];   end
   def master_log;   trx_sys[:master_log];   end
   def doublewrite;  trx_sys[:doublewrite];  end

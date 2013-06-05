@@ -331,6 +331,13 @@ def page_account(space, page_number)
         end
       end
     end
+
+    space.trx_sys.rsegs.each_with_index do |rseg_slot, index|
+      if page.fil_header[:space_id] == rseg_slot[:space_id] &&
+        page.fil_header[:offset] == rseg_slot[:page_number]
+          puts "  Page is a rollback segment in slot #{index}."
+      end
+    end
   end
 end
 
