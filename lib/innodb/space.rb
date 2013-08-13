@@ -332,6 +332,10 @@ class Innodb::Space
     end
   end
 
+  def type_for_page(page, page_status)
+    page_status[:free] ? "FREE (#{page.type})" : page.type
+  end
+
   # Iterate through unique regions in the space by page type. This is useful
   # to achieve an overall view of the space.
   def each_page_type_region(start_page=0)
@@ -341,7 +345,8 @@ class Innodb::Space
 
     region = nil
     each_page_status(start_page) do |page_number, page, page_status|
-      if region && region[:type] == (page_status[:free] ? "FREE" : page.type)
+      page_type = type_for_page(page, page_status)
+      if region && region[:type] == page_type
         region[:end] = page_number
         region[:count] += 1
       else
@@ -349,7 +354,7 @@ class Innodb::Space
         region = {
           :start => page_number,
           :end   => page_number,
-          :type  => page_status[:free] ? "FREE" : page.type,
+          :type  => page_type,
           :count => 1,
         }
       end
