@@ -315,16 +315,33 @@ class Innodb::Space
     end
   end
 
+  def each_page_status(start_page=0)
+    unless block_given?
+      return enum_for(:each_page_with_status, start_page)
+    end
+
+    each_xdes do |xdes|
+      xdes.each_page_status do |page_number, page_status|
+        next if page_number < start_page
+        next if page_number >= @pages
+
+        if this_page = page(page_number)
+          yield page_number, this_page, page_status
+        end
+      end
+    end
+  end
+
   # Iterate through unique regions in the space by page type. This is useful
   # to achieve an overall view of the space.
   def each_page_type_region(start_page=0)
     unless block_given?
-      return enum_for(:each_page_type_region)
+      return enum_for(:each_page_type_region, start_page)
     end
 
     region = nil
-    each_page(start_page) do |page_number, page|
-      if region && region[:type] == page.type
+    each_page_status(start_page) do |page_number, page, page_status|
+      if region && region[:type] == (page_status[:free] ? "FREE" : page.type)
         region[:end] = page_number
         region[:count] += 1
       else
@@ -332,7 +349,7 @@ class Innodb::Space
         region = {
           :start => page_number,
           :end   => page_number,
-          :type  => page.type,
+          :type  => page_status[:free] ? "FREE" : page.type,
           :count => 1,
         }
       end

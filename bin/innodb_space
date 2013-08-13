@@ -36,7 +36,7 @@ def print_xdes_list(list)
   list.each do |entry|
     puts "%-12i%-64s" % [
       entry.xdes[:start_page],
-      entry.each_page_status.inject("") { |bitmap, page_status|
+      entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
         bitmap += page_status[:free] ? "." : "#"
         bitmap
       },

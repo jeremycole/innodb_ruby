@@ -210,7 +210,6 @@ describe Innodb::Space do
       xdes = @space.xdes_for_page(0)
       (0 >= xdes.start_page).should eql true
       (0 <= xdes.end_page).should eql true
-      xdes.page_status(0)[:page].should eql 0
     end
   end
 

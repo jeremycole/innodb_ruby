@@ -95,7 +95,7 @@ class Innodb::Xdes
   # implemented and could be done better.
   def page_status(page_number)
     page_status_array = each_page_status.to_a
-    page_status_array[page_number - xdes[:start_page]]
+    page_status_array[page_number - xdes[:start_page]][1]
   end
 
   # Iterate through all pages represented by this extent descriptor,
@@ -118,11 +118,10 @@ class Innodb::Xdes
         page_number = xdes[:start_page] + (byte_index * 4) + page_index
         page_bits = ((byte >> (page * BITS_PER_PAGE)) & BITMAP_BV_ALL)
         page_status = {
-          :page   => page_number,
           :free   => (page_bits & BITMAP_BV_FREE  != 0),
           :clean  => (page_bits & BITMAP_BV_CLEAN != 0),
         }
-        yield page_status
+        yield page_number, page_status
       end
     end
 
@@ -131,7 +130,10 @@ class Innodb::Xdes
 
   # Return the count of free pages (free bit is true) on this extent.
   def free_pages
-    each_page_status.inject(0) { |sum, p| sum += 1 if p[:free]; sum }
+    each_page_status.inject(0) do |sum, (page_number, page_status)|
+      sum += 1 if page_status[:free]
+      sum
+    end
   end
 
   # Return the count of used pages (free bit is false) on this extent.

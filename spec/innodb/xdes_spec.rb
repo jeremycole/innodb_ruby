@@ -69,8 +69,7 @@ describe Innodb::Xdes do
     it "returns the status of a page" do
       status = @xdes0.page_status(0)
       status.should be_an_instance_of Hash
-      status.size.should eql 3
-      status[:page].should eql 0
+      status.size.should eql 2
       status[:free].should eql false
       status[:clean].should eql true
     end
@@ -82,13 +81,12 @@ describe Innodb::Xdes do
     end
 
     it "yields Hashes" do
-      @xdes0.each_page_status.to_a.map { |v| v.class }.uniq.should eql [Hash]
+      @xdes0.each_page_status.to_a.map { |v| v[1].class }.uniq.should eql [Hash]
     end
 
     it "yields Hashes with the right keys and values" do
-      status = @xdes0.each_page_status.to_a.first
-      status.size.should eql 3
-      status[:page].should eql 0
+      status = @xdes0.each_page_status.to_a.first[1]
+      status.size.should eql 2
       status[:free].should eql false
       status[:clean].should eql true
     end
