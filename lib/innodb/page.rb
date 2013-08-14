@@ -118,7 +118,7 @@ class Innodb::Page
       :usage => "page type field has not been initialized",
     },
     :UNDO_LOG => {
-      :value => 1,
+      :value => 2,
       :description => "Undo log",
       :usage => "stores previous values of modified records",
     },
