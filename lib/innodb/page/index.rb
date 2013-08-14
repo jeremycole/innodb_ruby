@@ -459,8 +459,10 @@ class Innodb::Page::Index < Innodb::Page
       position += 1
     end
 
-    # Account for TRX_ID and ROLL_PTR.
-    position += 2
+    if description[:type] == :clustered
+      # Account for TRX_ID and ROLL_PTR.
+      position += 2
+    end
 
     description[:row].each do |d|
       fields[:row] << Innodb::Field.new(position, *d)
