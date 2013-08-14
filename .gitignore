@@ -4,3 +4,4 @@
 !spec/data/*.ibd
 *.page_info
 ._*
+tags
