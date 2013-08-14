@@ -112,20 +112,74 @@ class Innodb::Page
 
   # InnoDB Page Type constants from include/fil0fil.h.
   PAGE_TYPE = {
-    0     => :ALLOCATED,      # Freshly allocated page
-    2     => :UNDO_LOG,       # Undo log page
-    3     => :INODE,          # Index node
-    4     => :IBUF_FREE_LIST, # Insert buffer free list
-    5     => :IBUF_BITMAP,    # Insert buffer bitmap
-    6     => :SYS,            # System page
-    7     => :TRX_SYS,        # Transaction system data
-    8     => :FSP_HDR,        # File space header
-    9     => :XDES,           # Extent descriptor page
-    10    => :BLOB,           # Uncompressed BLOB page
-    11    => :ZBLOB,          # First compressed BLOB page
-    12    => :ZBLOB2,         # Subsequent compressed BLOB page
-    17855 => :INDEX,          # B-tree node
+    :ALLOCATED => {
+      :value => 0,
+      :description => "Freshly allocated",
+      :usage => "page type field has not been initialized",
+    },
+    :UNDO_LOG => {
+      :value => 1,
+      :description => "Undo log",
+      :usage => "stores previous values of modified records",
+    },
+    :INODE => {
+      :value => 3,
+      :description => "File segment inode",
+      :usage => "bookkeeping for file segments",
+    },
+    :IBUF_FREE_LIST => {
+      :value => 4,
+      :description => "Insert buffer free list",
+      :usage => "bookkeeping for insert buffer free space management",
+    },
+    :IBUF_BITMAP => {
+      :value => 5,
+      :description => "Insert buffer bitmap",
+      :usage => "bookkeeping for insert buffer writes to be merged",
+    },
+    :SYS => {
+      :value => 6,
+      :description => "System internal",
+      :usage => "used for various purposes in the system tablespace",
+    },
+    :TRX_SYS => {
+      :value => 7,
+      :description => "Transaction system header",
+      :usage => "bookkeeping for the transaction system in system tablespace",
+    },
+    :FSP_HDR => {
+      :value => 8,
+      :description => "File space header",
+      :usage => "header page (page 0) for each tablespace file",
+    },
+    :XDES => {
+      :value => 9,
+      :description => "Extent descriptor",
+      :usage => "header page for subsequent blocks of 16,384 pages",
+    },
+    :BLOB => {
+      :value => 10,
+      :description => "Uncompressed BLOB",
+      :usage => "externally-stored uncompressed BLOB column data",
+    },
+    :ZBLOB => {
+      :value => 11,
+      :description => "First compressed BLOB",
+      :usage => "externally-stored compressed BLOB column data, first page",
+    },
+    :ZBLOB2 => {
+      :value => 12,
+      :description => "Subsequent compressed BLOB",
+      :usage => "externally-stored compressed BLOB column data, subsequent page",
+    },
+    :INDEX => {
+      :value => 17855,
+      :description => "B+Tree index",
+      :usage => "table and index data stored in B+Tree structure",
+    },
   }
+
+  PAGE_TYPE_BY_VALUE = PAGE_TYPE.inject({}) { |h, (k, v)| h[v[:value]] = k; h }
 
   # A helper to convert "undefined" values stored in previous and next pointers
   # in the page header to nil.
@@ -146,7 +200,7 @@ class Innodb::Page
           Innodb::Page.maybe_undefined(c.get_uint32)
         },
         :lsn        => c.name("lsn") { c.get_uint64 },
-        :type       => c.name("type") { PAGE_TYPE[c.get_uint16] },
+        :type       => c.name("type") { PAGE_TYPE_BY_VALUE[c.get_uint16] },
         :flush_lsn  => c.name("flush_lsn") { c.get_uint64 },
         :space_id   => c.name("space_id") { c.get_uint32 },
       }

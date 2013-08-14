@@ -12,14 +12,30 @@ describe Innodb::Page do
     it "is a Hash" do
       Innodb::Page::PAGE_TYPE.should be_an_instance_of Hash
     end
-    
-    it "has only Fixnum keys" do
+
+    it "has only Symbol keys" do
       classes = Innodb::Page::PAGE_TYPE.keys.map { |k| k.class }.uniq
+      classes.should eql [Symbol]
+    end
+
+    it "has only Hash values" do
+      classes = Innodb::Page::PAGE_TYPE.values.map { |v| v.class }.uniq
+      classes.should eql [Hash]
+    end
+  end
+
+  describe "::PAGE_TYPE_BY_VALUE" do
+    it "is a Hash" do
+      Innodb::Page::PAGE_TYPE_BY_VALUE.should be_an_instance_of Hash
+    end
+
+    it "has only Fixnum keys" do
+      classes = Innodb::Page::PAGE_TYPE_BY_VALUE.keys.map { |k| k.class }.uniq
       classes.should eql [Fixnum]
     end
 
     it "has only Symbol values" do
-      classes = Innodb::Page::PAGE_TYPE.values.map { |v| v.class }.uniq
+      classes = Innodb::Page::PAGE_TYPE_BY_VALUE.values.map { |v| v.class }.uniq
       classes.should eql [Symbol]
     end
   end
@@ -28,14 +44,16 @@ describe Innodb::Page do
     it "is a Hash" do
       Innodb::Page::SPECIALIZED_CLASSES.should be_an_instance_of Hash
     end
-    
+
     it "has only Symbol keys" do
       classes = Innodb::Page::SPECIALIZED_CLASSES.keys.map { |k| k.class }.uniq
       classes.should eql [Symbol]
     end
 
-    it "has only keys that are values in ::PAGE_TYPE" do
-      checks = Innodb::Page::SPECIALIZED_CLASSES.keys.map { |k| Innodb::Page::PAGE_TYPE.values.include? k }.uniq
+    it "has only keys that are keys in ::PAGE_TYPE" do
+      checks = Innodb::Page::SPECIALIZED_CLASSES.keys.map { |k|
+        Innodb::Page::PAGE_TYPE.include? k
+      }.uniq
       checks.should eql [true]
     end
 

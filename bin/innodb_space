@@ -262,7 +262,12 @@ def page_account(space, page_number)
   end
 
   page = space.page(page_number)
-  puts "  Page type is #{page.type}."
+  page_type = Innodb::Page::PAGE_TYPE[page.type]
+  puts "  Page type is %s (%s, %s)." % [
+    page.type,
+    page_type[:description],
+    page_type[:usage],
+  ]
 
   xdes = space.xdes_for_page(page_number)
   puts "  Extent descriptor for pages %d-%d is at page %d, offset %d." % [

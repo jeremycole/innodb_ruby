@@ -57,7 +57,7 @@ class Innodb::Space
     # to offset 0 and page type :FSP_HDR (8).
     page_offset = BinData::Uint32be.read(read_at_offset(4, 4))
     page_type   = BinData::Uint16be.read(read_at_offset(24, 2))
-    unless page_offset == 0 && Innodb::Page::PAGE_TYPE[page_type] == :FSP_HDR
+    unless page_offset == 0 && Innodb::Page::PAGE_TYPE_BY_VALUE[page_type] == :FSP_HDR
       raise "Something is very wrong; Page 0 does not seem to be type FSP_HDR"
     end
 
