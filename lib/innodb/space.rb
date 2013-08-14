@@ -165,14 +165,24 @@ class Innodb::Space
     true
   end
 
+  # Return the page number for the space's FSP_HDR page.
+  def page_fsp_hdr
+    0
+  end
+
   # Get (and cache) the FSP header from the FSP_HDR page.
   def fsp
-    @fsp ||= page(0).fsp_header
+    @fsp ||= page(page_fsp_hdr).fsp_header
+  end
+
+  # Return the page number for the space's TRX_SYS page.
+  def page_trx_sys
+    5
   end
 
   # Get the Innodb::Page::TrxSys page for a system space.
   def trx_sys
-    page(5) if system_space?
+    page(page_trx_sys) if system_space?
   end
 
   def rseg_page?(page_number)
@@ -184,9 +194,14 @@ class Innodb::Space
     end
   end
 
+  # Return the page number for the space's SYS data dictionary header.
+  def page_sys_data_dictionary
+    7
+  end
+
   # Get the Innodb::Page::SysDataDictionaryHeader page for a system space.
   def data_dictionary
-    page(7) if system_space?
+    page(page_sys_data_dictionary) if system_space?
   end
 
   # Get an Innodb::List object for a specific list by list name.
