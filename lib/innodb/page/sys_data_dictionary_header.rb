@@ -1,5 +1,18 @@
 # -*- encoding : utf-8 -*-
+
+require "innodb/data_dictionary"
+
 class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
+  RECORD_DESCRIBERS = {
+    :SYS_TABLES  => {
+      :PRIMARY => Innodb::DataDictionary::SYS_TABLES_PRIMARY,
+      :ID => Innodb::DataDictionary::SYS_TABLES_ID
+    },
+    :SYS_COLUMNS => { :PRIMARY => Innodb::DataDictionary::SYS_COLUMNS_PRIMARY },
+    :SYS_INDEXES => { :PRIMARY => Innodb::DataDictionary::SYS_INDEXES_PRIMARY },
+    :SYS_FIELDS  => { :PRIMARY => Innodb::DataDictionary::SYS_FIELDS_PRIMARY },
+  }
+
   # The position of the data dictionary header within the page.
   def pos_data_dictionary_header
     pos_fil_header + size_fil_header
@@ -53,7 +66,7 @@ class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
     record_describer = RECORD_DESCRIBERS[table_name] &&
                        RECORD_DESCRIBERS[table_name][index_name]
 
-    @space.index(index_root_page, record_describer)
+    @space.index(index_root_page, record_describer.new)
   end
 
   # Iterate through all indexes in the data dictionary, yielding the table
@@ -77,103 +90,4 @@ class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
     puts "data_dictionary header:"
     pp data_dictionary_header
   end
-
-  # A record describer for SYS_TABLES clustered records.
-  class SYS_TABLES_PRIMARY
-    def self.cursor_sendable_description(page)
-      {
-        :type => :clustered,
-        :key => [
-          ["VARCHAR(100)",      :NOT_NULL],       # NAME
-        ],
-        :row => [
-          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # ID
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # N_COLS
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # TYPE
-          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # MIX_ID
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # MIX_LEN
-          ["VARCHAR(100)",      :NOT_NULL],       # CLUSTER_NAME
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # SPACE
-        ]
-      }
-    end
-  end
-
-  # A record describer for SYS_TABLES secondary key on ID.
-  class SYS_TABLES_ID
-    def self.cursor_sendable_description(page)
-      {
-        :type => :secondary,
-        :key => [
-          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # ID
-        ],
-        :row => [
-          ["VARCHAR(100)",      :NOT_NULL],       # NAME
-        ]
-      }
-    end
-  end
-
-  # A record describer for SYS_COLUMNS clustered records.
-  class SYS_COLUMNS_PRIMARY
-    def self.cursor_sendable_description(page)
-      {
-        :type => :clustered,
-        :key => [
-          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # TABLE_ID
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # POS
-        ],
-        :row => [
-          ["VARCHAR(100)",      :NOT_NULL],       # NAME
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # MTYPE
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # PRTYPE
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # LEN
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # PREC
-        ]
-      }
-    end
-  end
-
-  # A record describer for SYS_INDEXES clustered records.
-  class SYS_INDEXES_PRIMARY
-    def self.cursor_sendable_description(page)
-      {
-        :type => :clustered,
-        :key => [
-          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # TABLE_ID
-          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # ID
-        ],
-        :row => [
-          ["VARCHAR(100)",      :NOT_NULL],       # NAME
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # N_FIELDS
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # TYPE
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # SPACE
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # PAGE_NO
-        ]
-      }
-    end
-  end
-
-  # A record describer for SYS_FIELDS clustered records.
-  class SYS_FIELDS_PRIMARY
-    def self.cursor_sendable_description(page)
-      {
-        :type => :clustered,
-        :key => [
-          [:BIGINT, :UNSIGNED,  :NOT_NULL],       # INDEX_ID
-          [:INT,    :UNSIGNED,  :NOT_NULL],       # POS
-        ],
-        :row => [
-          ["VARCHAR(100)",      :NOT_NULL],       # COL_NAME
-        ]
-      }
-    end
-  end
-
-  RECORD_DESCRIBERS = {
-    :SYS_TABLES  => { :PRIMARY => SYS_TABLES_PRIMARY, :ID => SYS_TABLES_ID },
-    :SYS_COLUMNS => { :PRIMARY => SYS_COLUMNS_PRIMARY },
-    :SYS_INDEXES => { :PRIMARY => SYS_INDEXES_PRIMARY },
-    :SYS_FIELDS  => { :PRIMARY => SYS_FIELDS_PRIMARY },
-  }
 end

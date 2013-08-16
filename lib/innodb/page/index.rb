@@ -335,22 +335,22 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return an array indicating which fields are null.
   def record_header_compact_null_bitmap(cursor)
-    fields = (record_format[:key] + record_format[:row])
+    columns = (record_format[:key] + record_format[:row])
 
     # The number of bits in the bitmap is the number of nullable fields.
-    size = fields.count { |f| f.type.nullable? }
+    size = columns.count { |c| c[:field].type.nullable? }
 
     # There is no bitmap if there are no nullable fields.
     return nil unless size > 0
 
     # To simplify later checks, expand bitmap to one for each field.
-    bitmap = Array.new(fields.last.position + 1, false)
+    bitmap = Array.new(columns.last[:field].position + 1, false)
 
     null_bit_array = cursor.get_bit_array(size).reverse!
 
     # For every nullable field, set whether the field is actually null.
-    fields.each do |f|
-      bitmap[f.position] = f.type.nullable? ? (null_bit_array.shift == 1) : false
+    columns.each do |c|
+      bitmap[c[:field].position] = c[:field].type.nullable? ? (null_bit_array.shift == 1) : false
     end
 
     return bitmap
@@ -359,14 +359,15 @@ class Innodb::Page::Index < Innodb::Page
   # Return an array containing an array of the length of each variable-length
   # field and an array indicating which fields are stored externally.
   def record_header_compact_variable_lengths_and_externs(cursor, null_bitmap)
-    fields = (record_format[:key] + record_format[:row])
+    columns = (record_format[:key] + record_format[:row])
 
-    len_array = Array.new(fields.last.position + 1, 0)
-    ext_array = Array.new(fields.last.position + 1, false)
+    len_array = Array.new(columns.last[:field].position + 1, 0)
+    ext_array = Array.new(columns.last[:field].position + 1, false)
 
     # For each non-NULL variable-length field, the record header contains
     # the length in one or two bytes.
-    fields.each do |f|
+    columns.each do |c|
+      f = c[:field]
       next if !f.type.variable? or (null_bitmap && null_bitmap[f.position])
 
       len = cursor.get_uint8
@@ -449,13 +450,16 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return a set of field objects that describe the record.
   def make_record_description
-    description = record_describer.cursor_sendable_description(self)
+    description = record_describer.description
 
     position = 0
     fields = {:type => description[:type], :key => [], :row => []}
 
-    description[:key].each do |d|
-      fields[:key] << Innodb::Field.new(position, *d)
+    description[:key].each do |field|
+      fields[:key] << {
+        :name => field[:name],
+        :field => Innodb::Field.new(position, *field[:type]),
+      }
       position += 1
     end
 
@@ -464,8 +468,11 @@ class Innodb::Page::Index < Innodb::Page
       position += 2
     end
 
-    description[:row].each do |d|
-      fields[:row] << Innodb::Field.new(position, *d)
+    description[:row].each do |field|
+      fields[:row] << {
+        :name => field[:name],
+        :field => Innodb::Field.new(position, *field[:type]),
+      }
       position += 1
     end
 
@@ -501,11 +508,13 @@ class Innodb::Page::Index < Innodb::Page
 
         # Read the key fields present in all types of pages.
         this_record[:key] = []
-        this_record[:key_ext] = []
-        c.name("key") do
-          record_format[:key].each do |f|
-            this_record[:key].push f.read(this_record, c)
-            this_record[:key_ext].push f.read_extern(this_record, c)
+        record_format[:key].each do |column|
+          c.name("key[#{column[:name]}]") do
+            this_record[:key] << {
+              :name => column[:name],
+              :value => column[:field].read(this_record, c),
+              :extern => column[:field].read_extern(this_record, c),
+            }
           end
         end
 
@@ -534,11 +543,13 @@ class Innodb::Page::Index < Innodb::Page
           (record_format[:type] == :secondary)
           # Read the non-key fields.
           this_record[:row] = []
-          this_record[:row_ext] = []
-          c.name("row") do
-            record_format[:row].each do |f|
-              this_record[:row].push f.read(this_record, c)
-              this_record[:row_ext].push f.read_extern(this_record, c)
+          record_format[:row].each do |column|
+            c.name("row[#{column[:name]}]") do
+              this_record[:row] << {
+                :name => column[:name],
+                :value => column[:field].read(this_record, c),
+                :extern => column[:field].read_extern(this_record, c),
+              }
             end
           end
         end

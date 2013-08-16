@@ -201,7 +201,7 @@ class Innodb::Index
       puts "linear_search_from_cursor: page=%i, level=%i, start=(%s)" % [
         page.offset,
         page.level,
-        this_rec && this_rec[:key].join(", "),
+        this_rec && this_rec[:key].map { |r| r[:value] }.join(", "),
       ]
     end
 
@@ -214,19 +214,19 @@ class Innodb::Index
         puts "linear_search_from_cursor: page=%i, level=%i, current=(%s)" % [
           page.offset,
           page.level,
-          this_rec && this_rec[:key].join(", "),
+          this_rec && this_rec[:key].map { |r| r[:value] }.join(", "),
         ]
       end
 
       # If we reach supremum, return the last non-system record we got.
       return this_rec if next_rec[:header][:type] == :supremum
 
-      if compare_key(key, this_rec[:key]) < 0
+      if compare_key(key, this_rec[:key][:value]) < 0
         return this_rec
       end
 
-      if (compare_key(key, this_rec[:key]) >= 0) &&
-        (compare_key(key, next_rec[:key]) < 0)
+      if (compare_key(key, this_rec[:key][:value]) >= 0) &&
+        (compare_key(key, next_rec[:key][:value]) < 0)
         # The desired key is either an exact match for this_rec or is greater
         # than it but less than next_rec. If this is a non-leaf page, that
         # will mean that the record will fall on the leaf page this node
@@ -263,7 +263,7 @@ class Innodb::Index
         page.level,
         dir.size,
         mid,
-        rec[:key] && rec[:key].join(", "),
+        rec[:key] && rec[:key].map { |r| r[:value] }.join(", "),
       ]
     end
 
@@ -276,7 +276,7 @@ class Innodb::Index
     end
 
     # Compare the desired key to the mid-point record's key.
-    case compare_key(key, rec[:key])
+    case compare_key(key, rec[:key][:value])
     when 0
       # An exact match for the key was found. Return the record.
       @stats[:binary_search_by_directory_exact_match] += 1
@@ -292,7 +292,7 @@ class Innodb::Index
         binary_search_by_directory(page, dir[mid...dir.size], key)
       else
         next_rec = page.record(dir[mid+1])
-        next_key = next_rec && compare_key(key, next_rec[:key])
+        next_key = next_rec && compare_key(key, next_rec[:key][:value])
         if dir.size == 1 || next_key == -1 || next_key == 0
           # This is the last entry remaining from the directory, or our key is
           # greater than rec and less than rec+1's key. Use linear search to
@@ -350,7 +350,7 @@ class Innodb::Index
         # We're on a leaf page, so return the page and record if there is a
         # match. If there is no match, break the loop and cause nil to be
         # returned.
-        return page, rec if compare_key(key, rec[:key]) == 0
+        return page, rec if compare_key(key, rec[:key][:value]) == 0
         break
       end
     end
@@ -383,7 +383,7 @@ class Innodb::Index
         # We're on a leaf page, so return the page and record if there is a
         # match. If there is no match, break the loop and cause nil to be
         # returned.
-        return page, rec if compare_key(key, rec[:key]) == 0
+        return page, rec if compare_key(key, rec[:key][:value]) == 0
         break
       end
     end
