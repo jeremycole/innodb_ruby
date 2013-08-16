@@ -423,7 +423,7 @@ def index_recurse(index)
     lambda do |parent_page, child_page, child_min_key, depth|
       puts "%sNODE POINTER RECORD >= (%s) -> #%i" % [
         "  " * depth,
-        child_min_key.join(", "),
+        child_min_key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", "),
         child_page.offset,
       ]
     end
