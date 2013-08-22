@@ -35,6 +35,7 @@ Gem::Specification.new do |s|
     'lib/innodb/page/sys_rseg_header.rb',
     'lib/innodb/page/trx_sys.rb',
     'lib/innodb/page/undo_log.rb',
+    'lib/innodb/record.rb',
     'lib/innodb/record_describer.rb',
     'lib/innodb/space.rb',
     'lib/innodb/undo_log.rb',

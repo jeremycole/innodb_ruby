@@ -35,23 +35,23 @@ describe Innodb::RecordDescriber do
   describe "first record" do
     it "has one NULL field" do
       rec = @space.index(3).each_record.next
-      rec[:header][:field_nulls].count(true).should eql 1
+      rec.header[:field_nulls].count(true).should eql 1
     end
 
     it "has one externally stored field" do
       rec = @space.index(3).each_record.next
-      rec[:header][:field_externs].count(true).should eql 1
+      rec.header[:field_externs].count(true).should eql 1
     end
 
     it "key is (1)" do
       rec = @space.index(3).each_record.next
-      fields = rec[:key].each
+      fields = rec.key.each
       fields.next[:value].should eql 1
     end
 
     it "row is (-1, '1' * 64, 1, '1' * 128, 1, NULL, 1, '1' * 16384)" do
       rec = @space.index(3).each_record.next
-      fields = rec[:row].each
+      fields = rec.row.each
       fields.next[:value].should eql -1
       fields.next[:value].should eql '1' * 64
       fields.next[:value].should eql 1
@@ -64,7 +64,7 @@ describe Innodb::RecordDescriber do
 
     it "external reference field is [4, 4, 38, 15616]" do
       rec = @space.index(3).each_record.next
-      extern = rec[:row].last[:extern]
+      extern = rec.row.last[:extern]
       extern[:space_id].should eql 4
       extern[:page_number].should eql 4
       extern[:offset].should eql 38

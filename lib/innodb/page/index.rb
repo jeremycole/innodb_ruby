@@ -429,12 +429,12 @@ class Innodb::Page::Index < Innodb::Page
   def system_record(offset)
     cursor(offset).name("record[#{offset}]") do |c|
       header = c.peek { record_header(c) }
-      {
+      Innodb::Record.new({
         :offset => offset,
         :header => header,
         :next => header[:next],
         :data => c.name("data") { c.get_bytes(size_mum_record) },
-      }
+      })
     end
   end
 
@@ -563,7 +563,7 @@ class Innodb::Page::Index < Innodb::Page
         end
       end
 
-      this_record
+      Innodb::Record.new(this_record)
     end
   end
 
@@ -584,13 +584,13 @@ class Innodb::Page::Index < Innodb::Page
       if record == @page.supremum
         # We've reached the end of the linked list at supremum.
         @offset = nil
-      elsif record[:next] == @offset
+      elsif record.next == @offset
         # The record links to itself; go ahead and return it (once), but set
         # the next offset to nil to end the loop.
         @offset = nil
         record
       else
-        @offset = record[:next]
+        @offset = record.next
         record
       end
     end
@@ -603,7 +603,7 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return the first record on this page.
   def first_record
-    first = record(infimum[:next])
+    first = record(infimum.next)
     first if first != supremum
   end
 
@@ -613,7 +613,7 @@ class Innodb::Page::Index < Innodb::Page
       return enum_for(:each_record)
     end
 
-    c = record_cursor(infimum[:next])
+    c = record_cursor(infimum.next)
 
     while rec = c.record
       yield rec
@@ -651,7 +651,7 @@ class Innodb::Page::Index < Innodb::Page
     end
 
     each_record do |rec|
-      yield rec[:child_page_number], rec[:key]
+      yield rec.child_page_number, rec.key
     end
 
     nil
@@ -701,20 +701,20 @@ class Innodb::Page::Index < Innodb::Page
     puts
 
     puts "system records:"
-    pp infimum
-    pp supremum
+    pp infimum.record
+    pp supremum.record
     puts
 
     puts "garbage records:"
     each_garbage_record do |rec|
-      pp rec
+      pp rec.record
       puts
     end
     puts
 
     puts "records:"
     each_record do |rec|
-      pp rec
+      pp rec.record
       puts
     end
     puts

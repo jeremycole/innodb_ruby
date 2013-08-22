@@ -105,19 +105,19 @@ describe Innodb::Page::Index do
 
   describe "#system_record" do
     it "can read infimum" do
-      rec = @page.system_record(@page.pos_infimum)
-      rec.should be_an_instance_of Hash
-      rec[:data].should eql "infimum\x00"
-      rec[:header].should be_an_instance_of Hash
-      rec[:header][:type].should eql :infimum
+      rec = @page.infimum
+      rec.should be_an_instance_of Innodb::Record
+      rec.record[:data].should eql "infimum\x00"
+      rec.header.should be_an_instance_of Hash
+      rec.header[:type].should eql :infimum
     end
 
     it "can read supremum" do
-      rec = @page.system_record(@page.pos_supremum)
-      rec.should be_an_instance_of Hash
-      rec[:data].should eql "supremum"
-      rec[:header].should be_an_instance_of Hash
-      rec[:header][:type].should eql :supremum
+      rec = @page.supremum
+      rec.should be_an_instance_of Innodb::Record
+      rec.record[:data].should eql "supremum"
+      rec.header.should be_an_instance_of Hash
+      rec.header[:type].should eql :supremum
     end
   end
 end

@@ -386,16 +386,16 @@ def page_directory_summary(page)
 
   page.directory.each_with_index do |offset, slot|
     record = page.record(offset)
-    key = if [:conventional, :node_pointer].include? record[:header][:type]
-      if record[:key]
-        "(%s)" % record[:key].map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", ")
+    key = if [:conventional, :node_pointer].include? record.header[:type]
+      if record.key
+        "(%s)" % record.key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", ")
       end
     end
     puts "%-8i%-8i%-14s%-8i%s" % [
       slot,
       offset,
-      record[:header][:type],
-      record[:header][:n_owned],
+      record.header[:type],
+      record.header[:n_owned],
       key,
     ]
   end
@@ -443,8 +443,8 @@ def index_recurse(index)
         page.each_record do |record|
           puts "%sRECORD: (%s) -> (%s)" % [
             "  " * (depth+1),
-            record[:key].map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", "),
-            record[:row].map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", "),
+            record.key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", "),
+            record.row.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", "),
           ]
         end
       end
@@ -513,7 +513,7 @@ def index_level_summary(index, levels)
         page.record_space,
         page.free_space,
         page.records,
-        page.first_record[:key].map { |r| r[:value] }.join("|"),
+        page.first_record.key.map { |r| r[:value] }.join("|"),
       ]
     end
   end
