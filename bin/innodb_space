@@ -113,6 +113,35 @@ def space_page_type_regions(space, start_page)
   end
 end
 
+def space_page_type_summary(space, start_page)
+  # Count of pages encountered; Shouldn't be space.pages since we may skip
+  # some pages due to the start_page parameter.
+  page_count = 0
+  # A Hash of page type => count.
+  page_type = Hash.new(0)
+  space.each_page(start_page) do |page_number, page|
+    page_count += 1
+    page_type[page.type] += 1
+  end
+
+  puts "%-20s%-12s%-12s%-20s" % [
+    "type",
+    "count",
+    "percent",
+    "description",
+  ]
+
+  # Sort the page type Hash by count, descending.
+  page_type.sort { |a, b| b[1] <=> a[1] }.each do |type, type_count|
+    puts "%-20s%-12i%-12.2f%-20s" % [
+      type,
+      type_count,
+      100.0 * (type_count.to_f / page_count.to_f),
+      Innodb::Page::PAGE_TYPE[type][:description],
+    ]
+  end
+end
+
 def space_lists(space)
   print_lists(space.page(0).each_list)
 end
@@ -547,6 +576,10 @@ The following modes are supported:
     provide an overall view of the space and allocations within it. A starting
     page number can be provided with the --page/-p argument.
 
+ space-page-type-summary
+   Summarize all pages by type. A starting page number can be provided with
+   the --page/-p argument.
+
   space-indexes
     Summarize all indexes (actually each segment of the indexes) to show
     the number of pages used and allocated, and the segment fill factor.
@@ -721,6 +754,8 @@ ARGV.each do |mode|
     space_index_pages_free_plot(space, name, @options.pages.first || 0)
   when "space-page-type-regions"
     space_page_type_regions(space, @options.pages.first || 0)
+  when "space-page-type-summary"
+    space_page_type_summary(space, @options.pages.first || 0)
   when "space-lists"
     space_lists(space)
   when "space-list-iterate"
