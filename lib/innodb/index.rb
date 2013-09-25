@@ -97,6 +97,10 @@ class Innodb::Index
     @root.fseg_header[name]
   end
 
+  def field_names
+    record_describer.field_names
+  end
+
   # Iterate through all file segments in the index.
   def each_fseg
     unless block_given?

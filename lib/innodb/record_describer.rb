@@ -109,4 +109,30 @@ class Innodb::RecordDescriber
   def row(name, *type)
     add_field :row, name, type
   end
+
+  def field_names
+    names = []
+    [:key, :row].each do |group|
+      names += description[group].map { |n| n[:name] }
+    end
+    names
+  end
+
+  def generate_class(name="Describer_#{object_id}")
+    str = "class #{name}\n"
+    str << "  type %s\n" % [
+      description[:type].inspect
+    ]
+    [:key, :row].each do |group|
+      description[group].each do |item|
+        str << "  %s %s, %s\n" % [
+          group,
+          item[:name].inspect,
+          item[:type].map { |s| s.inspect }.join(", "),
+        ]
+      end
+    end
+    str << "end\n"
+    str
+  end
 end

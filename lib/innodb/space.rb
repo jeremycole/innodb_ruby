@@ -175,6 +175,10 @@ class Innodb::Space
     @fsp ||= page(page_fsp_hdr).fsp_header
   end
 
+  def space_id
+    fsp[:space_id]
+  end
+
   # Return the page number for the space's TRX_SYS page.
   def page_trx_sys
     5

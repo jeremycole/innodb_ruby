@@ -9,6 +9,10 @@ class Innodb::Record
     record[:header]
   end
 
+  def offset
+    record[:offset]
+  end
+
   def next
     record[:next]
   end

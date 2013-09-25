@@ -270,22 +270,22 @@ class Innodb::Cursor
 
   # Read an InnoDB-compressed unsigned 32-bit integer.
   def get_ic_uint32
-    flag = peek { get_uint8 }
+    flag = peek { name("ic_uint32") { get_uint8 } }
 
     case
     when flag < 0x80
-      get_uint8
+      name("uint8") { get_uint8 }
     when flag < 0xc0
-      get_uint16 & 0x7fff
+      name("uint16") { get_uint16 } & 0x7fff
     when flag < 0xe0
-      get_uint24 & 0x3fffff
+      name("uint24") { get_uint24 } & 0x3fffff
     when flag < 0xf0
-      get_uint32 & 0x1fffffff
+      name("uint32") { get_uint32 } & 0x1fffffff
     when flag == 0xf0
       adjust(+1) # Skip the flag.
-      get_uint32
+      name("uint32+1") { get_uint32 }
     else
-      raise "Invalid flag #{flag.to_s(16)} seen"
+      raise "Invalid flag #{flag.to_s} seen"
     end
   end
 

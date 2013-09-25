@@ -459,6 +459,26 @@ def index_recurse(index)
   )
 end
 
+def index_record_offsets(index)
+  puts "%-20s%-20s" % [
+    "page_offset",
+    "record_offset",
+  ]
+  index.recurse(
+    lambda do |page, depth|
+      if page.level == 0
+        page.each_record do |record|
+          puts "%-20i%-20i" % [
+            page.offset,
+            record.offset,
+          ]
+        end
+      end
+    end,
+    lambda { |*x| }
+  )
+end
+
 def index_digraph(index)
   puts "digraph btree {"
   puts "  rankdir = LR;"
@@ -615,6 +635,10 @@ The following modes are supported:
     pages. A record describer must be provided with the --describer/-d argument
     to recurse indexes (in order to parse node pages).
 
+  index-record-offsets
+    Recurse an index as index-recurse does, but print the offsets of each
+    record within the page.
+
   index-digraph
     Recurse an index as index-recurse does, but print a dot-compatible digraph
     instead of a human-readable summary.
@@ -649,23 +673,29 @@ Signal.trap("INT")  { exit }
 Signal.trap("PIPE") { exit }
 
 @options = OpenStruct.new
-@options.file   = nil
-@options.page_size = nil
-@options.pages  = []
-@options.levels = []
-@options.lists  = []
-@options.describer = nil
+@options.system_space_file      = nil
+@options.space_file             = nil
+@options.table_name             = nil
+@options.index_name             = nil
+@options.pages                  = []
+@options.levels                 = []
+@options.lists                  = []
+@options.page_size              = nil
+@options.describer              = nil
 
 getopt_options = [
-  [ "--help",             "-?",     GetoptLong::NO_ARGUMENT ],
-  [ "--trace",            "-t",     GetoptLong::NO_ARGUMENT ],
-  [ "--file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--page-size",        "-P",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--page",             "-p",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--level",            "-l",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--list",             "-L",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--require",          "-r",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--describer",        "-d",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
+  [ "--trace",                  "-t",     GetoptLong::NO_ARGUMENT ],
+  [ "--system-space-file",      "-s",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--space-file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--table-name",             "-T",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--index-name",             "-I",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--page",                   "-p",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--level",                  "-l",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--list",                   "-L",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--require",                "-r",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--page-size",              "-P",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--describer",              "-d",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
 
 getopt = GetoptLong.new(*getopt_options)
@@ -678,13 +708,14 @@ getopt.each do |opt, arg|
     Innodb::Cursor.trace!
   when "--mode"
     @options.mode = arg
-  when "--file"
-    @options.file = arg
-  when "--page-size"
-    unless [1, 2, 4, 8, 16].include?(arg.to_i)
-      usage 1, "Page size #{arg} is not understood"
-    end
-    @options.page_size = arg.to_i * 1024
+  when "--system-space-file"
+    @options.system_space_file = arg
+  when "--space-file"
+    @options.space_file = arg
+  when "--table-name"
+    @options.table_name = arg
+  when "--index-name"
+    @options.index_name = arg
   when "--page"
     @options.pages << arg.to_i
   when "--level"
@@ -693,16 +724,26 @@ getopt.each do |opt, arg|
     @options.lists << arg.to_sym
   when "--require"
     require arg
+  when "--page-size"
+    unless [1, 2, 4, 8, 16].include?(arg.to_i)
+      usage 1, "Page size #{arg} is not understood"
+    end
+    @options.page_size = arg.to_i * 1024
   when "--describer"
     @options.describer = arg
   end
 end
 
-unless @options.file
-  usage 1, "File must be provided with -f argument"
+system_space = nil
+if @options.system_space_file
+  system_space = Innodb::Space.new(@options.system_space_file)
 end
 
-space = Innodb::Space.new(@options.file, @options.page_size)
+unless @options.space_file
+  usage 1, "Space file must be provided with -f argument"
+end
+
+space = Innodb::Space.new(@options.space_file, @options.page_size)
 
 if @options.describer
   describer = eval(@options.describer)
@@ -778,7 +819,7 @@ ARGV.each do |mode|
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 
     end
-    
+
     if @options.pages.empty?
       usage 1, "Page number of index root must be provided with --page/-p"
     end
@@ -786,11 +827,23 @@ ARGV.each do |mode|
     @options.pages.each do |page|
       index_recurse(space.index(page))
     end
+  when "index-record-offsets"
+    unless space.record_describer
+      usage 1, "Record describer necessary for index recursion" 
+    end
+
+    if @options.pages.empty?
+      usage 1, "Page number of index root must be provided with --page/-p"
+    end
+
+    @options.pages.each do |page|
+      index_record_offsets(space.index(page))
+    end
   when "index-digraph"
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 
     end
-    
+
     if @options.pages.empty?
       usage 1, "Page number of index root must be provided with --page/-p"
     end
@@ -802,7 +855,7 @@ ARGV.each do |mode|
     unless space.record_describer
       usage 1, "Record describer necessary for index recursion" 
     end
-    
+
     if @options.pages.empty?
       usage 1, "Page number of index root must be provided with --page/-p"
     end
