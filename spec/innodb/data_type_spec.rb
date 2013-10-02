@@ -19,6 +19,15 @@ describe Innodb::DataType do
     end
   end
 
+  describe Innodb::DataType::VariableCharacterType do
+    it "throws an error on invalid modifiers" do
+      expect { Innodb::DataType.new(:VARCHAR, [], []) }.
+        to raise_error "Invalid width specification"
+      expect { Innodb::DataType.new(:VARCHAR, [1,1], []) }.
+        to raise_error "Invalid width specification"
+    end
+  end
+
   describe Innodb::DataType::IntegerType do
     before :all do
       @data = {

@@ -50,6 +50,7 @@ class Innodb::DataType
 
     def initialize(base_type, modifiers, properties)
       @width = modifiers[0]
+      raise "Invalid width specification" unless modifiers.size == 1
       @name = Innodb::DataType.make_name(base_type, modifiers, properties)
     end
 
