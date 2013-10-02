@@ -1,11 +1,12 @@
 # -*- encoding : utf-8 -*-
 class Innodb::DataType
   class GenericType
-    attr_reader :width, :data_type
+    attr_reader :name, :width, :data_type
 
     def initialize(data_type, modifiers, properties)
       @data_type = data_type
       @width = modifiers[0]
+      @name = "%s(%d)" % [data_type.base_type.to_s, @width]
     end
 
     def variable?
@@ -20,6 +21,7 @@ class Innodb::DataType
   class IntegerType < GenericType
     def initialize(data_type, modifiers, properties)
       @data_type = data_type
+      @name = data_type.base_type.to_s
       @width = base_type_width_map[data_type.base_type]
       @unsigned = properties.include?(:UNSIGNED)
     end
@@ -116,15 +118,7 @@ class Innodb::DataType
     @reader.width
   end
 
-  def name_suffix
-    if [:CHAR, :VARCHAR].include?(base_type)
-      "(#{@reader.width})"
-    else
-      ""
-    end
-  end
-
   def name
-    "#{base_type}#{name_suffix}"
+    @reader.name
   end
 end
