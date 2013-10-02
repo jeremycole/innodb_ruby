@@ -5,19 +5,25 @@ require "innodb/data_type"
 # provides essential information to parse records, including the length
 # of the fixed-width and variable-width portion of the field.
 class Innodb::Field
-  attr_reader :position, :data_type
+  attr_reader :position, :nullable, :data_type
 
   # Size of a reference to data stored externally to the page.
   EXTERN_FIELD_SIZE = 20
 
   def initialize(position, data_type, *properties)
     @position = position
+    @nullable = properties.delete(:NOT_NULL) ? false : true
     @data_type = Innodb::DataType.new(data_type.to_s, properties)
+  end
+
+  # Return whether this field can be NULL.
+  def nullable?
+    @nullable
   end
 
   # Return whether this field is NULL.
   def null?(record)
-    @data_type.nullable? && record[:header][:field_nulls][position]
+    nullable? && record[:header][:field_nulls][position]
   end
 
   # Return whether a part of this field is stored externally (off-page).

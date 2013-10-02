@@ -73,7 +73,6 @@ class Innodb::DataType
   def initialize(type_string, properties)
     @base_type, modifiers = self.class.parse_base_type_and_modifiers(type_string)
     @length = nil
-    @nullable = !properties.include?(:NOT_NULL)
     @unsigned = properties.include?(:UNSIGNED)
     @variable = false
     @blob = false
@@ -96,10 +95,6 @@ class Innodb::DataType
 
   def unsigned?
     @unsigned
-  end
-
-  def nullable?
-    @nullable
   end
 
   def variable?

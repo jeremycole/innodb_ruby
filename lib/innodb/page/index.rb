@@ -338,7 +338,7 @@ class Innodb::Page::Index < Innodb::Page
     columns = (record_format[:key] + record_format[:row])
 
     # The number of bits in the bitmap is the number of nullable fields.
-    size = columns.count { |c| c[:field].data_type.nullable? }
+    size = columns.count { |c| c[:field].nullable? }
 
     # There is no bitmap if there are no nullable fields.
     return nil unless size > 0
@@ -350,7 +350,7 @@ class Innodb::Page::Index < Innodb::Page
 
     # For every nullable field, set whether the field is actually null.
     columns.each do |c|
-      bitmap[c[:field].position] = c[:field].data_type.nullable? ? (null_bit_array.shift == 1) : false
+      bitmap[c[:field].position] = c[:field].nullable? ? (null_bit_array.shift == 1) : false
     end
 
     return bitmap
