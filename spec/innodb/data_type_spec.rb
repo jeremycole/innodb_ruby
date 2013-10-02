@@ -39,98 +39,98 @@ describe Innodb::DataType do
 
     it "returns a TINYINT value correctly" do
       data_type = Innodb::DataType.new("TINYINT", [])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
-      data_type.reader.value(@buffer.read(1)).should eql 0x00
+      data_type.value(@buffer.read(1)).should eql 0x00
       @buffer.seek(@data[:offset][:innodb_sint_neg])
-      data_type.reader.value(@buffer.read(1)).should eql -128
+      data_type.value(@buffer.read(1)).should eql -128
     end
 
     it "returns a TINYINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new("TINYINT", [:UNSIGNED])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
-      data_type.reader.value(@buffer.read(1)).should eql 0x00
-      data_type.reader.value(@buffer.read(1)).should eql 0x01
-      data_type.reader.value(@buffer.read(1)).should eql 0x02
-      data_type.reader.value(@buffer.read(1)).should eql 0x03
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.value(@buffer.read(1)).should eql 0x00
+      data_type.value(@buffer.read(1)).should eql 0x01
+      data_type.value(@buffer.read(1)).should eql 0x02
+      data_type.value(@buffer.read(1)).should eql 0x03
       @buffer.seek(@data[:offset][:max_uint])
-      data_type.reader.value(@buffer.read(1)).should eql 0xff
+      data_type.value(@buffer.read(1)).should eql 0xff
     end
 
     it "returns a SMALLINT value correctly" do
       data_type = Innodb::DataType.new("SMALLINT", [])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
-      data_type.reader.value(@buffer.read(2)).should eql 0x0001
+      data_type.value(@buffer.read(2)).should eql 0x0001
       @buffer.seek(@data[:offset][:innodb_sint_neg])
-      data_type.reader.value(@buffer.read(2)).should eql -32767
+      data_type.value(@buffer.read(2)).should eql -32767
     end
 
     it "returns a SMALLINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new("SMALLINT", [:UNSIGNED])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
-      data_type.reader.value(@buffer.read(2)).should eql 0x0001
-      data_type.reader.value(@buffer.read(2)).should eql 0x0203
-      data_type.reader.value(@buffer.read(2)).should eql 0x0405
-      data_type.reader.value(@buffer.read(2)).should eql 0x0607
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.value(@buffer.read(2)).should eql 0x0001
+      data_type.value(@buffer.read(2)).should eql 0x0203
+      data_type.value(@buffer.read(2)).should eql 0x0405
+      data_type.value(@buffer.read(2)).should eql 0x0607
       @buffer.seek(@data[:offset][:max_uint])
-      data_type.reader.value(@buffer.read(2)).should eql 0xffff
+      data_type.value(@buffer.read(2)).should eql 0xffff
     end
 
     it "returns a MEDIUMINT value correctly" do
       data_type = Innodb::DataType.new("MEDIUMINT", [])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
-      data_type.reader.value(@buffer.read(3)).should eql 0x000102
+      data_type.value(@buffer.read(3)).should eql 0x000102
       @buffer.seek(@data[:offset][:innodb_sint_neg])
-      data_type.reader.value(@buffer.read(3)).should eql -8388350
+      data_type.value(@buffer.read(3)).should eql -8388350
     end
 
     it "returns a MEDIUMINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new("MEDIUMINT", [:UNSIGNED])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
-      data_type.reader.value(@buffer.read(3)).should eql 0x000102
-      data_type.reader.value(@buffer.read(3)).should eql 0x030405
-      data_type.reader.value(@buffer.read(3)).should eql 0x060708
-      data_type.reader.value(@buffer.read(3)).should eql 0x090a0b
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.value(@buffer.read(3)).should eql 0x000102
+      data_type.value(@buffer.read(3)).should eql 0x030405
+      data_type.value(@buffer.read(3)).should eql 0x060708
+      data_type.value(@buffer.read(3)).should eql 0x090a0b
       @buffer.seek(@data[:offset][:max_uint])
-      data_type.reader.value(@buffer.read(3)).should eql 0xffffff
+      data_type.value(@buffer.read(3)).should eql 0xffffff
     end
 
     it "returns an INT value correctly" do
       data_type = Innodb::DataType.new("INT", [])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
-      data_type.reader.value(@buffer.read(4)).should eql 0x00010203
+      data_type.value(@buffer.read(4)).should eql 0x00010203
       @buffer.seek(@data[:offset][:innodb_sint_neg])
-      data_type.reader.value(@buffer.read(4)).should eql -2147417597
+      data_type.value(@buffer.read(4)).should eql -2147417597
     end
 
     it "returns an INT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new("INT", [:UNSIGNED])
-      data_type.reader.should be_an_instance_of Innodb::DataType::IntegerType
-      data_type.reader.value(@buffer.read(4)).should eql 0x00010203
-      data_type.reader.value(@buffer.read(4)).should eql 0x04050607
-      data_type.reader.value(@buffer.read(4)).should eql 0x08090a0b
-      data_type.reader.value(@buffer.read(4)).should eql 0x0c0d0e0f
+      data_type.should be_an_instance_of Innodb::DataType::IntegerType
+      data_type.value(@buffer.read(4)).should eql 0x00010203
+      data_type.value(@buffer.read(4)).should eql 0x04050607
+      data_type.value(@buffer.read(4)).should eql 0x08090a0b
+      data_type.value(@buffer.read(4)).should eql 0x0c0d0e0f
       @buffer.seek(@data[:offset][:max_uint])
-      data_type.reader.value(@buffer.read(4)).should eql 0xffffffff
+      data_type.value(@buffer.read(4)).should eql 0xffffffff
     end
 
     it "returns a BIGINT value correctly" do
       data_type = Innodb::DataType.new("BIGINT", [])
       @buffer.seek(@data[:offset][:innodb_sint_pos])
-      data_type.reader.value(@buffer.read(8)).should eql 0x0001020304050607
+      data_type.value(@buffer.read(8)).should eql 0x0001020304050607
       @buffer.seek(@data[:offset][:innodb_sint_neg])
-      data_type.reader.value(@buffer.read(8)).should eql -9223088349902469625
+      data_type.value(@buffer.read(8)).should eql -9223088349902469625
     end
 
     it "returns a BIGINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new("BIGINT", [:UNSIGNED])
-      data_type.reader.value(@buffer.read(8)).should eql 0x0001020304050607
-      data_type.reader.value(@buffer.read(8)).should eql 0x08090a0b0c0d0e0f
+      data_type.value(@buffer.read(8)).should eql 0x0001020304050607
+      data_type.value(@buffer.read(8)).should eql 0x08090a0b0c0d0e0f
       @buffer.seek(@data[:offset][:max_uint])
-      data_type.reader.value(@buffer.read(8)).should eql 0xffffffffffffffff
+      data_type.value(@buffer.read(8)).should eql 0xffffffffffffffff
     end
   end
 end

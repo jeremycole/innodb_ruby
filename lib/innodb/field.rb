@@ -50,7 +50,7 @@ class Innodb::Field
   def value(record, cursor)
     return :NULL if null?(record)
     data = read(record, cursor)
-    @data_type.reader.respond_to?(:value) ? @data_type.reader.value(data) : data
+    @data_type.respond_to?(:value) ? @data_type.value(data) : data
   end
 
   # Read an InnoDB external pointer field.
