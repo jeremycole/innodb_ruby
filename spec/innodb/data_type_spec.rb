@@ -4,6 +4,14 @@ require "stringio"
 
 describe Innodb::DataType do
 
+  it "makes proper data type names" do
+    Innodb::DataType.make_name("BIGINT", [], [:UNSIGNED]).should eql "BIGINT UNSIGNED"
+    Innodb::DataType.make_name("SMALLINT", [], []).should eql "SMALLINT"
+    Innodb::DataType.make_name("VARCHAR", [32], []).should eql "VARCHAR(32)"
+    Innodb::DataType.make_name("CHAR", [16], []).should eql "CHAR(16)"
+    Innodb::DataType.make_name("CHAR", [], []).should eql "CHAR"
+  end
+
   describe Innodb::DataType::IntegerType do
     before :all do
       @data = {

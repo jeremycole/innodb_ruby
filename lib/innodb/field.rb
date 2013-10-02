@@ -5,13 +5,14 @@ require "innodb/data_type"
 # provides essential information to parse records, including the length
 # of the fixed-width and variable-width portion of the field.
 class Innodb::Field
-  attr_reader :position, :nullable, :data_type
+  attr_reader :position, :name, :data_type, :nullable
 
   # Size of a reference to data stored externally to the page.
   EXTERN_FIELD_SIZE = 20
 
-  def initialize(position, type_definition, *properties)
+  def initialize(position, name, type_definition, *properties)
     @position = position
+    @name = name
     @nullable = properties.delete(:NOT_NULL) ? false : true
     base_type, modifiers = parse_type_definition(type_definition)
     @data_type = Innodb::DataType.new(base_type, modifiers, properties)
@@ -44,7 +45,7 @@ class Innodb::Field
 
   # Read an InnoDB encoded data field.
   def read(record, cursor)
-    cursor.name(@data_type.name) { cursor.get_bytes(length(record)) }
+    cursor.name(@name) { cursor.get_bytes(length(record)) }
   end
 
   # Read the data value (e.g. encoded in the data).
@@ -57,7 +58,7 @@ class Innodb::Field
   # Read an InnoDB external pointer field.
   def extern(record, cursor)
     return nil if not extern?(record)
-    cursor.name(@data_type.name) { read_extern(cursor) }
+    cursor.name(@name) { read_extern(cursor) }
   end
 
   private

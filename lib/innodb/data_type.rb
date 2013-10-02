@@ -1,11 +1,12 @@
 # -*- encoding : utf-8 -*-
 class Innodb::DataType
+
   class GenericType
     attr_reader :name, :width
 
     def initialize(base_type, modifiers, properties)
       @width = modifiers[0]
-      @name = "%s(%d)" % [base_type.to_s, @width]
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
     end
 
     def variable?
@@ -19,9 +20,9 @@ class Innodb::DataType
 
   class IntegerType < GenericType
     def initialize(base_type, modifiers, properties)
-      @name = base_type.to_s
       @width = base_type_width_map[base_type]
       @unsigned = properties.include?(:UNSIGNED)
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
     end
 
     def base_type_width_map
@@ -83,6 +84,14 @@ class Innodb::DataType
     :VARCHAR    => VariableStringType,
     :BLOB       => BlobType,
   }
+
+  def self.make_name(base_type, modifiers, properties)
+    name = base_type.to_s
+    name << '(' + modifiers.join(',') + ')' if not modifiers.empty?
+    name << " "
+    name << properties.join(' ')
+    name.strip
+  end
 
   def self.new(base_type, modifiers, properties)
     raise "Data type '#{base_type}' is not supported" unless TYPES.key?(base_type)
