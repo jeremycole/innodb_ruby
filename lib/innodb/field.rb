@@ -36,7 +36,7 @@ class Innodb::Field
     if @data_type.variable?
       len = record[:header][:field_lengths][position]
     else
-      len = @data_type.length
+      len = @data_type.width
     end
     extern?(record) ? len - EXTERN_FIELD_SIZE : len
   end

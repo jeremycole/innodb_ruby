@@ -1,21 +1,34 @@
 # -*- encoding : utf-8 -*-
 class Innodb::DataType
   class GenericType
-    attr_reader :data_type
+    attr_reader :width, :data_type
 
-    def initialize(data_type, properties)
+    def initialize(data_type, modifiers, properties)
       @data_type = data_type
+      @width = modifiers[0]
     end
   end
 
   class IntegerType < GenericType
-    def initialize(data_type, properties)
+    def initialize(data_type, modifiers, properties)
       @data_type = data_type
+      @width = base_type_width_map[data_type.base_type]
       @unsigned = properties.include?(:UNSIGNED)
     end
 
+    def base_type_width_map
+      {
+        :TINYINT    => 1,
+        :SMALLINT   => 2,
+        :MEDIUMINT  => 3,
+        :INT        => 4,
+        :INT6       => 6,
+        :BIGINT     => 8,
+      }
+    end
+
     def value(data)
-      nbits = @data_type.length * 8
+      nbits = @width * 8
       @unsigned ? get_uint(data, nbits) : get_int(data, nbits)
     end
 
@@ -36,17 +49,17 @@ class Innodb::DataType
     end
   end
 
-  # Maps data type to fixed storage length.
+  # Maps base type to data type class.
   TYPES = {
-    :TINYINT    => { :class => IntegerType, :length => 1 },
-    :SMALLINT   => { :class => IntegerType, :length => 2 },
-    :MEDIUMINT  => { :class => IntegerType, :length => 3 },
-    :INT        => { :class => IntegerType, :length => 4 },
-    :INT6       => { :class => IntegerType, :length => 6 },
-    :BIGINT     => { :class => IntegerType, :length => 8 },
-    :CHAR       => { :class => GenericType },
-    :VARCHAR    => { :class => VariableStringType },
-    :BLOB       => { :class => GenericType },
+    :TINYINT    => IntegerType,
+    :SMALLINT   => IntegerType,
+    :MEDIUMINT  => IntegerType,
+    :INT        => IntegerType,
+    :INT6       => IntegerType,
+    :BIGINT     => IntegerType,
+    :CHAR       => GenericType,
+    :VARCHAR    => VariableStringType,
+    :BLOB       => GenericType,
   }
 
   def self.parse_base_type_and_modifiers(type_string)
@@ -62,28 +75,20 @@ class Innodb::DataType
   end
 
   attr_reader :base_type
-  attr_reader :length
   attr_reader :reader
   def initialize(type_string, properties)
     @base_type, modifiers = self.class.parse_base_type_and_modifiers(type_string)
-    @length = nil
+    raise "Data type '#{@base_type}' is not supported" unless TYPES.key?(@base_type)
     @variable = false
     @blob = false
     case
-    when TYPES[base_type][:class] == IntegerType
-      @length = TYPES[base_type][:length]
-    when base_type == :CHAR
-      @length = modifiers[0]
     when base_type == :VARCHAR
-      @length = modifiers[0]
       @variable = true
     when base_type == :BLOB
       @blob = true
       @variable = true
-    else
-      raise "Data type '#{type_string}' is not supported"
     end
-    @reader = TYPES[base_type][:class].new(self, properties)
+    @reader = TYPES[base_type].new(self, modifiers, properties)
   end
 
   def variable?
@@ -94,9 +99,13 @@ class Innodb::DataType
     @blob
   end
 
+  def width
+    @reader.width
+  end
+
   def name_suffix
     if [:CHAR, :VARCHAR].include?(base_type)
-      "(#{length})"
+      "(#{@reader.width})"
     else
       ""
     end
