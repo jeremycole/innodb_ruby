@@ -12,6 +12,13 @@ describe Innodb::DataType do
     Innodb::DataType.make_name("CHAR", [], []).should eql "CHAR"
   end
 
+  describe Innodb::DataType::CharacterType do
+    it "handles optional width" do
+      Innodb::DataType.new(:CHAR, [], []).width.should eql 1
+      Innodb::DataType.new(:CHAR, [16], []).width.should eql 16
+    end
+  end
+
   describe Innodb::DataType::IntegerType do
     before :all do
       @data = {

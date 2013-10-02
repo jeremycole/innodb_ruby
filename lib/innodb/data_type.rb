@@ -40,7 +40,7 @@ class Innodb::DataType
     attr_reader :name, :width
 
     def initialize(base_type, modifiers, properties)
-      @width = modifiers[0]
+      @width = modifiers.fetch(0, 1)
       @name = Innodb::DataType.make_name(base_type, modifiers, properties)
     end
   end
