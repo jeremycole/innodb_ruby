@@ -48,8 +48,25 @@ class Innodb::Field
   end
 
   # Read an InnoDB external pointer field.
-  def read_extern(record, cursor)
+  def extern(record, cursor)
     return nil if not extern?(record)
-    cursor.name(@data_type.name) { @data_type.reader.read_extern(cursor) }
+    cursor.name(@data_type.name) { read_extern(cursor) }
+  end
+
+  private
+
+  # Return an external reference field. An extern field contains the page
+  # address and the length of the externally stored part of the record data.
+  def get_extern_reference(cursor)
+    {
+      :space_id     => cursor.name("space_id")    { cursor.get_uint32 },
+      :page_number  => cursor.name("page_number") { cursor.get_uint32 },
+      :offset       => cursor.name("offset")      { cursor.get_uint32 },
+      :length       => cursor.name("length")      { cursor.get_uint64 & 0x3fffffff }
+    }
+  end
+
+  def read_extern(cursor)
+    cursor.name("extern") { get_extern_reference(cursor) }
   end
 end

@@ -10,21 +10,6 @@ class Innodb::DataType
     def read(cursor, length)
       cursor.get_bytes(length)
     end
-
-    def read_extern(cursor)
-      cursor.name("extern") { get_extern_field(cursor) }
-    end
-
-    # Return an external reference field. An extern field contains the page
-    # address and the length of the externally stored part of the record data.
-    def get_extern_field(cursor)
-      {
-        :space_id     => cursor.name("space_id")    { cursor.get_uint32 },
-        :page_number  => cursor.name("page_number") { cursor.get_uint32 },
-        :offset       => cursor.name("offset")      { cursor.get_uint32 },
-        :length       => cursor.name("length")      { cursor.get_uint64 & 0x3fffffff }
-      }
-    end
   end
 
   class IntegerType < GenericType
