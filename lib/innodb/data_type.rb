@@ -1,5 +1,5 @@
 # -*- encoding : utf-8 -*-
-class Innodb::FieldType
+class Innodb::DataType
   class GenericType
     attr_reader :data_type
 
