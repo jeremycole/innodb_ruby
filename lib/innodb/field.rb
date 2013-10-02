@@ -10,10 +10,11 @@ class Innodb::Field
   # Size of a reference to data stored externally to the page.
   EXTERN_FIELD_SIZE = 20
 
-  def initialize(position, data_type, *properties)
+  def initialize(position, type_definition, *properties)
     @position = position
     @nullable = properties.delete(:NOT_NULL) ? false : true
-    @data_type = Innodb::DataType.new(data_type.to_s, properties)
+    base_type, modifiers = parse_type_definition(type_definition)
+    @data_type = Innodb::DataType.new(base_type, modifiers, properties)
   end
 
   # Return whether this field can be NULL.
@@ -74,5 +75,18 @@ class Innodb::Field
 
   def read_extern(cursor)
     cursor.name("extern") { get_extern_reference(cursor) }
+  end
+
+  # Parse a data type definition and extract the base type and any modifiers.
+  def parse_type_definition(type_string)
+    if matches = /^([a-zA-Z0-9]+)(\(([0-9, ]+)\))?$/.match(type_string)
+      base_type = matches[1].upcase.to_sym
+      if matches[3]
+        modifiers = matches[3].sub(/[ ]/, "").split(/,/).map { |s| s.to_i }
+      else
+        modifiers = []
+      end
+      [base_type, modifiers]
+    end
   end
 end

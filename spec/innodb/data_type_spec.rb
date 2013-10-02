@@ -38,7 +38,7 @@ describe Innodb::DataType do
     end
 
     it "returns a TINYINT value correctly" do
-      data_type = Innodb::DataType.new("TINYINT", [])
+      data_type = Innodb::DataType.new(:TINYINT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
       data_type.value(@buffer.read(1)).should eql 0x00
@@ -47,7 +47,7 @@ describe Innodb::DataType do
     end
 
     it "returns a TINYINT UNSIGNED value correctly" do
-      data_type = Innodb::DataType.new("TINYINT", [:UNSIGNED])
+      data_type = Innodb::DataType.new(:TINYINT, [], [:UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(1)).should eql 0x00
       data_type.value(@buffer.read(1)).should eql 0x01
@@ -58,7 +58,7 @@ describe Innodb::DataType do
     end
 
     it "returns a SMALLINT value correctly" do
-      data_type = Innodb::DataType.new("SMALLINT", [])
+      data_type = Innodb::DataType.new(:SMALLINT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
       data_type.value(@buffer.read(2)).should eql 0x0001
@@ -67,7 +67,7 @@ describe Innodb::DataType do
     end
 
     it "returns a SMALLINT UNSIGNED value correctly" do
-      data_type = Innodb::DataType.new("SMALLINT", [:UNSIGNED])
+      data_type = Innodb::DataType.new(:SMALLINT, [], [:UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(2)).should eql 0x0001
       data_type.value(@buffer.read(2)).should eql 0x0203
@@ -78,7 +78,7 @@ describe Innodb::DataType do
     end
 
     it "returns a MEDIUMINT value correctly" do
-      data_type = Innodb::DataType.new("MEDIUMINT", [])
+      data_type = Innodb::DataType.new(:MEDIUMINT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
       data_type.value(@buffer.read(3)).should eql 0x000102
@@ -87,7 +87,7 @@ describe Innodb::DataType do
     end
 
     it "returns a MEDIUMINT UNSIGNED value correctly" do
-      data_type = Innodb::DataType.new("MEDIUMINT", [:UNSIGNED])
+      data_type = Innodb::DataType.new(:MEDIUMINT, [], [:UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(3)).should eql 0x000102
       data_type.value(@buffer.read(3)).should eql 0x030405
@@ -98,7 +98,7 @@ describe Innodb::DataType do
     end
 
     it "returns an INT value correctly" do
-      data_type = Innodb::DataType.new("INT", [])
+      data_type = Innodb::DataType.new(:INT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
       data_type.value(@buffer.read(4)).should eql 0x00010203
@@ -107,7 +107,7 @@ describe Innodb::DataType do
     end
 
     it "returns an INT UNSIGNED value correctly" do
-      data_type = Innodb::DataType.new("INT", [:UNSIGNED])
+      data_type = Innodb::DataType.new(:INT, [], [:UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(4)).should eql 0x00010203
       data_type.value(@buffer.read(4)).should eql 0x04050607
@@ -118,7 +118,7 @@ describe Innodb::DataType do
     end
 
     it "returns a BIGINT value correctly" do
-      data_type = Innodb::DataType.new("BIGINT", [])
+      data_type = Innodb::DataType.new(:BIGINT, [], [])
       @buffer.seek(@data[:offset][:innodb_sint_pos])
       data_type.value(@buffer.read(8)).should eql 0x0001020304050607
       @buffer.seek(@data[:offset][:innodb_sint_neg])
@@ -126,7 +126,7 @@ describe Innodb::DataType do
     end
 
     it "returns a BIGINT UNSIGNED value correctly" do
-      data_type = Innodb::DataType.new("BIGINT", [:UNSIGNED])
+      data_type = Innodb::DataType.new(:BIGINT, [], [:UNSIGNED])
       data_type.value(@buffer.read(8)).should eql 0x0001020304050607
       data_type.value(@buffer.read(8)).should eql 0x08090a0b0c0d0e0f
       @buffer.seek(@data[:offset][:max_uint])

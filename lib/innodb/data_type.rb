@@ -84,20 +84,7 @@ class Innodb::DataType
     :BLOB       => BlobType,
   }
 
-  def self.parse_base_type_and_modifiers(type_string)
-    if matches = /^([a-zA-Z0-9]+)(\(([0-9, ]+)\))?$/.match(type_string)
-      base_type = matches[1].upcase.to_sym
-      if matches[3]
-        modifiers = matches[3].sub(/[ ]/, "").split(/,/).map { |s| s.to_i }
-      else
-        modifiers = []
-      end
-      [base_type, modifiers]
-    end
-  end
-
-  def self.new(type_string, properties)
-    base_type, modifiers = self.parse_base_type_and_modifiers(type_string)
+  def self.new(base_type, modifiers, properties)
     raise "Data type '#{base_type}' is not supported" unless TYPES.key?(base_type)
     TYPES[base_type].new(base_type, modifiers, properties)
   end
