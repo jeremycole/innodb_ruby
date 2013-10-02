@@ -6,24 +6,28 @@ class Innodb::DataType
     def initialize(data_type)
       @data_type = data_type
     end
-
-    def read(cursor, length)
-      cursor.get_bytes(length)
-    end
   end
 
   class IntegerType < GenericType
-    def read(cursor, length)
-      method = @data_type.unsigned? ? :get_uint_by_size : :get_i_sint_by_size
-      cursor.send(method, @data_type.length)
+    def value(data)
+      nbits = @data_type.length * 8
+      @data_type.unsigned? ? get_uint(data, nbits) : get_int(data, nbits)
+    end
+
+    def get_uint(data, nbits)
+      BinData::const_get("Uint%dbe" % nbits).read(data)
+    end
+
+    def get_int(data, nbits)
+      BinData::const_get("Int%dbe" % nbits).read(data) ^ (-1 << (nbits - 1))
     end
   end
 
   class VariableStringType < GenericType
-    def read(cursor, length)
+    def value(data)
       # The SQL standard defines that VARCHAR fields should have end-spaces
       # stripped off.
-      super.sub(/[ ]+$/, "")
+      data.sub(/[ ]+$/, "")
     end
   end
 

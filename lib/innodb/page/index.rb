@@ -512,7 +512,7 @@ class Innodb::Page::Index < Innodb::Page
           c.name("key[#{column[:name]}]") do
             this_record[:key] << {
               :name => column[:name],
-              :value => column[:field].read(this_record, c),
+              :value => column[:field].value(this_record, c),
               :extern => column[:field].extern(this_record, c),
             }
           end
@@ -547,7 +547,7 @@ class Innodb::Page::Index < Innodb::Page
             c.name("row[#{column[:name]}]") do
               this_record[:row] << {
                 :name => column[:name],
-                :value => column[:field].read(this_record, c),
+                :value => column[:field].value(this_record, c),
                 :extern => column[:field].extern(this_record, c),
               }
             end

@@ -43,8 +43,14 @@ class Innodb::Field
 
   # Read an InnoDB encoded data field.
   def read(record, cursor)
+    cursor.name(@data_type.name) { cursor.get_bytes(length(record)) }
+  end
+
+  # Read the data value (e.g. encoded in the data).
+  def value(record, cursor)
     return :NULL if null?(record)
-    cursor.name(@data_type.name) { @data_type.reader.read(cursor, length(record)) }
+    data = read(record, cursor)
+    @data_type.reader.respond_to?(:value) ? @data_type.reader.value(data) : data
   end
 
   # Read an InnoDB external pointer field.

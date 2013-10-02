@@ -289,62 +289,6 @@ class Innodb::Cursor
     end
   end
 
-  # Read an InnoDB-munged signed 8-bit integer.
-  def get_i_sint8
-    data = read_and_advance(1)
-    BinData::Int8.read(data) ^ (-1 << 7)
-  end
-
-  # Read an InnoDB-munged signed 16-bit integer.
-  def get_i_sint16
-    data = read_and_advance(2)
-    BinData::Int16be.read(data) ^ (-1 << 15)
-  end
-
-  # Read an InnoDB-munged signed 24-bit integer.
-  def get_i_sint24
-    data = read_and_advance(3)
-    BinData::Int24be.read(data) ^ (-1 << 23)
-  end
-
-  # Read an InnoDB-munged signed 32-bit integer.
-  def get_i_sint32
-    data = read_and_advance(4)
-    BinData::Int32be.read(data) ^ (-1 << 31)
-  end
-
-  # Read an InnoDB-munged signed 48-bit integer.
-  def get_i_sint48
-    data = read_and_advance(6)
-    BinData::Int48be.read(data) ^ (-1 << 47)
-  end
-
-  # Read an InnoDB-munged signed 64-bit integer.
-  def get_i_sint64
-    data = read_and_advance(8)
-    BinData::Int64be.read(data) ^ (-1 << 63)
-  end
-
-  # Read an InnoDB-munged signed integer given its size in bytes.
-  def get_i_sint_by_size(size)
-    case size
-    when 1
-      get_i_sint8
-    when 2
-      get_i_sint16
-    when 3
-      get_i_sint24
-    when 4
-      get_i_sint32
-    when 6
-      get_i_sint48
-    when 8
-      get_i_sint64
-    else
-      raise "Not implemented"
-    end
-  end
-
   # Read an array of 1-bit integers.
   def get_bit_array(num_bits)
     size = (num_bits + 7) / 8
