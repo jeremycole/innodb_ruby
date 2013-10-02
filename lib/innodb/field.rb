@@ -33,9 +33,18 @@ class Innodb::Field
     record[:header][:field_externs][position]
   end
 
+  def variable?
+    @data_type.is_a? Innodb::DataType::BlobType or
+    @data_type.is_a? Innodb::DataType::VariableCharacterType
+  end
+
+  def blob?
+    @data_type.is_a? Innodb::DataType::BlobType
+  end
+
   # Return the actual length of this variable-length field.
   def length(record)
-    if @data_type.variable?
+    if variable?
       len = record[:header][:field_lengths][position]
     else
       len = @data_type.width

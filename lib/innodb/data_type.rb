@@ -1,24 +1,9 @@
 # -*- encoding : utf-8 -*-
 class Innodb::DataType
 
-  class GenericType
+  class IntegerType
     attr_reader :name, :width
 
-    def initialize(base_type, modifiers, properties)
-      @width = modifiers[0]
-      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-    end
-
-    def variable?
-      false
-    end
-
-    def blob?
-      false
-    end
-  end
-
-  class IntegerType < GenericType
     def initialize(base_type, modifiers, properties)
       @width = base_type_width_map[base_type]
       @unsigned = properties.include?(:UNSIGNED)
@@ -50,25 +35,36 @@ class Innodb::DataType
     end
   end
 
-  class VariableStringType < GenericType
+  # Fixed-length character type.
+  class CharacterType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = modifiers[0]
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+  end
+
+  class VariableCharacterType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = modifiers[0]
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
     def value(data)
       # The SQL standard defines that VARCHAR fields should have end-spaces
       # stripped off.
       data.sub(/[ ]+$/, "")
     end
-
-    def variable?
-      true
-    end
   end
 
-  class BlobType < GenericType
-    def variable?
-      true
-    end
+  class BlobType
+    attr_reader :name
 
-    def blob?
-      true
+    def initialize(base_type, modifiers, properties)
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
     end
   end
 
@@ -80,8 +76,8 @@ class Innodb::DataType
     :INT        => IntegerType,
     :INT6       => IntegerType,
     :BIGINT     => IntegerType,
-    :CHAR       => GenericType,
-    :VARCHAR    => VariableStringType,
+    :CHAR       => CharacterType,
+    :VARCHAR    => VariableCharacterType,
     :BLOB       => BlobType,
   }
 
