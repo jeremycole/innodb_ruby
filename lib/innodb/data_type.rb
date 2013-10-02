@@ -7,6 +7,14 @@ class Innodb::DataType
       @data_type = data_type
       @width = modifiers[0]
     end
+
+    def variable?
+      false
+    end
+
+    def blob?
+      false
+    end
   end
 
   class IntegerType < GenericType
@@ -47,6 +55,20 @@ class Innodb::DataType
       # stripped off.
       data.sub(/[ ]+$/, "")
     end
+
+    def variable?
+      true
+    end
+  end
+
+  class BlobType < GenericType
+    def variable?
+      true
+    end
+
+    def blob?
+      true
+    end
   end
 
   # Maps base type to data type class.
@@ -59,7 +81,7 @@ class Innodb::DataType
     :BIGINT     => IntegerType,
     :CHAR       => GenericType,
     :VARCHAR    => VariableStringType,
-    :BLOB       => GenericType,
+    :BLOB       => BlobType,
   }
 
   def self.parse_base_type_and_modifiers(type_string)
@@ -79,24 +101,15 @@ class Innodb::DataType
   def initialize(type_string, properties)
     @base_type, modifiers = self.class.parse_base_type_and_modifiers(type_string)
     raise "Data type '#{@base_type}' is not supported" unless TYPES.key?(@base_type)
-    @variable = false
-    @blob = false
-    case
-    when base_type == :VARCHAR
-      @variable = true
-    when base_type == :BLOB
-      @blob = true
-      @variable = true
-    end
     @reader = TYPES[base_type].new(self, modifiers, properties)
   end
 
   def variable?
-    @variable
+    @reader.variable?
   end
 
   def blob?
-    @blob
+    @reader.blob?
   end
 
   def width
