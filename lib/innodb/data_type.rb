@@ -3,15 +3,20 @@ class Innodb::DataType
   class GenericType
     attr_reader :data_type
 
-    def initialize(data_type)
+    def initialize(data_type, properties)
       @data_type = data_type
     end
   end
 
   class IntegerType < GenericType
+    def initialize(data_type, properties)
+      @data_type = data_type
+      @unsigned = properties.include?(:UNSIGNED)
+    end
+
     def value(data)
       nbits = @data_type.length * 8
-      @data_type.unsigned? ? get_uint(data, nbits) : get_int(data, nbits)
+      @unsigned ? get_uint(data, nbits) : get_int(data, nbits)
     end
 
     def get_uint(data, nbits)
@@ -62,7 +67,6 @@ class Innodb::DataType
   def initialize(type_string, properties)
     @base_type, modifiers = self.class.parse_base_type_and_modifiers(type_string)
     @length = nil
-    @unsigned = properties.include?(:UNSIGNED)
     @variable = false
     @blob = false
     case
@@ -79,11 +83,7 @@ class Innodb::DataType
     else
       raise "Data type '#{type_string}' is not supported"
     end
-    @reader = TYPES[base_type][:class].new(self)
-  end
-
-  def unsigned?
-    @unsigned
+    @reader = TYPES[base_type][:class].new(self, properties)
   end
 
   def variable?
