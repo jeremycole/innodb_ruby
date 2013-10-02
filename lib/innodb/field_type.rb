@@ -1,10 +1,10 @@
 # -*- encoding : utf-8 -*-
 class Innodb::FieldType
   class GenericType
-    attr_reader :type
+    attr_reader :data_type
 
-    def initialize(type)
-      @type = type
+    def initialize(data_type)
+      @data_type = data_type
     end
 
     def read(cursor, length)
@@ -29,8 +29,8 @@ class Innodb::FieldType
 
   class IntegerType < GenericType
     def read(cursor, length)
-      method = type.unsigned? ? :get_uint_by_size : :get_i_sint_by_size
-      cursor.send(method, type.length)
+      method = @data_type.unsigned? ? :get_uint_by_size : :get_i_sint_by_size
+      cursor.send(method, @data_type.length)
     end
   end
 

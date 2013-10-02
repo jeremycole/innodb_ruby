@@ -338,7 +338,7 @@ class Innodb::Page::Index < Innodb::Page
     columns = (record_format[:key] + record_format[:row])
 
     # The number of bits in the bitmap is the number of nullable fields.
-    size = columns.count { |c| c[:field].type.nullable? }
+    size = columns.count { |c| c[:field].field_type.nullable? }
 
     # There is no bitmap if there are no nullable fields.
     return nil unless size > 0
@@ -350,7 +350,7 @@ class Innodb::Page::Index < Innodb::Page
 
     # For every nullable field, set whether the field is actually null.
     columns.each do |c|
-      bitmap[c[:field].position] = c[:field].type.nullable? ? (null_bit_array.shift == 1) : false
+      bitmap[c[:field].position] = c[:field].field_type.nullable? ? (null_bit_array.shift == 1) : false
     end
 
     return bitmap
@@ -368,14 +368,14 @@ class Innodb::Page::Index < Innodb::Page
     # the length in one or two bytes.
     columns.each do |c|
       f = c[:field]
-      next if !f.type.variable? or (null_bitmap && null_bitmap[f.position])
+      next if !f.field_type.variable? or (null_bitmap && null_bitmap[f.position])
 
       len = cursor.get_uint8
       ext = false
 
       # Two bytes are used only if the length exceeds 127 bytes and the
       # maximum length exceeds 255 bytes (or the field is a BLOB type).
-      if len > 127 && (f.type.blob? || f.type.length > 255)
+      if len > 127 && (f.field_type.blob? || f.field_type.length > 255)
         ext = (0x40 & len) != 0
         len = ((len & 0x3f) << 8) + cursor.get_uint8
       end
