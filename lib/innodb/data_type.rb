@@ -1,6 +1,7 @@
 # -*- encoding : utf-8 -*-
 require "stringio"
 require "bigdecimal"
+require "date"
 
 class Innodb::DataType
 
@@ -205,6 +206,90 @@ class Innodb::DataType
     end
   end
 
+  class YearType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = 1
+      @display_width = modifiers.fetch(0, 4)
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
+    def value(data)
+      year = BinData::Uint8.read(data)
+      return (year % 100).to_s if @display_width != 4
+      return (year + 1900).to_s if year != 0
+      "0000"
+    end
+  end
+
+  class TimeType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = 3
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
+    def value(data)
+      time = BinData::Int24be.read(data) ^ (-1 << 23)
+      sign = "-" if time < 0
+      time = time.abs
+      "%s%02d:%02d:%02d" % [sign, time / 10000, (time / 100) % 100, time % 100]
+    end
+  end
+
+  class DateType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = 3
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
+    def value(data)
+      date = BinData::Int24be.read(data) ^ (-1 << 23)
+      day = date & 0x1f
+      month = (date >> 5) & 0xf
+      year = date >> 9
+      "%04d-%02d-%02d" % [year, month, day]
+    end
+  end
+
+  class DatetimeType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = 8
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
+    def value(data)
+      datetime = BinData::Int64be.read(data) ^ (-1 << 63)
+      date = datetime / 1000000
+      year, month, day = [date / 10000, (date / 100) % 100, date % 100]
+      time = datetime - (date * 1000000)
+      hour, min, sec = [time / 10000, (time / 100) % 100, time % 100]
+      "%04d-%02d-%02d %02d:%02d:%02d" % [year, month, day, hour, min, sec]
+    end
+  end
+
+  class TimestampType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = 4
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
+    # Returns the UTC timestamp as a value in 'YYYY-MM-DD HH:MM:SS' format.
+    def value(data)
+      timestamp = BinData::Uint32be.read(data)
+      return "0000-00-00 00:00:00" if timestamp.zero?
+      DateTime.strptime(timestamp.to_s, '%s').strftime "%Y-%m-%d %H:%M:%S"
+    end
+  end
+
   # Maps base type to data type class.
   TYPES = {
     :BIT        => BitType,
@@ -223,6 +308,11 @@ class Innodb::DataType
     :CHAR       => CharacterType,
     :VARCHAR    => VariableCharacterType,
     :BLOB       => BlobType,
+    :YEAR       => YearType,
+    :TIME       => TimeType,
+    :DATE       => DateType,
+    :DATETIME   => DatetimeType,
+    :TIMESTAMP  => TimestampType,
   }
 
   def self.make_name(base_type, modifiers, properties)
