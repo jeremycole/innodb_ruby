@@ -335,22 +335,22 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return an array indicating which fields are null.
   def record_header_compact_null_bitmap(cursor)
-    columns = (record_format[:key] + record_format[:row])
+    fields = (record_format[:key] + record_format[:row])
 
     # The number of bits in the bitmap is the number of nullable fields.
-    size = columns.count { |c| c[:field].type.nullable? }
+    size = fields.count { |f| f.nullable? }
 
     # There is no bitmap if there are no nullable fields.
     return nil unless size > 0
 
     # To simplify later checks, expand bitmap to one for each field.
-    bitmap = Array.new(columns.last[:field].position + 1, false)
+    bitmap = Array.new(fields.last.position + 1, false)
 
     null_bit_array = cursor.get_bit_array(size).reverse!
 
     # For every nullable field, set whether the field is actually null.
-    columns.each do |c|
-      bitmap[c[:field].position] = c[:field].type.nullable? ? (null_bit_array.shift == 1) : false
+    fields.each do |f|
+      bitmap[f.position] = f.nullable? ? (null_bit_array.shift == 1) : false
     end
 
     return bitmap
@@ -359,23 +359,22 @@ class Innodb::Page::Index < Innodb::Page
   # Return an array containing an array of the length of each variable-length
   # field and an array indicating which fields are stored externally.
   def record_header_compact_variable_lengths_and_externs(cursor, null_bitmap)
-    columns = (record_format[:key] + record_format[:row])
+    fields = (record_format[:key] + record_format[:row])
 
-    len_array = Array.new(columns.last[:field].position + 1, 0)
-    ext_array = Array.new(columns.last[:field].position + 1, false)
+    len_array = Array.new(fields.last.position + 1, 0)
+    ext_array = Array.new(fields.last.position + 1, false)
 
     # For each non-NULL variable-length field, the record header contains
     # the length in one or two bytes.
-    columns.each do |c|
-      f = c[:field]
-      next if !f.type.variable? or (null_bitmap && null_bitmap[f.position])
+    fields.each do |f|
+      next if !f.variable? or (null_bitmap && null_bitmap[f.position])
 
       len = cursor.get_uint8
       ext = false
 
       # Two bytes are used only if the length exceeds 127 bytes and the
       # maximum length exceeds 255 bytes (or the field is a BLOB type).
-      if len > 127 && (f.type.blob? || f.type.length > 255)
+      if len > 127 && (f.blob? || f.data_type.width > 255)
         ext = (0x40 & len) != 0
         len = ((len & 0x3f) << 8) + cursor.get_uint8
       end
@@ -456,10 +455,7 @@ class Innodb::Page::Index < Innodb::Page
     fields = {:type => description[:type], :key => [], :row => []}
 
     description[:key].each do |field|
-      fields[:key] << {
-        :name => field[:name],
-        :field => Innodb::Field.new(position, *field[:type]),
-      }
+      fields[:key] << Innodb::Field.new(position, field[:name], *field[:type])
       position += 1
     end
 
@@ -469,10 +465,7 @@ class Innodb::Page::Index < Innodb::Page
     end
 
     description[:row].each do |field|
-      fields[:row] << {
-        :name => field[:name],
-        :field => Innodb::Field.new(position, *field[:type]),
-      }
+      fields[:row] << Innodb::Field.new(position, field[:name], *field[:type])
       position += 1
     end
 
@@ -508,12 +501,13 @@ class Innodb::Page::Index < Innodb::Page
 
         # Read the key fields present in all types of pages.
         this_record[:key] = []
-        record_format[:key].each do |column|
-          c.name("key[#{column[:name]}]") do
+        record_format[:key].each do |f|
+          c.name("key[#{f.name}") do
             this_record[:key] << {
-              :name => column[:name],
-              :value => column[:field].read(this_record, c),
-              :extern => column[:field].read_extern(this_record, c),
+              :name => f.name,
+              :type => f.data_type.name,
+              :value => f.value(this_record, c),
+              :extern => f.extern(this_record, c),
             }
           end
         end
@@ -543,12 +537,13 @@ class Innodb::Page::Index < Innodb::Page
           (record_format[:type] == :secondary)
           # Read the non-key fields.
           this_record[:row] = []
-          record_format[:row].each do |column|
-            c.name("row[#{column[:name]}]") do
+          record_format[:row].each do |f|
+            c.name("row[#{f.name}") do
               this_record[:row] << {
-                :name => column[:name],
-                :value => column[:field].read(this_record, c),
-                :extern => column[:field].read_extern(this_record, c),
+                :name => f.name,
+                :type => f.data_type.name,
+                :value => f.value(this_record, c),
+                :extern => f.extern(this_record, c),
               }
             end
           end

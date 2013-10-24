@@ -31,16 +31,6 @@ describe Innodb::Cursor do
     @data[:offset][:alphabet] = @data[:buffer].size
     @data[:buffer] << "abcdefghijklmnopqrstuvwxyz"
 
-    # InnoDB-munged signed positive integers.
-    @data[:offset][:innodb_sint_pos] = @data[:buffer].size
-    @data[:buffer] <<
-      "\x80\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
-
-    # InnoDB-munged signed negative integers.
-    @data[:offset][:innodb_sint_neg] = @data[:buffer].size
-    @data[:buffer] <<
-      "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
-
     # InnoDB-compressed unsigned 32-bit integers.
     @data[:offset][:innodb_comp_uint32_1] = @data[:buffer].size
     @data[:buffer] << "\x7f"
@@ -282,43 +272,6 @@ describe Innodb::Cursor do
 
     it "returns a uint64 for size 8" do
       @cursor.get_uint_by_size(8).should eql 0x0001020304050607
-    end
-  end
-
-  describe "#get_i_sint*" do
-    it "returns an InnoDB-munged sint8 correctly" do
-      @cursor.seek(@data[:offset][:innodb_sint_pos])
-      @cursor.get_i_sint8.should eql 0x00
-      @cursor.seek(@data[:offset][:innodb_sint_neg])
-      @cursor.get_i_sint8.should eql -128
-    end
-
-    it "returns an InnoDB-munged sint16 correctly" do
-      @cursor.seek(@data[:offset][:innodb_sint_pos])
-      @cursor.get_i_sint16.should eql 0x0001
-      @cursor.seek(@data[:offset][:innodb_sint_neg])
-      @cursor.get_i_sint16.should eql -32767
-    end
-
-    it "returns an InnoDB-munged sint24 correctly" do
-      @cursor.seek(@data[:offset][:innodb_sint_pos])
-      @cursor.get_i_sint24.should eql 0x000102
-      @cursor.seek(@data[:offset][:innodb_sint_neg])
-      @cursor.get_i_sint24.should eql -8388350
-    end
-
-    it "returns an InnoDB-munged sint32 correctly" do
-      @cursor.seek(@data[:offset][:innodb_sint_pos])
-      @cursor.get_i_sint32.should eql 0x00010203
-      @cursor.seek(@data[:offset][:innodb_sint_neg])
-      @cursor.get_i_sint32.should eql -2147417597
-    end
-
-    it "returns an InnoDB-munged sint64 correctly" do
-      @cursor.seek(@data[:offset][:innodb_sint_pos])
-      @cursor.get_i_sint64.should eql 0x0001020304050607
-      @cursor.seek(@data[:offset][:innodb_sint_neg])
-      @cursor.get_i_sint64.should eql -9223088349902469625
     end
   end
 
