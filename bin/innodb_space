@@ -563,7 +563,7 @@ Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
     Operate on the level <level>; may be specified more than once.
 
   --list, -L <list>
-    Operate  on the list <list>; may be specified more than once.
+    Operate on the list <list>; may be specified more than once.
 
   --require, -r <file>
     Use Ruby's "require" to load the file <file>. This is useful for loading
@@ -596,9 +596,9 @@ The following modes are supported:
     provide an overall view of the space and allocations within it. A starting
     page number can be provided with the --page/-p argument.
 
- space-page-type-summary
-   Summarize all pages by type. A starting page number can be provided with
-   the --page/-p argument.
+  space-page-type-summary
+    Summarize all pages by type. A starting page number can be provided with
+    the --page/-p argument.
 
   space-indexes
     Summarize all indexes (actually each segment of the indexes) to show
