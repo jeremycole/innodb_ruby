@@ -791,7 +791,7 @@ ARGV.each do |mode|
   when "space-index-pages-summary"
     space_index_pages_summary(space, @options.pages.first || 0)
   when "space-index-pages-free-plot"
-    name = File.basename(@options.file).sub(".ibd", "")
+    name = File.basename(@options.space_file).sub(".ibd", "")
     space_index_pages_free_plot(space, name, @options.pages.first || 0)
   when "space-page-type-regions"
     space_page_type_regions(space, @options.pages.first || 0)
