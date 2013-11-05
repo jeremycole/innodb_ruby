@@ -3,7 +3,7 @@ require 'spec_helper'
 
 class Innodb::RecordDescriber::Test < Innodb::RecordDescriber
   type :clustered
-  key "id",     "BIGINT", :UNSIGNED, :NOT_NULL
+  key "id",     :BIGINT, :UNSIGNED, :NOT_NULL
   row "a",      "INT"
   row "b",      "VARCHAR(64)"
   row "c",      "INT", :NOT_NULL

@@ -14,7 +14,7 @@ class Innodb::Field
     @position = position
     @name = name
     @nullable = properties.delete(:NOT_NULL) ? false : true
-    base_type, modifiers = parse_type_definition(type_definition)
+    base_type, modifiers = parse_type_definition(type_definition.to_s)
     @data_type = Innodb::DataType.new(base_type, modifiers, properties)
   end
 
