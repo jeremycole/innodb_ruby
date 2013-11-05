@@ -502,7 +502,7 @@ class Innodb::Page::Index < Innodb::Page
         # Read the key fields present in all types of pages.
         this_record[:key] = []
         record_format[:key].each do |f|
-          c.name("key[#{f.name}") do
+          c.name("key[#{f.name}]") do
             this_record[:key] << {
               :name => f.name,
               :type => f.data_type.name,
