@@ -538,7 +538,7 @@ class Innodb::Page::Index < Innodb::Page
           # Read the non-key fields.
           this_record[:row] = []
           record_format[:row].each do |f|
-            c.name("row[#{f.name}") do
+            c.name("row[#{f.name}]") do
               this_record[:row] << {
                 :name => f.name,
                 :type => f.data_type.name,

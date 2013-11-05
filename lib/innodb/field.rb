@@ -54,7 +54,7 @@ class Innodb::Field
 
   # Read an InnoDB encoded data field.
   def read(record, cursor)
-    cursor.name(@name) { cursor.get_bytes(length(record)) }
+    cursor.name(@data_type.name) { cursor.get_bytes(length(record)) }
   end
 
   # Read the data value (e.g. encoded in the data).
