@@ -2,6 +2,7 @@
 
 require "getoptlong"
 require "ostruct"
+require "set"
 require "innodb"
 
 def usage(exit_code, message = nil)
@@ -9,13 +10,16 @@ def usage(exit_code, message = nil)
 
   print <<'END_OF_USAGE'
 
-Usage: innodb_log [-d] <file> [block-number]
+Usage: innodb_log [-d] [-s] <file> [block-number]
 
   --help, -?
     Print this usage text.
 
   --dump-blocks, -d
     Dump block header, trailer, and record.
+
+  --space-id, -s
+    Print only given space id (may provide multiple times).
 
 END_OF_USAGE
 
@@ -24,10 +28,12 @@ end
 
 @options = OpenStruct.new
 @options.dump = false
+@options.space_ids = Set.new
 
 getopt_options = [
   [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
   [ "--dump-blocks",            "-d",     GetoptLong::NO_ARGUMENT ],
+  [ "--space-id",               "-s",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
 
 getopt = GetoptLong.new(*getopt_options)
@@ -38,6 +44,8 @@ getopt.each do |opt, arg|
     usage 0
   when "--dump-blocks"
     @options.dump = true
+  when "--space-id"
+    @options.space_ids << Integer(arg)
   end
 end
 
@@ -56,14 +64,17 @@ puts "%-10s%-30s%-10s%-10s" % [
 ]
 log.each_block do |block_number, block|
   if block.record
-    puts "%-10i%-30s%-10i%-10i" % [
-      block_number,
-      block.record[:type],
-      block.record[:space],
-      block.record[:page_number],
-    ]
-    if @options.dump
-      block.dump
+    space_id = block.record[:space]
+    if @options.space_ids.empty? or @options.space_ids.include?(space_id)
+      puts "%-10i%-30s%-10i%-10i" % [
+        block_number,
+        block.record[:type],
+        space_id,
+        block.record[:page_number],
+      ]
+      if @options.dump
+        block.dump
+      end
     end
   end
 end
