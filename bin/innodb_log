@@ -1,8 +1,50 @@
 #!/usr/bin/env ruby
 
+require "getoptlong"
+require "ostruct"
 require "innodb"
 
+def usage(exit_code, message = nil)
+  print "Error: #{message}\n" unless message.nil?
+
+  print <<'END_OF_USAGE'
+
+Usage: innodb_log [-d] <file> [block-number]
+
+  --help, -?
+    Print this usage text.
+
+  --dump-blocks, -d
+    Dump block header, trailer, and record.
+
+END_OF_USAGE
+
+  exit exit_code
+end
+
+@options = OpenStruct.new
+@options.dump = false
+
+getopt_options = [
+  [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
+  [ "--dump-blocks",            "-d",     GetoptLong::NO_ARGUMENT ],
+]
+
+getopt = GetoptLong.new(*getopt_options)
+
+getopt.each do |opt, arg|
+  case opt
+  when "--help"
+    usage 0
+  when "--dump-blocks"
+    @options.dump = true
+  end
+end
+
 filename, block_number = ARGV.shift(2)
+if filename.nil?
+  usage 1
+end
 
 log = Innodb::Log.new(filename)
 
@@ -20,6 +62,8 @@ log.each_block do |block_number, block|
       block.record[:space],
       block.record[:page_number],
     ]
-    #block.dump
+    if @options.dump
+      block.dump
+    end
   end
 end
