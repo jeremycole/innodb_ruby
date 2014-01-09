@@ -48,7 +48,7 @@ end
 
 log = Innodb::Log.new(filename)
 
-puts "%-10s%-20s%-10s%-10s" % [
+puts "%-10s%-30s%-10s%-10s" % [
   "block",
   "type",
   "space",
@@ -56,7 +56,7 @@ puts "%-10s%-20s%-10s%-10s" % [
 ]
 log.each_block do |block_number, block|
   if block.record
-    puts "%-10i%-20s%-10i%-10i" % [
+    puts "%-10i%-30s%-10i%-10i" % [
       block_number,
       block.record[:type],
       block.record[:space],
