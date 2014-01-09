@@ -9,7 +9,7 @@ class Innodb::RecordDescriber::Test < Innodb::RecordDescriber
   row "c",      "INT", :NOT_NULL
   row "d",      "VARCHAR(128)", :NOT_NULL
   row "e",      "MEDIUMINT", :UNSIGNED
-  row "f",      "VARCHAR(512)"
+  row "f",      "VARBINARY(512)"
   row "g",      "BIGINT", :UNSIGNED
   row "h",      "BLOB"
 end

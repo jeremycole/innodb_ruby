@@ -307,6 +307,7 @@ class Innodb::DataType
     :NUMERIC    => DecimalType,
     :CHAR       => CharacterType,
     :VARCHAR    => VariableCharacterType,
+    :VARBINARY  => BlobType,
     :TINYBLOB   => BlobType,
     :BLOB       => BlobType,
     :MEDIUMBLOB => BlobType,
