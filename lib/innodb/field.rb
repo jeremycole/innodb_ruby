@@ -35,6 +35,7 @@ class Innodb::Field
 
   def variable?
     @data_type.is_a? Innodb::DataType::BlobType or
+    @data_type.is_a? Innodb::DataType::VariableBinaryType or
     @data_type.is_a? Innodb::DataType::VariableCharacterType
   end
 

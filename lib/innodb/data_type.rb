@@ -198,6 +198,26 @@ class Innodb::DataType
     end
   end
 
+  # Fixed-length binary type.
+  class BinaryType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = modifiers.fetch(0, 1)
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+  end
+
+  class VariableBinaryType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = modifiers[0]
+      raise "Invalid width specification" unless modifiers.size == 1
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+  end
+
   class BlobType
     attr_reader :name
 
@@ -307,7 +327,8 @@ class Innodb::DataType
     :NUMERIC    => DecimalType,
     :CHAR       => CharacterType,
     :VARCHAR    => VariableCharacterType,
-    :VARBINARY  => BlobType,
+    :BINARY     => BinaryType,
+    :VARBINARY  => VariableBinaryType,
     :TINYBLOB   => BlobType,
     :BLOB       => BlobType,
     :MEDIUMBLOB => BlobType,
