@@ -5,6 +5,20 @@ require "ostruct"
 require "pp"
 require "innodb"
 
+begin
+  require "terminfo"
+  class PP
+    class << self
+      alias_method :old_pp, :pp
+      def pp(obj, out = $>, width = TermInfo.screen_size[1])
+        old_pp(obj, out, width)
+      end
+    end
+  end
+rescue LoadError
+  nil
+end
+
 def print_lists(lists)
   puts "%-20s%-12s%-12s%-12s%-12s%-12s" % [
     "name",
