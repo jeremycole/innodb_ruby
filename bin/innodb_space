@@ -723,7 +723,7 @@ getopt.each do |opt, arg|
   when "--list"
     @options.lists << arg.to_sym
   when "--require"
-    require arg
+    require File.expand_path(arg)
   when "--page-size"
     unless [1, 2, 4, 8, 16].include?(arg.to_i)
       usage 1, "Page size #{arg} is not understood"
