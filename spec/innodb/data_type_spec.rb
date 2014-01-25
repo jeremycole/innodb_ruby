@@ -10,6 +10,9 @@ describe Innodb::DataType do
     Innodb::DataType.make_name("VARCHAR", [32], []).should eql "VARCHAR(32)"
     Innodb::DataType.make_name("CHAR", [16], []).should eql "CHAR(16)"
     Innodb::DataType.make_name("CHAR", [], []).should eql "CHAR"
+    Innodb::DataType.make_name("VARBINARY", [48], []).should eql "VARBINARY(48)"
+    Innodb::DataType.make_name("BINARY", [64], []).should eql "BINARY(64)"
+    Innodb::DataType.make_name("BINARY", [], []).should eql "BINARY"
   end
 
   describe Innodb::DataType::CharacterType do
@@ -24,6 +27,22 @@ describe Innodb::DataType do
       expect { Innodb::DataType.new(:VARCHAR, [], []) }.
         to raise_error "Invalid width specification"
       expect { Innodb::DataType.new(:VARCHAR, [1,1], []) }.
+        to raise_error "Invalid width specification"
+    end
+  end
+
+  describe Innodb::DataType::BinaryType do
+    it "handles optional width" do
+      Innodb::DataType.new(:BINARY, [], []).width.should eql 1
+      Innodb::DataType.new(:BINARY, [16], []).width.should eql 16
+    end
+  end
+
+  describe Innodb::DataType::VariableBinaryType do
+    it "throws an error on invalid modifiers" do
+      expect { Innodb::DataType.new(:VARBINARY, [], []) }.
+        to raise_error "Invalid width specification"
+      expect { Innodb::DataType.new(:VARBINARY, [1,1], []) }.
         to raise_error "Invalid width specification"
     end
   end
