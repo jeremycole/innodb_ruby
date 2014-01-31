@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 require "innodb/list"
 require "innodb/xdes"
 

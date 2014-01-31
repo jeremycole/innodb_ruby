@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 require "stringio"
 require "bigdecimal"
 require "date"

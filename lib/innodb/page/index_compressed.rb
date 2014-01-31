@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 class Innodb::Page::Index::Compressed < Innodb::Page::Index
   # The number of directory slots in use.
   def directory_slots

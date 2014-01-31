@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 require "innodb/page/sys_rseg_header"
 require "innodb/page/sys_data_dictionary_header"
 

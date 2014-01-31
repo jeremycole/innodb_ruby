@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 class Innodb::Page::SysRsegHeader < Innodb::Page
   # The position of the rollback segment header within the page.
   def pos_rseg_header

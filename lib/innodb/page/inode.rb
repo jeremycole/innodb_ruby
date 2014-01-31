@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 require "innodb/list"
 
 # A specialized class for handling INODE pages, which contain index FSEG (file

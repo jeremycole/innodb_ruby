@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 class Innodb::Inode
   # The number of "slots" (each representing one page) in the fragment array
   # within each Inode entry.

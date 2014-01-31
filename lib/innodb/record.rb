@@ -1,3 +1,5 @@
+# -*- encoding : utf-8 -*-
+
 class Innodb::Record
   attr_accessor :record
 

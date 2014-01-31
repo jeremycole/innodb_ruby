@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 require 'spec_helper'
 
 class Innodb::RecordDescriber::Test < Innodb::RecordDescriber

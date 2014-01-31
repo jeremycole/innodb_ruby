@@ -1,5 +1,7 @@
 # -*- encoding : utf-8 -*-
+
 # An InnoDB transaction log file.
+
 class Innodb::Log
   HEADER_SIZE   = 4 * Innodb::LogBlock::BLOCK_SIZE
   HEADER_START  = 0

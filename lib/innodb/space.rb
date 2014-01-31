@@ -1,6 +1,8 @@
 # -*- encoding : utf-8 -*-
+
 # An InnoDB space file, which can be either a multi-table ibdataN file
 # or a single-table "innodb_file_per_table" .ibd file.
+
 class Innodb::Space
   # InnoDB's default page size is 16KiB.
   DEFAULT_PAGE_SIZE = 16384

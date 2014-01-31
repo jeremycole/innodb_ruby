@@ -1,3 +1,5 @@
+# -*- encoding : utf-8 -*-
+
 class Innodb::System
   attr_reader :config
   attr_accessor :spaces

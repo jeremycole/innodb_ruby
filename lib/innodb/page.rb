@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 require "innodb/cursor"
 
 # A generic class for any type of page, which handles reading the common

@@ -1,3 +1,5 @@
+# -*- encoding : utf-8 -*-
+
 class Innodb::DataDictionary
   # A record describer for SYS_TABLES clustered records.
   class SYS_TABLES_PRIMARY < Innodb::RecordDescriber

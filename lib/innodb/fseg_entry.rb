@@ -1,6 +1,8 @@
 # -*- encoding : utf-8 -*-
+
 # An InnoDB file segment entry, which appears in a few places, such as the
 # FSEG header of INDEX pages, and in the TRX_SYS pages.
+
 class Innodb::FsegEntry
   # The size (in bytes) of an FSEG entry, which contains a two 32-bit integers
   # and a 16-bit integer.

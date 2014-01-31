@@ -7,11 +7,17 @@ Gem::Specification.new do |s|
   s.version     = Innodb::VERSION
   s.date        = Time.now.strftime("%Y-%m-%d")
   s.summary     = 'InnoDB data file parser'
+  s.license     = 'New BSD (3-clause)'
   s.description = 'Library for parsing InnoDB data files in Ruby'
-  s.authors     = [ 'Jeremy Cole' ]
+  s.authors     = [
+    'Jeremy Cole',
+    'Davi Arnaut',
+  ]
   s.email       = 'jeremy@jcole.us'
-  s.homepage    = 'http://jcole.us/'
+  s.homepage    = 'https://github.com/jeremycole/innodb_ruby'
   s.files = [
+    'LICENSE',
+    'AUTHORS.md',
     'README.md',
     'lib/innodb.rb',
     'lib/innodb/checksum.rb',
@@ -25,10 +31,12 @@ Gem::Specification.new do |s|
     'lib/innodb/list.rb',
     'lib/innodb/log.rb',
     'lib/innodb/log_block.rb',
+    'lib/innodb/log_group.rb',
     'lib/innodb/page.rb',
     'lib/innodb/page/blob.rb',
     'lib/innodb/page/fsp_hdr_xdes.rb',
     'lib/innodb/page/index.rb',
+    'lib/innodb/page/index_compressed.rb',
     'lib/innodb/page/inode.rb',
     'lib/innodb/page/sys.rb',
     'lib/innodb/page/sys_data_dictionary_header.rb',

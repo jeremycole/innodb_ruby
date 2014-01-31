@@ -1,4 +1,5 @@
 # -*- encoding : utf-8 -*-
+
 require "bindata"
 
 # A cursor to walk through InnoDB data structures to read fields.
