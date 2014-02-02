@@ -43,15 +43,9 @@ class Innodb::LogBlock
     @buffer = buffer
   end
 
-  # A helper function to return bytes from the log block buffer based on offset
-  # and length, both in bytes.
-  def data(offset, length)
-    @buffer[offset...(offset + length)]
-  end
-
   # Return an Innodb::Cursor object positioned at a specific offset.
   def cursor(offset)
-    Innodb::Cursor.new(self, offset)
+    Innodb::Cursor.new(@buffer, offset)
   end
 
   # Return the log block header.

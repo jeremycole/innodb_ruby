@@ -163,11 +163,11 @@ class Innodb::Cursor
     cursor_start = current.position
     case current.direction
     when :forward
-      data = @buffer.data(current.position, length)
+      data = @buffer.slice(current.position, length)
       adjust(length)
     when :backward
       adjust(-length)
-      data = @buffer.data(current.position, length)
+      data = @buffer.slice(current.position, length)
     end
 
     trace(cursor_start, data.bytes, current.name)
