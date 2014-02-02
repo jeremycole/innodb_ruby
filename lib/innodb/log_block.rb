@@ -120,12 +120,17 @@ class Innodb::LogBlock
           type = type_and_flag & RECORD_TYPE_MASK
           type = RECORD_TYPES[type] || type
           single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
-          {
-            :type           => type,
-            :single_record  => single_record,
-            :space          => c.name("space") { c.get_ic_uint32 },
-            :page_number    => c.name("page_number") { c.get_ic_uint32 },
-          }
+          case type
+          when :MULTI_REC_END, :DUMMY_RECORD
+            { :type => type }
+          else
+            {
+              :type           => type,
+              :single_record  => single_record,
+              :space          => c.name("space") { c.get_ic_uint32 },
+              :page_number    => c.name("page_number") { c.get_ic_uint32 },
+            }
+          end
         end
       end
     end
