@@ -25,7 +25,11 @@ class Innodb::Log
       @blocks = ((@size - DATA_START) / Innodb::LogBlock::BLOCK_SIZE)
     end
   end
-  
+
+  # The size (in bytes) of the log.
+  attr_reader :size
+
+  # The number of blocks in the the log.
   attr_reader :blocks
 
   # Return a log block with a given block number as an InnoDB::LogBlock object.
