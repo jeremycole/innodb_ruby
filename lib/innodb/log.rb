@@ -19,11 +19,9 @@ class Innodb::Log
 
   # Open a log file.
   def initialize(file)
-    @name = file
-    File.open(@name) do |log|
-      @size = log.stat.size
-      @blocks = ((@size - DATA_START) / Innodb::LogBlock::BLOCK_SIZE)
-    end
+    @file = File.open(file)
+    @size = @file.stat.size
+    @blocks = ((@size - DATA_START) / Innodb::LogBlock::BLOCK_SIZE)
   end
 
   # The size (in bytes) of the log.
@@ -38,11 +36,9 @@ class Innodb::Log
     offset = DATA_START + (block_index.to_i * Innodb::LogBlock::BLOCK_SIZE)
     return nil unless offset < @size
     return nil unless (offset + Innodb::LogBlock::BLOCK_SIZE) <= @size
-    File.open(@name) do |log|
-      log.seek(offset)
-      block_data = log.read(Innodb::LogBlock::BLOCK_SIZE)
-      Innodb::LogBlock.new(block_data)
-    end
+    @file.seek(offset)
+    block_data = @file.read(Innodb::LogBlock::BLOCK_SIZE)
+    Innodb::LogBlock.new(block_data)
   end
 
   # Iterate through all log blocks, returning the block index and an
