@@ -32,10 +32,10 @@ class Innodb::Log
   # The number of blocks in the the log.
   attr_reader :blocks
 
-  # Return a log block with a given block number as an InnoDB::LogBlock object.
-  # Blocks are numbered after the log file header, starting from 0.
-  def block(block_number)
-    offset = DATA_START + (block_number.to_i * Innodb::LogBlock::BLOCK_SIZE)
+  # Return a log block with a given block index as an InnoDB::LogBlock object.
+  # Blocks are indexed after the log file header, starting from 0.
+  def block(block_index)
+    offset = DATA_START + (block_index.to_i * Innodb::LogBlock::BLOCK_SIZE)
     return nil unless offset < @size
     return nil unless (offset + Innodb::LogBlock::BLOCK_SIZE) <= @size
     File.open(@name) do |log|
@@ -45,12 +45,12 @@ class Innodb::Log
     end
   end
 
-  # Iterate through all log blocks, returning the block number and an
+  # Iterate through all log blocks, returning the block index and an
   # InnoDB::LogBlock object for each block.
   def each_block
-    (0...@blocks).each do |block_number|
-      current_block = block(block_number)
-      yield block_number, current_block if current_block
+    (0...@blocks).each do |block_index|
+      current_block = block(block_index)
+      yield block_index, current_block if current_block
     end
   end
 end

@@ -59,7 +59,7 @@ class Innodb::LogBlock
     @header ||= begin
       c = cursor(HEADER_START)
       {
-        :block            => c.get_uint32 & (2**31-1),
+        :block_number     => c.get_uint32 & (2**31-1),
         :data_length      => c.get_uint16,
         :first_rec_group  => c.get_uint16,
         :checkpoint_no    => c.get_uint32,
