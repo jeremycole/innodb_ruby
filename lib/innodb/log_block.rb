@@ -8,22 +8,11 @@ class Innodb::LogBlock
   # Log blocks are fixed-length at 512 bytes in InnoDB.
   BLOCK_SIZE = 512
 
-  HEADER_SIZE = 12
-  HEADER_START = 0
+  # Offset of the header within the log block.
+  HEADER_OFFSET = 0
 
-  TRAILER_SIZE = 4
-  TRAILER_START = BLOCK_SIZE - TRAILER_SIZE
-
-  RECORD_START = HEADER_START + HEADER_SIZE
-
-# Header:
-#define	LOG_BLOCK_HDR_NO	0	/* block number which must be > 0 and
-#define	LOG_BLOCK_HDR_DATA_LEN	4	/* number of bytes of log written to
-#define	LOG_BLOCK_FIRST_REC_GROUP 6	/* offset of the first start of an
-#define LOG_BLOCK_CHECKPOINT_NO	8	/* 4 lower bytes of the value of
-
-# Trailer:
-#define	LOG_BLOCK_CHECKSUM	0	/* 4 byte checksum of the log block
+  # Offset of the trailer within ths log block.
+  TRAILER_OFFSET = BLOCK_SIZE - 4
 
   # Initialize a log block by passing in a 512-byte buffer containing the raw
   # log block contents.
@@ -43,7 +32,7 @@ class Innodb::LogBlock
   # Return the log block header.
   def header
     @header ||= begin
-      c = cursor(HEADER_START)
+      c = cursor(HEADER_OFFSET)
       {
         :block_number     => c.get_uint32 & (2**31-1),
         :data_length      => c.get_uint16,
@@ -56,7 +45,7 @@ class Innodb::LogBlock
   # Return the log block trailer.
   def trailer
     @trailer ||= begin
-      c = cursor(TRAILER_START)
+      c = cursor(TRAILER_OFFSET)
       {
         :checksum => c.get_uint32,
       }
