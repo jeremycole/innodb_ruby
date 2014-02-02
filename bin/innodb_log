@@ -10,7 +10,7 @@ def usage(exit_code, message = nil)
 
   print <<'END_OF_USAGE'
 
-Usage: innodb_log [-d] [-s] <file> [block-number]
+Usage: innodb_log [-d] [-s] <file>
 
   --help, -?
     Print this usage text.
@@ -49,7 +49,7 @@ getopt.each do |opt, arg|
   end
 end
 
-filename, block_number = ARGV.shift(2)
+filename = ARGV.shift(2)
 if filename.nil?
   usage 1
 end
