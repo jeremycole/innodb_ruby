@@ -111,27 +111,24 @@ class Innodb::LogBlock
   SINGLE_RECORD_MASK = 0x80
   RECORD_TYPE_MASK   = 0x7f
 
-  # Return the log record. (This is mostly unimplemented.)
-  def record
-    @record ||= begin
-      if header[:first_rec_group] != 0
-        cursor(header[:first_rec_group]).name("header") do |c|
-          type_and_flag = c.name("type") { c.get_uint8 }
-          type = type_and_flag & RECORD_TYPE_MASK
-          type = RECORD_TYPES[type] || type
-          single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
-          case type
-          when :MULTI_REC_END, :DUMMY_RECORD
-            { :type => type }
-          else
-            {
-              :type           => type,
-              :single_record  => single_record,
-              :space          => c.name("space") { c.get_ic_uint32 },
-              :page_number    => c.name("page_number") { c.get_ic_uint32 },
-            }
-          end
-        end
+  # Return a preamble of the first record in this block.
+  def first_record_preamble
+    return nil unless header[:first_rec_group] > 0
+    cursor(header[:first_rec_group]).name("header") do |c|
+      type_and_flag = c.name("type") { c.get_uint8 }
+      type = type_and_flag & RECORD_TYPE_MASK
+      type = RECORD_TYPES[type] || type
+      single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
+      case type
+      when :MULTI_REC_END, :DUMMY_RECORD
+        { :type => type }
+      else
+        {
+          :type           => type,
+          :single_record  => single_record,
+          :space          => c.name("space") { c.get_ic_uint32 },
+          :page_number    => c.name("page_number") { c.get_ic_uint32 },
+        }
       end
     end
   end
@@ -148,6 +145,6 @@ class Innodb::LogBlock
 
     puts
     puts "record:"
-    pp record
+    pp first_record_preamble
   end
 end
