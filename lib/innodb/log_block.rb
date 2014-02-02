@@ -14,6 +14,9 @@ class Innodb::LogBlock
   # Offset of the trailer within ths log block.
   TRAILER_OFFSET = BLOCK_SIZE - 4
 
+  # Mask used to get the flush bit in the header.
+  HEADER_FLUSH_BIT_MASK = 0x80000000
+
   # Initialize a log block by passing in a 512-byte buffer containing the raw
   # log block contents.
   def initialize(buffer)
@@ -33,7 +36,12 @@ class Innodb::LogBlock
   def header
     @header ||= cursor(HEADER_OFFSET).name("header") do |c|
       {
-        :block_number     => c.name("block_number")    { c.get_uint32 & (2**31-1) },
+        :flush => c.name("flush") {
+          c.peek { (c.get_uint32 & HEADER_FLUSH_BIT_MASK) > 0 }
+        },
+        :block_number => c.name("block_number") {
+          c.get_uint32 & ~HEADER_FLUSH_BIT_MASK
+        },
         :data_length      => c.name("data_length")     { c.get_uint16 },
         :first_rec_group  => c.name("first_rec_group") { c.get_uint16 },
         :checkpoint_no    => c.name("checkpoint_no")   { c.get_uint32 },
