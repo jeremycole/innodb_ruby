@@ -108,23 +108,6 @@ class Innodb::LogBlock
     51 => :ZIP_PAGE_COMPRESS,
   }
 
-  # Return the log record contents. (This is mostly unimplemented.)
-  def record_content(record_type, offset)
-    c = cursor(offset)
-    case record_type
-    when :MLOG_1BYTE
-      c.get_uint8
-    when :MLOG_2BYTE
-      c.get_uint16
-    when :MLOG_4BYTE
-      c.get_uint32
-    when :MLOG_8BYTE
-      c.get_uint64
-    when :UNDO_INSERT
-    when :COMP_REC_INSERT
-    end
-  end
-
   SINGLE_RECORD_MASK = 0x80
   RECORD_TYPE_MASK   = 0x7f
 
@@ -140,7 +123,6 @@ class Innodb::LogBlock
           {
             :type           => type,
             :single_record  => single_record,
-            :content        => record_content(type, c.position),
             :space          => c.name("space") { c.get_ic_uint32 },
             :page_number    => c.name("page_number") { c.get_ic_uint32 },
           }
