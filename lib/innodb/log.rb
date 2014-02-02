@@ -3,9 +3,8 @@
 # An InnoDB transaction log file.
 
 class Innodb::Log
-  HEADER_SIZE   = 4 * Innodb::LogBlock::BLOCK_SIZE
-  HEADER_START  = 0
-  DATA_START    = HEADER_START + HEADER_SIZE
+  # Number of blocks in the log file header.
+  LOG_HEADER_BLOCKS = 4
 
 #define LOG_GROUP_ID		0	/* log group number */
 #define LOG_FILE_START_LSN	4	/* lsn of the start of data in this
@@ -21,7 +20,7 @@ class Innodb::Log
   def initialize(file)
     @file = File.open(file)
     @size = @file.stat.size
-    @blocks = ((@size - DATA_START) / Innodb::LogBlock::BLOCK_SIZE)
+    @blocks = (@size / Innodb::LogBlock::BLOCK_SIZE) - LOG_HEADER_BLOCKS
   end
 
   # The size (in bytes) of the log.
@@ -30,15 +29,19 @@ class Innodb::Log
   # The number of blocks in the the log.
   attr_reader :blocks
 
+  # Get the raw byte buffer for a specific block by block offset.
+  def block_data(offset)
+    raise "Invalid block offset" unless (offset % Innodb::LogBlock::BLOCK_SIZE).zero?
+    @file.seek(offset)
+    @file.read(Innodb::LogBlock::BLOCK_SIZE)
+  end
+
   # Return a log block with a given block index as an InnoDB::LogBlock object.
   # Blocks are indexed after the log file header, starting from 0.
   def block(block_index)
-    offset = DATA_START + (block_index.to_i * Innodb::LogBlock::BLOCK_SIZE)
-    return nil unless offset < @size
-    return nil unless (offset + Innodb::LogBlock::BLOCK_SIZE) <= @size
-    @file.seek(offset)
-    block_data = @file.read(Innodb::LogBlock::BLOCK_SIZE)
-    Innodb::LogBlock.new(block_data)
+    return nil unless block_index.between?(0, @blocks - 1)
+    offset = (LOG_HEADER_BLOCKS + block_index.to_i) * Innodb::LogBlock::BLOCK_SIZE
+    Innodb::LogBlock.new(block_data(offset))
   end
 
   # Iterate through all log blocks, returning the block index and an

@@ -32,5 +32,18 @@ describe Innodb::Log do
     it "returns an Innodb::Block" do
       @log.block(0).should be_an_instance_of Innodb::LogBlock
     end
+
+    it "does not return an invalid block" do
+      @log.block(-1).should be_nil
+      @log.block(10236).should be_nil
+    end
+  end
+
+  describe "#block_data" do
+    it "returns block data at offset" do
+      @log.block_data(0).should_not be_nil
+      expect { @log.block_data(256) }.to raise_error "Invalid block offset"
+      expect { @log.block_data(513) }.to raise_error "Invalid block offset"
+    end
   end
 end
