@@ -5,12 +5,37 @@ require "ostruct"
 require "set"
 require "innodb"
 
+def log_summary(log, space_ids)
+  puts "%-10s%-30s%-10s%-10s" % [
+    "block",
+    "type",
+    "space",
+    "page",
+  ]
+  log.each_block do |block_number, block|
+    if block.record
+      space_id = block.record[:space]
+      if @options.space_ids.empty? or @options.space_ids.include?(space_id)
+        puts "%-10i%-30s%-10i%-10i" % [
+          block_number,
+          block.record[:type],
+          space_id,
+          block.record[:page_number],
+        ]
+        if @options.dump
+          block.dump
+        end
+      end
+    end
+  end
+end
+
 def usage(exit_code, message = nil)
   print "Error: #{message}\n" unless message.nil?
 
   print <<'END_OF_USAGE'
 
-Usage: innodb_log [-d] [-s] <file>
+Usage: innodb_log [-d] [-s] <file> [<mode>]
 
   --help, -?
     Print this usage text.
@@ -20,6 +45,11 @@ Usage: innodb_log [-d] [-s] <file>
 
   --space-id, -s
     Print only given space id (may provide multiple times).
+
+The following modes are supported:
+
+  log-summary (default)
+    A summary of all blocks within log that contain at least one record.
 
 END_OF_USAGE
 
@@ -49,32 +79,18 @@ getopt.each do |opt, arg|
   end
 end
 
-filename = ARGV.shift(2)
+filename, mode = ARGV.shift(2)
 if filename.nil?
   usage 1
 end
 
 log = Innodb::Log.new(filename)
 
-puts "%-10s%-30s%-10s%-10s" % [
-  "block",
-  "type",
-  "space",
-  "page",
-]
-log.each_block do |block_number, block|
-  if block.record
-    space_id = block.record[:space]
-    if @options.space_ids.empty? or @options.space_ids.include?(space_id)
-      puts "%-10i%-30s%-10i%-10i" % [
-        block_number,
-        block.record[:type],
-        space_id,
-        block.record[:page_number],
-      ]
-      if @options.dump
-        block.dump
-      end
-    end
-  end
+mode ||= "log-summary"
+
+case mode
+when "log-summary"
+  log_summary(log, @options.space_ids)
+else
+  usage 1, "Unknown mode: #{mode}"
 end
