@@ -31,23 +31,21 @@ class Innodb::LogBlock
 
   # Return the log block header.
   def header
-    @header ||= begin
-      c = cursor(HEADER_OFFSET)
+    @header ||= cursor(HEADER_OFFSET).name("header") do |c|
       {
-        :block_number     => c.get_uint32 & (2**31-1),
-        :data_length      => c.get_uint16,
-        :first_rec_group  => c.get_uint16,
-        :checkpoint_no    => c.get_uint32,
+        :block_number     => c.name("block_number")    { c.get_uint32 & (2**31-1) },
+        :data_length      => c.name("data_length")     { c.get_uint16 },
+        :first_rec_group  => c.name("first_rec_group") { c.get_uint16 },
+        :checkpoint_no    => c.name("checkpoint_no")   { c.get_uint32 },
       }
     end
   end
 
   # Return the log block trailer.
   def trailer
-    @trailer ||= begin
-      c = cursor(TRAILER_OFFSET)
+    @trailer ||= cursor(TRAILER_OFFSET).name("trailer") do |c|
       {
-        :checksum => c.get_uint32,
+        :checksum => c.name("checksum") { c.get_uint32 },
       }
     end
   end
@@ -126,18 +124,19 @@ class Innodb::LogBlock
   def record
     @record ||= begin
       if header[:first_rec_group] != 0
-        c = cursor(header[:first_rec_group])
-        type_and_flag = c.get_uint8
-        type = type_and_flag & RECORD_TYPE_MASK
-        type = RECORD_TYPES[type] || type
-        single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
-        {
-          :type           => type,
-          :single_record  => single_record,
-          :content        => record_content(type, c.position),
-          :space          => c.get_ic_uint32,
-          :page_number    => c.get_ic_uint32,
-        }
+        cursor(header[:first_rec_group]).name("header") do |c|
+          type_and_flag = c.name("type") { c.get_uint8 }
+          type = type_and_flag & RECORD_TYPE_MASK
+          type = RECORD_TYPES[type] || type
+          single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
+          {
+            :type           => type,
+            :single_record  => single_record,
+            :content        => record_content(type, c.position),
+            :space          => c.name("space") { c.get_ic_uint32 },
+            :page_number    => c.name("page_number") { c.get_ic_uint32 },
+          }
+        end
       end
     end
   end
