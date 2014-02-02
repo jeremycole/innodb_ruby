@@ -25,14 +25,6 @@ class Innodb::LogBlock
 # Trailer:
 #define	LOG_BLOCK_CHECKSUM	0	/* 4 byte checksum of the log block
 
-#/* Offsets for a checkpoint field */
-#define LOG_CHECKPOINT_NO		0
-#define LOG_CHECKPOINT_LSN		8
-#define LOG_CHECKPOINT_OFFSET		16
-#define LOG_CHECKPOINT_LOG_BUF_SIZE	20
-#define	LOG_CHECKPOINT_ARCHIVED_LSN	24
-#define	LOG_CHECKPOINT_GROUP_ARRAY	32
-
   # Initialize a log block by passing in a 512-byte buffer containing the raw
   # log block contents.
   def initialize(buffer)
