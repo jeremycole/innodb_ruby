@@ -181,6 +181,12 @@ class Innodb::DataType
       @width = modifiers.fetch(0, 1)
       @name = Innodb::DataType.make_name(base_type, modifiers, properties)
     end
+
+    def value(data)
+      # The SQL standard defines that CHAR fields should have end-spaces
+      # stripped off.
+      data.sub(/[ ]+$/, "")
+    end
   end
 
   class VariableCharacterType
