@@ -88,7 +88,7 @@ class Innodb::Inode
 
   # Calculate the total number of pages in use (not free) within this fseg.
   def used_pages
-    frag_array_n_used + not_full_n_used
+    frag_array_n_used + not_full_n_used +
       (full.length * @space.pages_per_extent)
   end
 
