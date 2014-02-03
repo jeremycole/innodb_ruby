@@ -23,8 +23,16 @@ class Innodb::Record
     record[:key]
   end
 
+  def key_string
+    key && key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", ")
+  end
+
   def row
     record[:row]
+  end
+
+  def row_string
+    key && key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", ")
   end
 
   def child_page_number
