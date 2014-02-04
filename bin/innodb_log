@@ -12,15 +12,16 @@ def log_summary(log, space_ids)
     "space",
     "page",
   ]
-  log.each_block do |block_number, block|
-    if block.record
-      space_id = block.record[:space]
+  log.each_block do |block_index, block|
+    record = block.first_record_preamble
+    if record
+      space_id = record[:space]
       if @options.space_ids.empty? or @options.space_ids.include?(space_id)
         puts "%-10i%-30s%-10i%-10i" % [
-          block_number,
-          block.record[:type],
+          block_index,
+          record[:type],
           space_id,
-          block.record[:page_number],
+          record[:page_number],
         ]
         if @options.dump
           block.dump

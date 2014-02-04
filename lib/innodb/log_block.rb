@@ -8,30 +8,14 @@ class Innodb::LogBlock
   # Log blocks are fixed-length at 512 bytes in InnoDB.
   BLOCK_SIZE = 512
 
-  HEADER_SIZE = 12
-  HEADER_START = 0
+  # Offset of the header within the log block.
+  HEADER_OFFSET = 0
 
-  TRAILER_SIZE = 4
-  TRAILER_START = BLOCK_SIZE - TRAILER_SIZE
+  # Offset of the trailer within ths log block.
+  TRAILER_OFFSET = BLOCK_SIZE - 4
 
-  RECORD_START = HEADER_START + HEADER_SIZE
-
-# Header:
-#define	LOG_BLOCK_HDR_NO	0	/* block number which must be > 0 and
-#define	LOG_BLOCK_HDR_DATA_LEN	4	/* number of bytes of log written to
-#define	LOG_BLOCK_FIRST_REC_GROUP 6	/* offset of the first start of an
-#define LOG_BLOCK_CHECKPOINT_NO	8	/* 4 lower bytes of the value of
-
-# Trailer:
-#define	LOG_BLOCK_CHECKSUM	0	/* 4 byte checksum of the log block
-
-#/* Offsets for a checkpoint field */
-#define LOG_CHECKPOINT_NO		0
-#define LOG_CHECKPOINT_LSN		8
-#define LOG_CHECKPOINT_OFFSET		16
-#define LOG_CHECKPOINT_LOG_BUF_SIZE	20
-#define	LOG_CHECKPOINT_ARCHIVED_LSN	24
-#define	LOG_CHECKPOINT_GROUP_ARRAY	32
+  # Mask used to get the flush bit in the header.
+  HEADER_FLUSH_BIT_MASK = 0x80000000
 
   # Initialize a log block by passing in a 512-byte buffer containing the raw
   # log block contents.
@@ -43,36 +27,33 @@ class Innodb::LogBlock
     @buffer = buffer
   end
 
-  # A helper function to return bytes from the log block buffer based on offset
-  # and length, both in bytes.
-  def data(offset, length)
-    @buffer[offset...(offset + length)]
-  end
-
   # Return an Innodb::Cursor object positioned at a specific offset.
   def cursor(offset)
-    Innodb::Cursor.new(self, offset)
+    Innodb::Cursor.new(@buffer, offset)
   end
 
   # Return the log block header.
   def header
-    @header ||= begin
-      c = cursor(HEADER_START)
+    @header ||= cursor(HEADER_OFFSET).name("header") do |c|
       {
-        :block            => c.get_uint32 & (2**31-1),
-        :data_length      => c.get_uint16,
-        :first_rec_group  => c.get_uint16,
-        :checkpoint_no    => c.get_uint32,
+        :flush => c.name("flush") {
+          c.peek { (c.get_uint32 & HEADER_FLUSH_BIT_MASK) > 0 }
+        },
+        :block_number => c.name("block_number") {
+          c.get_uint32 & ~HEADER_FLUSH_BIT_MASK
+        },
+        :data_length      => c.name("data_length")     { c.get_uint16 },
+        :first_rec_group  => c.name("first_rec_group") { c.get_uint16 },
+        :checkpoint_no    => c.name("checkpoint_no")   { c.get_uint32 },
       }
     end
   end
 
   # Return the log block trailer.
   def trailer
-    @trailer ||= begin
-      c = cursor(TRAILER_START)
+    @trailer ||= cursor(TRAILER_OFFSET).name("trailer") do |c|
       {
-        :checksum => c.get_uint32,
+        :checksum => c.name("checksum") { c.get_uint32 },
       }
     end
   end
@@ -127,41 +108,26 @@ class Innodb::LogBlock
     51 => :ZIP_PAGE_COMPRESS,
   }
 
-  # Return the log record contents. (This is mostly unimplemented.)
-  def record_content(record_type, offset)
-    c = cursor(offset)
-    case record_type
-    when :MLOG_1BYTE
-      c.get_uint8
-    when :MLOG_2BYTE
-      c.get_uint16
-    when :MLOG_4BYTE
-      c.get_uint32
-    when :MLOG_8BYTE
-      c.get_uint64
-    when :UNDO_INSERT
-    when :COMP_REC_INSERT
-    end
-  end
-
   SINGLE_RECORD_MASK = 0x80
   RECORD_TYPE_MASK   = 0x7f
 
-  # Return the log record. (This is mostly unimplemented.)
-  def record
-    @record ||= begin
-      if header[:first_rec_group] != 0
-        c = cursor(header[:first_rec_group])
-        type_and_flag = c.get_uint8
-        type = type_and_flag & RECORD_TYPE_MASK
-        type = RECORD_TYPES[type] || type
-        single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
+  # Return a preamble of the first record in this block.
+  def first_record_preamble
+    return nil unless header[:first_rec_group] > 0
+    cursor(header[:first_rec_group]).name("header") do |c|
+      type_and_flag = c.name("type") { c.get_uint8 }
+      type = type_and_flag & RECORD_TYPE_MASK
+      type = RECORD_TYPES[type] || type
+      single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
+      case type
+      when :MULTI_REC_END, :DUMMY_RECORD
+        { :type => type }
+      else
         {
           :type           => type,
           :single_record  => single_record,
-          :content        => record_content(type, c.position),
-          :space          => c.get_ic_uint32,
-          :page_number    => c.get_ic_uint32,
+          :space          => c.name("space") { c.get_ic_uint32 },
+          :page_number    => c.name("page_number") { c.get_ic_uint32 },
         }
       end
     end
@@ -179,6 +145,6 @@ class Innodb::LogBlock
 
     puts
     puts "record:"
-    pp record
+    pp first_record_preamble
   end
 end

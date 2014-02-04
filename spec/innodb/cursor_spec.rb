@@ -2,16 +2,6 @@
 
 require "spec_helper"
 
-class ByteBuffer
-  def initialize(buffer)
-    @buffer = buffer
-  end
-
-  def data(offset, length)
-    @buffer[offset...(offset + length)]
-  end
-end
-
 describe Innodb::Cursor do
   before :all do
     @data = {
@@ -48,7 +38,7 @@ describe Innodb::Cursor do
     @data[:offset][:innodb_comp_uint32_5] = @data[:buffer].size
     @data[:buffer] << "\xf0\xff\xff\xff\xff"
 
-    @buffer = ByteBuffer.new(@data[:buffer])
+    @buffer = @data[:buffer]
   end
 
   before :each do

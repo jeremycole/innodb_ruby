@@ -61,18 +61,12 @@ class Innodb::Page
     @size ||= @buffer.size
   end
 
-  # A helper function to return bytes from the page buffer based on offset
-  # and length, both in bytes.
-  def data(offset, length)
-    @buffer[offset...(offset + length)]
-  end
-
   # If no block is passed, return an Innodb::Cursor object positioned at a
   # specific offset. If a block is passed, create a cursor at the provided
   # offset and yield it to the provided block one time, and then return the
   # return value of the block.
   def cursor(offset)
-    new_cursor = Innodb::Cursor.new(self, offset)
+    new_cursor = Innodb::Cursor.new(@buffer, offset)
 
     if block_given?
       # Call the block once and return its return value.
