@@ -10,3 +10,8 @@ It is intended as for a few purposes:
 * *As a debugging tool.* While making changes to the structures or behaviors of InnoDB, it is necessary to have tools to expose the results both of the original behavior and the new one, in order to validate that the changes have the desired effect.
 
 Various parts of this library and the tools included may have wildly differing maturity levels, as it is worked on primarily based on immediate needs of the authors.
+
+# Resources #
+
+* [The innodb_ruby mailing list on Google Groups](https://groups.google.com/d/forum/innodb_ruby) &mdash; If you have questions about `innodb_ruby` or its usage.
+* [RubyGems page for innodb_ruby](http://rubygems.org/gems/innodb_ruby) &mdash; Gem packaged releases are published regularly to RubyGems.org, which also provides online documentation.
