@@ -13,5 +13,5 @@ Various parts of this library and the tools included may have wildly differing m
 
 # Resources #
 
-* [The innodb_ruby mailing list on Google Groups](https://groups.google.com/d/forum/innodb_ruby) &mdash; If you have questions about `innodb_ruby` or its usage.
-* [RubyGems page for innodb_ruby](http://rubygems.org/gems/innodb_ruby) &mdash; Gem packaged releases are published regularly to RubyGems.org, which also provides online documentation.
+* Visit the [innodb_ruby mailing list on Google Groups](https://groups.google.com/d/forum/innodb_ruby) or email [innodb_ruby@googlegroups.com](mailto:innodb_ruby@googlegroups.com) &mdash; If you have questions about `innodb_ruby` or its usage.
+* See the [RubyGems page for innodb_ruby](http://rubygems.org/gems/innodb_ruby) &mdash; Gem packaged releases are published regularly to RubyGems.org, which also provides online documentation.
