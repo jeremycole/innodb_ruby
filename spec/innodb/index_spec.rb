@@ -79,7 +79,7 @@ describe Innodb::Index do
 
     it "can find 200 random rows" do
       missing_keys = {}
-      (200.times.map { (rand() * 10000).to_i }).map do |i|
+      (200.times.map { (rand() * 10000 + 1).floor }).map do |i|
         page, rec = @index.binary_search([i])
         if rec.nil?
           missing_keys[i] = :missing_key
