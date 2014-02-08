@@ -76,6 +76,19 @@ describe Innodb::Index do
 
       ((linear_compares.to_f / binary_compares.to_f) > 10).should be_true
     end
+
+    it "can find 200 random rows" do
+      missing_keys = {}
+      (200.times.map { (rand() * 10000).to_i }).map do |i|
+        page, rec = @index.binary_search([i])
+        if rec.nil?
+          missing_keys[i] = :missing_key
+        elsif rec.key[0][:value] != i
+          missing_keys[i] = :mismatched_value
+        end
+      end
+      missing_keys.should eql({})
+    end
   end
 end
 
