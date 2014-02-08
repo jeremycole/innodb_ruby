@@ -88,6 +88,8 @@ class Innodb::RecordDescriber
 
   def initialize
     @description = self.class.static_description.dup
+    @description[:key] = @description[:key].dup
+    @description[:row] = @description[:row].dup
   end
 
   # Set the type of this record (:clustered or :secondary).
