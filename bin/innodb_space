@@ -387,9 +387,7 @@ def page_directory_summary(page)
   page.directory.each_with_index do |offset, slot|
     record = page.record(offset)
     key = if [:conventional, :node_pointer].include? record.header[:type]
-      if record.key
-        "(%s)" % record.key_string,
-      end
+      "(%s)" % record.key_string
     end
     puts "%-8i%-8i%-14s%-8i%s" % [
       slot,
