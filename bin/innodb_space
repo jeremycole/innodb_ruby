@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# -*- encoding : utf-8 -*-
 
 require "getoptlong"
 require "ostruct"
@@ -439,7 +440,7 @@ def index_recurse(index)
       ]
       if page.level == 0
         page.each_record do |record|
-          puts "%sRECORD: (%s) -> (%s)" % [
+          puts "%sRECORD: (%s) → (%s)" % [
             "  " * (depth+1),
             record.key_string,
             record.row_string,
@@ -448,7 +449,7 @@ def index_recurse(index)
       end
     end,
     lambda do |parent_page, child_page, child_min_key, depth|
-      puts "%sNODE POINTER RECORD >= (%s) -> #%i" % [
+      puts "%sNODE POINTER RECORD ≥ (%s) → #%i" % [
         "  " * depth,
         child_min_key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", "),
         child_page.offset,
@@ -500,7 +501,7 @@ def index_digraph(index)
       ]
     end,
     lambda do |parent_page, child_page, child_key, depth|
-      puts "  %spage_%i:dir_%i -> page_%i:page:nw;" % [
+      puts "  %spage_%i:dir_%i → page_%i:page:nw;" % [
         "  " * depth,
         parent_page.offset,
         child_page.offset,
