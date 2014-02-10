@@ -24,7 +24,7 @@ class Innodb::Record
   end
 
   def key_string
-    key && key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", ")
+    key && key.map { |r| "%s=%s" % [r[:name], r[:value].inspect] }.join(", ")
   end
 
   def row
@@ -32,7 +32,7 @@ class Innodb::Record
   end
 
   def row_string
-    row && row.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", ")
+    row && row.map { |r| "%s=%s" % [r[:name], r[:value].inspect] }.join(", ")
   end
 
   def child_page_number
