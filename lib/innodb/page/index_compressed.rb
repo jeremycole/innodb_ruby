@@ -1,5 +1,9 @@
 # -*- encoding : utf-8 -*-
 
+# This is horribly incomplete and broken. InnoDB compression does not
+# currently work in innodb_ruby. Patches are welcome!
+# (Hint hint, nudge nudge, Facebook developers!)
+
 class Innodb::Page::Index::Compressed < Innodb::Page::Index
   # The number of directory slots in use.
   def directory_slots
