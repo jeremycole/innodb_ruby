@@ -39,6 +39,14 @@ class Innodb::Record
     record[:child_page_number]
   end
 
+  def string
+    if child_page_number
+      "(%s) → #%s" % [key_string, child_page_number]
+    else
+      "(%s) → (%s)" % [key_string, row_string]
+    end
+  end
+
   def uncached_fields
     fields_hash = {}
     [:key, :row].each do |group|
