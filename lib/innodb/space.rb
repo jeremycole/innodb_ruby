@@ -2,7 +2,6 @@
 
 # An InnoDB space file, which can be either a multi-table ibdataN file
 # or a single-table "innodb_file_per_table" .ibd file.
-
 class Innodb::Space
   # InnoDB's default page size is 16KiB.
   DEFAULT_PAGE_SIZE = 16384
@@ -35,8 +34,12 @@ class Innodb::Space
 
     @pages = (@size / @page_size)
     @compressed = fsp_flags[:compressed]
+    @innodb_system = nil
     @record_describer = nil
   end
+
+  # The Innodb::System to which this space belongs, if any.
+  attr_accessor :innodb_system
 
   # An object which can be used to describe records found in pages within
   # this space.
@@ -142,13 +145,7 @@ class Innodb::Space
 
   # Get an Innodb::Page object for a specific page by page number.
   def page(page_number)
-    this_page = Innodb::Page.parse(self, page_data(page_number))
-
-    if this_page.type == :INDEX
-      this_page.record_describer = @record_describer
-    end
-
-    this_page
+    Innodb::Page.parse(self, page_data(page_number))
   end
 
   # Determine whether this space looks like a system space. If the initial
@@ -206,7 +203,7 @@ class Innodb::Space
   end
 
   # Get the Innodb::Page::SysDataDictionaryHeader page for a system space.
-  def data_dictionary
+  def data_dictionary_page
     page(page_sys_data_dictionary) if system_space?
   end
 
@@ -219,32 +216,47 @@ class Innodb::Space
 
   # Get an Innodb::Index object for a specific index by root page number.
   def index(root_page_number, record_describer=nil)
-    Innodb::Index.new(self, root_page_number, record_describer || @record_describer)
+    Innodb::Index.new(self, root_page_number,
+                      record_describer || @record_describer)
   end
 
-  # Iterate through each index by guessing that the root pages will be
-  # present starting at page 3, and walking forward until we find a non-
-  # root page. This should work fine for IBD files, but not for ibdata
-  # files.
+  # Iterate through all root page numbers for indexes in the space.
+  def each_index_root_page_number
+    unless block_given?
+      return enum_for(:each_index_root_page_number)
+    end
+
+    if innodb_system
+      # Retrieve the index root page numbers from the data dictionary.
+      innodb_system.data_dictionary.each_index_by_space_id(space_id) do |record|
+        yield record["PAGE_NO"]
+      end
+    else
+      # Guess that the index root pages will be present starting at page 3,
+      # and walk forward until we find a non-root page. This should work fine
+      # for IBD files, if they haven't added indexes online.
+      (3...@pages).each do |page_number|
+        page = page(page_number)
+        if page.type == :INDEX && page.root?
+          yield page_number
+        end
+      end
+    end
+
+    nil
+  end
+
+  # Iterate through all indexes in the space.
   def each_index
     unless block_given?
       return enum_for(:each_index)
     end
 
-    if system_space?
-      data_dictionary.each_index do |table_name, index_name, index|
-        yield index
-      end
-    else
-      (3...@pages).each do |page_number|
-        page = page(page_number)
-        if page.type == :INDEX && page.root?
-          yield index(page_number)
-        else
-          break
-        end
-      end
+    each_index_root_page_number do |page_number|
+      yield index(page_number)
     end
+
+    nil
   end
 
   # An array of Innodb::Inode list names.
@@ -336,6 +348,8 @@ class Innodb::Space
     end
   end
 
+  # Iterate through all pages, yielding the page number, page object,
+  # and page status.
   def each_page_status(start_page=0)
     unless block_given?
       return enum_for(:each_page_with_status, start_page)
@@ -353,6 +367,7 @@ class Innodb::Space
     end
   end
 
+  # A helper to produce a printable page type.
   def type_for_page(page, page_status)
     page_status[:free] ? "FREE (#{page.type})" : page.type
   end

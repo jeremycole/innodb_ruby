@@ -108,13 +108,13 @@ describe Innodb::Space do
     end
   end
 
-  describe "#data_dictionary" do
+  describe "#data_dictionary_page" do
     it "should return a page for a system space" do
-      @space.data_dictionary.should be_an_instance_of Innodb::Page::SysDataDictionaryHeader
+      @space.data_dictionary_page.should be_an_instance_of Innodb::Page::SysDataDictionaryHeader
     end
 
     it "should return nil for a non-system space" do
-      @space_ibd.data_dictionary.should eql nil
+      @space_ibd.data_dictionary_page.should eql nil
     end
   end
 

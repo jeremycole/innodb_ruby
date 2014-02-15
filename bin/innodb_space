@@ -3,9 +3,9 @@
 
 require "getoptlong"
 require "ostruct"
-require "pp"
 require "innodb"
 
+# Print metadata about each list in an array of InnoDB::List objects.
 def print_lists(lists)
   puts "%-20s%-12s%-12s%-12s%-12s%-12s" % [
     "name",
@@ -28,6 +28,8 @@ def print_lists(lists)
   end
 end
 
+# Print a page usage bitmap for each extent descriptor in an array of
+# Innodb::XdesEntry objects.
 def print_xdes_list(list)
   puts "%-12s%-64s" % [
     "start_page",
@@ -45,6 +47,7 @@ def print_xdes_list(list)
   end
 end
 
+# Print a summary of page usage for all pages in an index.
 def print_index_page_summary(pages)
   puts "%-12s%-8s%-8s%-8s%-8s%-8s" % [
     "page",
@@ -69,6 +72,125 @@ def print_index_page_summary(pages)
     when :ALLOCATED
       puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0, page.size, 0 ]
     end
+  end
+end
+
+# Print a summary of all spaces in the InnoDB system.
+def system_spaces(innodb_system)
+  puts "%-32s%-12s%-12s" % [
+    "name",
+    "pages",
+    "indexes",
+  ]
+
+  print_space_information = lambda do |name, space|
+    puts "%-32s%-12i%-12i" % [
+      name,
+      space.pages,
+      space.each_index.to_a.size,
+    ]
+  end
+
+  print_space_information.call("(system)", innodb_system.system_space)
+
+  innodb_system.each_table_name do |table_name|
+    space = innodb_system.space_by_table_name(table_name)
+    next unless space
+    print_space_information.call(table_name, space)
+  end
+end
+
+# Print the contents of the SYS_TABLES data dictionary table.
+def data_dictionary_tables(innodb_system)
+  puts "%-32s%-12s%-12s%-12s%-12s%-12s%-15s%-12s" % [
+    "name",
+    "id",
+    "n_cols",
+    "type",
+    "mix_id",
+    "mix_len",
+    "cluster_name",
+    "space",
+  ]
+
+  innodb_system.data_dictionary.each_table do |record|
+    puts "%-32s%-12i%-12i%-12i%-12i%-12i%-15s%-12i" % [
+      record["NAME"],
+      record["ID"],
+      record["N_COLS"],
+      record["TYPE"],
+      record["MIX_ID"],
+      record["MIX_LEN"],
+      record["CLUSTER_NAME"],
+      record["SPACE"],
+    ]
+  end
+end
+
+# Print the contents of the SYS_COLUMNS data dictionary table.
+def data_dictionary_columns(innodb_system)
+  puts "%-12s%-6s%-32s%-12s%-12s%-6s%-6s" % [
+    "table_id",
+    "pos",
+    "name",
+    "mtype",
+    "prtype",
+    "len",
+    "prec",
+  ]
+
+  innodb_system.data_dictionary.each_column do |record|
+    puts "%-12i%-6i%-32s%-12i%-12i%-6i%-6i" % [
+      record["TABLE_ID"],
+      record["POS"],
+      record["NAME"],
+      record["MTYPE"],
+      record["PRTYPE"],
+      record["LEN"],
+      record["PREC"],
+    ]
+  end
+end
+
+# Print the contents of the SYS_INDEXES data dictionary table.
+def data_dictionary_indexes(innodb_system)
+  puts "%-12s%-12s%-32s%-10s%-6s%-12s%-12s" % [
+    "table_id",
+    "id",
+    "name",
+    "n_fields",
+    "type",
+    "space",
+    "page_no",
+  ]
+
+  innodb_system.data_dictionary.each_index do |record|
+    puts "%-12i%-12i%-32s%-10i%-6i%-12i%-12i" % [
+      record["TABLE_ID"],
+      record["ID"],
+      record["NAME"],
+      record["N_FIELDS"],
+      record["TYPE"],
+      record["SPACE"],
+      record["PAGE_NO"],
+    ]
+  end
+end
+
+# Print the contents of the SYS_FIELDS data dictionary table.
+def data_dictionary_fields(innodb_system)
+  puts "%-12s%-12s%-32s" % [
+    "index_id",
+    "pos",
+    "col_name",
+  ]
+
+  innodb_system.data_dictionary.each_field do |record|
+    puts "%-12i%-12i%-32s" % [
+      record["INDEX_ID"],
+      record["POS"],
+      record["COL_NAME"],
+    ]
   end
 end
 
@@ -169,9 +291,10 @@ def space_list_iterate(space, list_name)
   end
 end
 
-def space_indexes(space)
-  puts "%-12s%-12s%-12s%-12s%-12s%-12s" % [
+def space_indexes(innodb_system, space)
+  puts "%-12s%-32s%-12s%-12s%-12s%-12s%-12s" % [
     "id",
+    "name",
     "root",
     "fseg",
     "used",
@@ -181,8 +304,9 @@ def space_indexes(space)
 
   space.each_index do |index|
     index.each_fseg do |fseg_name, fseg|
-      puts "%-12i%-12i%-12s%-12i%-12i%-12s" % [
+      puts "%-12i%-32s%-12i%-12s%-12i%-12i%-12s" % [
         index.id,
+        innodb_system ? innodb_system.index_name_by_id(index.id) : "",
         index.root.offset,
         fseg_name,
         fseg.used_pages,
@@ -283,7 +407,7 @@ def space_inodes_detail(space)
   end
 end
 
-def page_account(space, page_number)
+def page_account(innodb_system, space, page_number)
   puts "Accounting for page #{page_number}:"
 
   if page_number > space.pages
@@ -346,6 +470,12 @@ def page_account(space, page_number)
       if page_inode == fseg
         puts "  Fseg is in #{fseg_name} fseg of index #{index.id}."
         puts "  Index root is page #{index.root.offset}."
+        if innodb_system
+          table_name, index_name = innodb_system.table_and_index_name_by_id(index.id)
+          if table_name and index_name
+            puts "  Index is #{table_name}.#{index_name}."
+          end
+        end
       end
     end
   end
@@ -359,10 +489,12 @@ def page_account(space, page_number)
       puts "  Fseg is doublewrite buffer."
     end
 
-    space.data_dictionary.each_index do |table_name, index_name, index|
-      index.each_fseg do |fseg_name, fseg|
-        if page_inode == fseg
-          puts "  Index is #{table_name}.#{index_name} of data dictionary."
+    if innodb_system
+      innodb_system.data_dictionary.each_data_dictionary_index do |table_name, index_name, index|
+        index.each_fseg do |fseg_name, fseg|
+          if page_inode == fseg
+            puts "  Index is #{table_name}.#{index_name} of data dictionary."
+          end
         end
       end
     end
@@ -376,7 +508,12 @@ def page_account(space, page_number)
   end
 end
 
-def page_directory_summary(page)
+def page_directory_summary(page_number)
+  page = space.page(page_number)
+  if page.type != :INDEX
+    usage 1, "Page must be an index page"
+  end
+
   puts "%-8s%-8s%-14s%-8s%s" % [
     "slot",
     "offset",
@@ -451,7 +588,7 @@ def index_recurse(index)
     lambda do |parent_page, child_page, child_min_key, depth|
       puts "%sNODE POINTER RECORD ≥ (%s) → #%i" % [
         "  " * depth,
-        child_min_key.map { |r| "%s=%s" % [r[:name], r[:value]] }.join(", "),
+        child_min_key.map { |r| "%s=%s" % [r[:name], r[:value].inspect] }.join(", "),
         child_page.offset,
       ]
     end
@@ -512,7 +649,7 @@ def index_digraph(index)
   puts "}"
 end
 
-def index_level_summary(index, levels)
+def index_level_summary(index, level)
   puts "%-8s%-8s%-8s%-8s%-8s%-8s%-8s" % [
     "page",
     "index",
@@ -523,46 +660,65 @@ def index_level_summary(index, levels)
     "min_key",
   ]
 
-  levels.each do |level|
-    index.each_page_at_level(level) do |page|
-      puts "%-8i%-8i%-8i%-8i%-8i%-8i%s" % [
-        page.offset,
-        page.page_header[:index_id],
-        page.level,
-        page.record_space,
-        page.free_space,
-        page.records,
-        page.first_record.key_string,
-      ]
-    end
+  index.each_page_at_level(level) do |page|
+    puts "%-8i%-8i%-8i%-8i%-8i%-8i%s" % [
+      page.offset,
+      page.page_header[:index_id],
+      page.level,
+      page.record_space,
+      page.free_space,
+      page.records,
+      page.first_record.key_string,
+    ]
   end
 end
 
 def usage(exit_code, message = nil)
-  print "Error: #{message}\n" unless message.nil?
+  if message
+    puts "Error: #{message}; see --help for usage information\n\n"
+    exit exit_code
+  end
 
   print <<'END_OF_USAGE'
 
-Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
+Usage: innodb_space <options> <mode>
+
+Invocation examples:
+
+  innodb_space -s ibdata1 [-T tname [-I iname]] [options] <mode>
+    Use ibdata1 as the system tablespace and load the tname table (and the
+    iname index for modes that require it) from data located in the system
+    tablespace data dictionary. This will automatically generate a record
+    describer for any indexes.
+
+  innodb_space -f tname.ibd [-r ./desc.rb -d DescClass] [options] <mode>
+    Use the tname.ibd table (and the DescClass describer where required).
+
+The following options are supported:
 
   --help, -?
     Print this usage text.
 
-  --file, -f <file>
+  --system-space-file, -s <file>
+    Load the system tablespace file <file> (normally ibdata1).
+
+  --table-name, -T <name>
+    Use the table name <name>.
+
+  --index-name, -I <name>
+    Use the index name <name>.
+
+  --space-file, -f <file>
     Load the tablespace file <file>.
 
-  --page-size, -P <size>
-    Provide the page size, overriding auto-detection (in KiB): 16, 8, 4, 2, 1.
-    Page sizes other than 16 may not work well, or at all.
-
   --page, -p <page>
-    Operate on the page <page>; may be specified more than once.
+    Operate on the page <page>.
 
   --level, -l <level>
-    Operate on the level <level>; may be specified more than once.
+    Operate on the level <level>.
 
   --list, -L <list>
-    Operate on the list <list>; may be specified more than once.
+    Operate on the list <list>.
 
   --require, -r <file>
     Use Ruby's "require" to load the file <file>. This is useful for loading
@@ -571,7 +727,26 @@ Usage: innodb_space -f <file> [-p <page>] [-l <level>] <mode> [<mode>, ...]
   --describer, -d <describer>
     Use the named record describer to parse records in index pages.
 
+  --page-size, -P <size>
+    Provide the page size, overriding auto-detection (in KiB): 16, 8, 4, 2, 1.
+    Page sizes other than 16 may not work well, or at all.
+
 The following modes are supported:
+
+  system-spaces
+    Print a summary of all spaces in the system.
+
+  data-dictionary-tables
+    Print all records in the SYS_TABLES data dictionary table.
+
+  data-dictionary-columns
+    Print all records in the SYS_COLUMNS data dictionary table.
+
+  data-dictionary-indexes
+    Print all records in the SYS_INDEXES data dictionary table.
+
+  data-dictionary-fields
+    Print all records in the SYS_FIELDS data dictionary table.
 
   space-summary
     Summarize all pages within a tablespace. A starting page number can be
@@ -618,16 +793,6 @@ The following modes are supported:
   space-inodes-detail
     Iterate through all inodes, printing a detailed report of each FSEG.
 
-  page-dump
-    Dump the contents of a page, using the Ruby pp ("pretty-print") module.
-
-  page-account
-    Account for a page's usage in FSEGs.
-
-  page-directory-summary
-    Summarize the record contents of the page directory in a page. If a record
-    describer is available, the key of each record will be printed.
-
   index-recurse
     Recurse an index, starting at the root (which must be provided in the first
     --page/-p argument), printing the node pages, node pointers (links), leaf
@@ -663,6 +828,16 @@ The following modes are supported:
     Print a summary of all fragment pages in an index file segment. Index root
     page must be provided with --page/-p.
 
+  page-dump
+    Dump the contents of a page, using the Ruby pp ("pretty-print") module.
+
+  page-account
+    Account for a page's usage in FSEGs.
+
+  page-directory-summary
+    Summarize the record contents of the page directory in a page. If a record
+    describer is available, the key of each record will be printed.
+
 END_OF_USAGE
 
   exit exit_code
@@ -676,9 +851,9 @@ Signal.trap("PIPE") { exit }
 @options.space_file             = nil
 @options.table_name             = nil
 @options.index_name             = nil
-@options.pages                  = []
-@options.levels                 = []
-@options.lists                  = []
+@options.page                   = nil
+@options.level                  = nil
+@options.list                   = nil
 @options.page_size              = nil
 @options.describer              = nil
 
@@ -686,9 +861,9 @@ getopt_options = [
   [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
   [ "--trace",                  "-t",     GetoptLong::NO_ARGUMENT ],
   [ "--system-space-file",      "-s",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--space-file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--table-name",             "-T",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--index-name",             "-I",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--space-file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--page",                   "-p",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--level",                  "-l",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--list",                   "-L",     GetoptLong::REQUIRED_ARGUMENT ],
@@ -716,11 +891,11 @@ getopt.each do |opt, arg|
   when "--index-name"
     @options.index_name = arg
   when "--page"
-    @options.pages << arg.to_i
+    @options.page = arg.to_i
   when "--level"
-    @options.levels << arg.to_i
+    @options.level = arg.to_i
   when "--list"
-    @options.lists << arg.to_sym
+    @options.list = arg.to_sym
   when "--require"
     require File.expand_path(arg)
   when "--page-size"
@@ -733,16 +908,25 @@ getopt.each do |opt, arg|
   end
 end
 
-system_space = nil
+unless @options.system_space_file or @options.space_file
+  usage 1, "System space file (-s) or space file (-f) must be specified"
+end
+
+if @options.system_space_file and @options.space_file
+  usage 1, "Only one of system space or space file may be specified"
+end
+
+innodb_system = nil
 if @options.system_space_file
-  system_space = Innodb::Space.new(@options.system_space_file)
+  innodb_system = Innodb::System.new(@options.system_space_file)
 end
 
-unless @options.space_file
-  usage 1, "Space file must be provided with -f argument"
+space = innodb_system ? innodb_system.system_space : nil
+if innodb_system and @options.table_name
+  space = innodb_system.space_by_table_name(@options.table_name)
+elsif @options.space_file
+  space = Innodb::Space.new(@options.space_file, @options.page_size)
 end
-
-space = Innodb::Space.new(@options.space_file, @options.page_size)
 
 if @options.describer
   describer = eval(@options.describer)
@@ -752,163 +936,112 @@ if @options.describer
   space.record_describer = describer.new
 end
 
-if ARGV.empty?
-  usage 1, "At least one mode should be provided"
+index = nil
+if innodb_system and @options.table_name and @options.index_name
+  index = innodb_system.index_by_name(@options.table_name, @options.index_name)
+elsif @options.page
+  if page = space.page(@options.page) and page.type == :INDEX and page.root?
+    index = space.index(@options.page)
+  end
 end
 
-ARGV.each do |mode|
-  case mode
-  when "page-dump"
-    if @options.pages.empty?
-      usage 1, "Page numbers to dump must be provided with --page/-p"
-    end
+# The non-option argument on the command line is the mode (usually the last,
+# but not required).
+mode = ARGV.shift
 
-    @options.pages.each do |page_number|
-      space.page(page_number).dump
-    end
-  when "page-account"
-    if @options.pages.empty?
-      usage 1, "Page numbers to dump must be provided with --page/-p"
-    end
+unless mode
+  usage 1, "At least one mode must be provided"
+end
 
-    @options.pages.each do |page_number|
-      page_account(space, page_number)
-    end
-  when "page-directory-summary"
-    if @options.pages.empty?
-      usage 1, "Page numbers to dump must be provided with --page/-p"
-    end
+if /^(system-|data-dictionary-)/.match(mode) and !innodb_system
+  usage 1, "System tablespace must be specified using -s/--system-space-file"
+end
 
-    page = space.page(@options.pages.first)
-    if page.type != :INDEX
-      usage 1, "Page must be an index page"
-    end
+if /^space-/.match(mode) and !space
+  usage 1, "Tablespace must be specified using either -f/--space-file or a combination of -s/--system-space-file and -T/--table"
+end
 
-    page_directory_summary(page)
-  when "space-summary"
-    space_summary(space, @options.pages.first || 0)
-  when "space-index-pages-summary"
-    space_index_pages_summary(space, @options.pages.first || 0)
-  when "space-index-pages-free-plot"
-    name = File.basename(@options.space_file).sub(".ibd", "")
-    space_index_pages_free_plot(space, name, @options.pages.first || 0)
-  when "space-page-type-regions"
-    space_page_type_regions(space, @options.pages.first || 0)
-  when "space-page-type-summary"
-    space_page_type_summary(space, @options.pages.first || 0)
-  when "space-lists"
-    space_lists(space)
-  when "space-list-iterate"
-    if @options.lists.empty?
-      usage 1, "A list name must be provided with --list/-L"
-    end
+if /^index-/.match(mode) and !index
+  usage 1, "Index must be specified using a combination of either -f/--space-file and -p/--page or -s/--system-space-file, -T/--table-name, and -I/--index-name"
+end
 
-    @options.lists.each do |list|
-      space_list_iterate(space, list)
-    end
-  when "space-indexes"
-    space_indexes(space)
-  when "space-extents"
-    space_extents(space)
-  when "space-inodes-summary"
-    space_inodes_summary(space)
-  when "space-inodes-detail"
-    space_inodes_detail(space)
-  when "index-recurse"
-    unless space.record_describer
-      usage 1, "Record describer necessary for index recursion" 
-    end
+if /^page-/.match(mode) and !@options.page
+  usage 1, "Page number must be specified using -p/--page"
+end
 
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
+if /-list-iterate$/.match(mode) and !@options.list
+  usage 1, "List name must be specified using -L/--list"
+end
 
-    @options.pages.each do |page|
-      index_recurse(space.index(page))
-    end
-  when "index-record-offsets"
-    unless space.record_describer
-      usage 1, "Record describer necessary for index recursion" 
-    end
+if [
+  "index-recurse",
+  "index-record-offsets",
+  "index-digraph",
+  "index-level-summary",
+].include?(mode) and !index.record_describer
+  usage 1, "Record describer must be specified using -d/--describer"
+end
 
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    @options.pages.each do |page|
-      index_record_offsets(space.index(page))
-    end
-  when "index-digraph"
-    unless space.record_describer
-      usage 1, "Record describer necessary for index recursion" 
-    end
-
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    @options.pages.each do |page|
-      index_digraph(space.index(page))
-    end
-  when "index-level-summary"
-    unless space.record_describer
-      usage 1, "Record describer necessary for index recursion" 
-    end
-
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    index_level_summary(space.index(@options.pages.first), @options.levels)
-  when "index-fseg-leaf-lists"
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    index_fseg_lists(space.index(@options.pages.first), :leaf)
-  when "index-fseg-internal-lists"
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    index_fseg_lists(space.index(@options.pages.first), :internal)
-  when "index-fseg-leaf-list-iterate"
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    if @options.lists.empty?
-      usage 1, "A list name must be provided with --list/-L"
-    end
-
-    @options.lists.each do |list|
-      index_fseg_list_iterate(space.index(@options.pages.first), :leaf, list)
-    end
-  when "index-fseg-internal-list-iterate"
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    if @options.lists.empty?
-      usage 1, "A list name must be provided with --list/-L"
-    end
-
-    @options.lists.each do |list|
-      index_fseg_list_iterate(space.index(@options.pages.first), :internal, list)
-    end
-  when "index-fseg-leaf-frag-pages"
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    index_fseg_frag_pages(space.index(@options.pages.first), :leaf)
-  when "index-fseg-internal-frag-pages"
-    if @options.pages.empty?
-      usage 1, "Page number of index root must be provided with --page/-p"
-    end
-
-    index_fseg_frag_pages(space.index(@options.pages.first), :internal)
-  else
-    usage 1, "Unknown mode: #{mode}"
-  end
+case mode
+when "system-spaces"
+  system_spaces(innodb_system)
+when "data-dictionary-tables"
+  data_dictionary_tables(innodb_system)
+when "data-dictionary-columns"
+  data_dictionary_columns(innodb_system)
+when "data-dictionary-indexes"
+  data_dictionary_indexes(innodb_system)
+when "data-dictionary-fields"
+  data_dictionary_fields(innodb_system)
+when "space-summary"
+  space_summary(space, @options.page || 0)
+when "space-index-pages-summary"
+  space_index_pages_summary(space, @options.page || 0)
+when "space-index-pages-free-plot"
+  name = File.basename(@options.space_file).sub(".ibd", "")
+  space_index_pages_free_plot(space, name, @options.page || 0)
+when "space-page-type-regions"
+  space_page_type_regions(space, @options.page || 0)
+when "space-page-type-summary"
+  space_page_type_summary(space, @options.page || 0)
+when "space-lists"
+  space_lists(space)
+when "space-list-iterate"
+  space_list_iterate(space, @options.list)
+when "space-indexes"
+  space_indexes(innodb_system, space)
+when "space-extents"
+  space_extents(space)
+when "space-inodes-summary"
+  space_inodes_summary(space)
+when "space-inodes-detail"
+  space_inodes_detail(space)
+when "index-recurse"
+  index_recurse(index)
+when "index-record-offsets"
+  index_record_offsets(index)
+when "index-digraph"
+  index_digraph(index)
+when "index-level-summary"
+  index_level_summary(index, @options.level)
+when "index-fseg-leaf-lists"
+  index_fseg_lists(index, :leaf)
+when "index-fseg-internal-lists"
+  index_fseg_lists(index, :internal)
+when "index-fseg-leaf-list-iterate"
+  index_fseg_list_iterate(index, :leaf, @options.list)
+when "index-fseg-internal-list-iterate"
+  index_fseg_list_iterate(index, :internal, @options.list)
+when "index-fseg-leaf-frag-pages"
+  index_fseg_frag_pages(index, :leaf)
+when "index-fseg-internal-frag-pages"
+  index_fseg_frag_pages(index, :internal)
+when "page-dump"
+  space.page(@options.page).dump
+when "page-account"
+  page_account(innodb_system, space, @options.page)
+when "page-directory-summary"
+  page_directory_summary(@options.page)
+else
+  usage 1, "Unknown mode: #{mode}"
 end

@@ -11,8 +11,6 @@ require "innodb/fseg_entry"
 # (the actual data) which grow ascending by offset, free space, the page
 # directory which grows descending by offset, and the FIL trailer.
 class Innodb::Page::Index < Innodb::Page
-  attr_accessor :record_describer
-
   # The size (in bytes) of the "next" pointer in each record header.
   RECORD_NEXT_SIZE = 2
 
@@ -226,6 +224,11 @@ class Innodb::Page::Index < Innodb::Page
 
       index
     end
+  end
+
+  # A helper function to return the index id.
+  def index_id
+    page_header && page_header[:index_id]
   end
 
   # A helper function to return the page level from the "page" header, for
@@ -446,6 +449,23 @@ class Innodb::Page::Index < Innodb::Page
   # Return the supremum record on a page.
   def supremum
     @supremum ||= system_record(pos_supremum)
+  end
+
+  def record_describer=(o)
+    @record_describer = o
+  end
+
+  def record_describer
+    return @record_describer if @record_describer
+
+    if space and space.innodb_system and index_id
+      @record_describer =
+        space.innodb_system.data_dictionary.record_describer_by_index_id(index_id)
+    elsif space
+      @record_describer = space.record_describer
+    end
+
+    @record_describer
   end
 
   # Return a set of field objects that describe the record.
