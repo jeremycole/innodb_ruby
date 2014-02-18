@@ -1,9 +1,11 @@
 # -*- encoding : utf-8 -*-
 
 class Innodb::Record
+  attr_reader :page
   attr_accessor :record
 
-  def initialize(record)
+  def initialize(page, record)
+    @page = page
     @record = record
   end
 

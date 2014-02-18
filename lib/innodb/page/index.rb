@@ -432,7 +432,7 @@ class Innodb::Page::Index < Innodb::Page
   def system_record(offset)
     cursor(offset).name("record[#{offset}]") do |c|
       header = c.peek { record_header(c) }
-      Innodb::Record.new({
+      Innodb::Record.new(self, {
         :offset => offset,
         :header => header,
         :next => header[:next],
@@ -579,7 +579,7 @@ class Innodb::Page::Index < Innodb::Page
         end
       end
 
-      Innodb::Record.new(this_record)
+      Innodb::Record.new(self, this_record)
     end
   end
 

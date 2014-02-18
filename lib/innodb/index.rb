@@ -355,7 +355,7 @@ class Innodb::Index
         # We're on a leaf page, so return the page and record if there is a
         # match. If there is no match, break the loop and cause nil to be
         # returned.
-        return page, rec if compare_key(key, rec.key) == 0
+        return rec if compare_key(key, rec.key) == 0
         break
       end
     end
@@ -388,7 +388,7 @@ class Innodb::Index
         # We're on a leaf page, so return the page and record if there is a
         # match. If there is no match, break the loop and cause nil to be
         # returned.
-        return page, rec if compare_key(key, rec.key) == 0
+        return rec if compare_key(key, rec.key) == 0
         break
       end
     end
