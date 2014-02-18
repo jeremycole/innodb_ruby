@@ -879,7 +879,7 @@ getopt.each do |opt, arg|
   when "--help"
     usage 0
   when "--trace"
-    Innodb::Cursor.trace!
+    BufferCursor.trace!
   when "--mode"
     @options.mode = arg
   when "--system-space-file"
