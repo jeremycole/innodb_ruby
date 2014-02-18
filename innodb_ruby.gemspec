@@ -20,8 +20,8 @@ Gem::Specification.new do |s|
     'AUTHORS.md',
     'README.md',
     'lib/innodb.rb',
+    'lib/innodb/buffer_cursor.rb',
     'lib/innodb/checksum.rb',
-    'lib/innodb/cursor.rb',
     'lib/innodb/data_dictionary.rb',
     'lib/innodb/data_type.rb',
     'lib/innodb/field.rb',
@@ -56,4 +56,5 @@ Gem::Specification.new do |s|
     'innodb_space',
   ]
   s.add_dependency('bindata', '>= 1.4.5')
+  s.add_dependency('buffer_cursor', '>= 0.9.0')
 end

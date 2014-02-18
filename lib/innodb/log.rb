@@ -39,7 +39,7 @@ class Innodb::Log
 
   # Get a cursor to a block in a given offset of the log.
   def block_cursor(offset)
-    Innodb::Cursor.new(block_data(offset), 0)
+    BufferCursor.new(block_data(offset), 0)
   end
 
   # Return the log header.
