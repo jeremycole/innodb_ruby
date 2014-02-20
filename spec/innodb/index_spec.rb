@@ -3,8 +3,8 @@
 require "spec_helper"
 
 class TTenKRowsDescriber < Innodb::RecordDescriber
-    type :clustered
-      key "i", :INT, :UNSIGNED, :NOT_NULL
+  type :clustered
+  key "i", :INT, :UNSIGNED, :NOT_NULL
 end
 
 describe Innodb::Index do
@@ -66,13 +66,13 @@ describe Innodb::Index do
     end
 
     it "is much more efficient than linear_search" do
-      @index.reset_stats
+      Innodb::Stats.reset
       rec = @index.linear_search([5000])
-      linear_compares = @index.stats[:compare_key]
+      linear_compares = Innodb::Stats.get(:compare_key)
 
-      @index.reset_stats
+      Innodb::Stats.reset
       rec = @index.binary_search([5000])
-      binary_compares = @index.stats[:compare_key]
+      binary_compares = Innodb::Stats.get(:compare_key)
 
       ((linear_compares.to_f / binary_compares.to_f) > 10).should be_true
     end
@@ -88,6 +88,91 @@ describe Innodb::Index do
         end
       end
       missing_keys.should eql({})
+    end
+  end
+
+  describe "#min_page_at_level" do
+    it "returns the min page" do
+      page = @index.min_page_at_level(0)
+      page.level.should eql 0
+      rec = page.min_record
+      rec.key[0][:value].should eql 1
+    end
+  end
+
+  describe "#min_record" do
+    it "returns the min record" do
+      rec = @index.min_record
+      rec.key[0][:value].should eql 1
+    end
+  end
+
+  describe "#max_page_at_level" do
+    it "returns the max page" do
+      page = @index.max_page_at_level(0)
+      page.level.should eql 0
+      rec = page.max_record
+      rec.key[0][:value].should eql 10000
+    end
+  end
+
+  describe "#max_record" do
+    it "returns the max record" do
+      rec = @index.max_record
+      rec.key[0][:value].should eql 10000
+    end
+  end
+
+  describe "#cursor" do
+    it "returns an Innodb::Index::IndexCursor" do
+      @index.cursor.should be_an_instance_of Innodb::Index::IndexCursor
+    end
+  end
+
+  describe Innodb::Index::IndexCursor do
+    describe "#record" do
+      it "iterates in forward order" do
+        cursor = @index.cursor(:min, :forward)
+
+        previous = cursor.record
+        100.times do
+          current = cursor.record
+          (current.key[0][:value].to_i > previous.key[0][:value].to_i).should be_true
+          previous = current
+        end
+      end
+
+      it "iterates in backward order" do
+        cursor = @index.cursor(:max, :backward)
+
+        previous = cursor.record
+        100.times do
+          current = cursor.record
+          (current.key[0][:value].to_i < previous.key[0][:value].to_i).should be_true
+          previous = current
+        end
+      end
+
+      it "iterates across page boundaries" do
+        cursor = @index.cursor
+
+        # This will be the first record, from page 4.
+        rec = cursor.record
+        rec.page.offset.should eql 4
+
+        # Skip 900 records.
+        900.times { cursor.record }
+
+        # We should have crossed a page boundary.
+        rec = cursor.record
+        rec.page.offset.should_not eql 4
+      end
+    end
+
+    describe "#each_record" do
+      it "is an enumerator" do
+        is_enumerator?(@index.cursor.each_record).should be_true
+      end
     end
   end
 end

@@ -121,4 +121,10 @@ describe Innodb::Page::Index do
       rec.header[:type].should eql :supremum
     end
   end
+
+  describe "#record_cursor" do
+    it "returns an Innodb::Page::Index::RecordCursor" do
+      @page.record_cursor.should be_an_instance_of Innodb::Page::Index::RecordCursor
+    end
+  end
 end

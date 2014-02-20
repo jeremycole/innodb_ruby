@@ -2,11 +2,22 @@
 
 # A set of classes for parsing and working with InnoDB data files.
 
-module Innodb; end
+module Innodb
+  @@debug = false
+
+  def self.debug?
+    @@debug == true
+  end
+
+  def self.debug=(value)
+    @@debug = value
+  end
+end
 
 require "enumerator"
 
 require "innodb/version"
+require "innodb/stats"
 require "innodb/checksum"
 require "innodb/record_describer"
 require "innodb/data_dictionary"

@@ -64,4 +64,25 @@ class Innodb::Record
   def fields
     @fields ||= uncached_fields
   end
+
+  # Compare two arrays of fields to determine if they are equal. This follows
+  # the same comparison rules as strcmp and others:
+  #   0 = a is equal to b
+  #   -1 = a is less than b
+  #   +1 = a is greater than b
+  def compare_key(other_key)
+    Innodb::Stats.increment :compare_key
+
+    return 0 if other_key.nil? && key.nil?
+    return -1 if other_key.nil? || (!key.nil? && other_key.size < key.size)
+    return +1 if key.nil? || (!other_key.nil? && other_key.size > key.size)
+
+    key.each_index do |i|
+      Innodb::Stats.increment :compare_key_field_comparison
+      return -1 if other_key[i] < key[i][:value]
+      return +1 if other_key[i] > key[i][:value]
+    end
+
+    return 0
+  end
 end

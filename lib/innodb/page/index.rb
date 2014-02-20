@@ -583,44 +583,300 @@ class Innodb::Page::Index < Innodb::Page
     end
   end
 
+  # Return an array of row offsets for all entries in the page directory.
+  def directory
+    return @directory if @directory
+
+    @directory = []
+    cursor(pos_directory).backward.name("page_directory") do |c|
+      directory_slots.times do |n|
+        @directory.push c.name("slot[#{n}]") { c.get_uint16 }
+      end
+    end
+
+    @directory
+  end
+
+  # Return the slot number of the provided offset in the page directory, or nil
+  # if the offset is not present in the page directory.
+  def offset_is_directory_slot?(offset)
+    directory.index(offset)
+  end
+
+  # Return the slot number of the provided record in the page directory, or nil
+  # if the record is not present in the page directory.
+  def record_is_directory_slot?(this_record)
+    offset_is_directory_slot?(this_record.offset)
+  end
+
+  # Return the slot number for the page directory entry which "owns" the
+  # provided record. This will be either the record itself, or the nearest
+  # record with an entry in the directory and a value greater than the record.
+  def directory_slot_for_record(this_record)
+    if slot = record_is_directory_slot?(this_record)
+      return slot
+    end
+
+    unless search_cursor = record_cursor(this_record.next)
+      raise "Couldn't position cursor"
+    end
+
+    while rec = search_cursor.record
+      if slot = record_is_directory_slot?(rec)
+        return slot
+      end
+    end
+
+    return record_is_directory_slot?(supremum)
+  end
+
   # A class for cursoring through records starting from an arbitrary point.
   class RecordCursor
-    def initialize(page, offset)
-      @page   = page
-      @offset = offset
+    def initialize(page, offset, direction)
+      Innodb::Stats.increment :page_record_cursor_create
+
+      @initial = true
+      @page = page
+      @direction = direction
+      case offset
+      when :min
+        @record = @page.min_record
+      when :max
+        @record = @page.max_record
+      else
+        # Offset is a byte offset of a record (hopefully).
+        @record = @page.record(offset)
+      end
+    end
+
+    # Return the current record, mostly as a helper.
+    def current_record
+      @record
     end
 
     # Return the next record, and advance the cursor. Return nil when the
-    # end of records is reached.
-    def record
-      return nil unless @offset
+    # end of records (supremum) is reached.
+    def next_record
+      Innodb::Stats.increment :page_record_cursor_next_record
 
-      record = @page.record(@offset)
+      @record = @page.record(@record.next)
 
-      if record == @page.supremum
+      if @record == @page.supremum
         # We've reached the end of the linked list at supremum.
-        @offset = nil
-      elsif record.next == @offset
-        # The record links to itself; go ahead and return it (once), but set
-        # the next offset to nil to end the loop.
-        @offset = nil
-        record
+        nil
       else
-        @offset = record.next
-        record
+        @record
+      end
+    end
+
+    # Return the previous record, and advance the cursor. Return nil when the
+    # end of records (infimum) is reached.
+    def prev_record
+      Innodb::Stats.increment :page_record_cursor_prev_record
+
+      unless slot = @page.directory_slot_for_record(@record)
+        raise "Couldn't find slot for record"
+      end
+
+      unless search_cursor = @page.record_cursor(@page.directory[slot-1])
+        raise "Couldn't position search cursor"
+      end
+
+      while rec = search_cursor.record and rec.offset != @record.offset
+        if rec.next == @record.offset
+          if rec == @page.infimum
+            return nil
+          end
+          return @record = rec
+        end
+      end
+    end
+
+    # Return the next record in the order defined when the cursor was created.
+    def record
+      if @initial
+        @initial = false
+        return current_record
+      end
+
+      case @direction
+      when :forward
+        next_record
+      when :backward
+        prev_record
+      end
+    end
+
+    # Iterate through all records in the cursor.
+    def each_record
+      unless block_given?
+        return enum_for(:each_record)
+      end
+
+      while rec = record
+        yield rec
       end
     end
   end
 
   # Return a RecordCursor starting at offset.
-  def record_cursor(offset)
-    RecordCursor.new(self, offset)
+  def record_cursor(offset=:min, direction=:forward)
+    RecordCursor.new(self, offset, direction)
   end
 
-  # Return the first record on this page.
-  def first_record
-    first = record(infimum.next)
-    first if first != supremum
+  # Return the minimum record on this page.
+  def min_record
+    min = record(infimum.next)
+    min if min != supremum
+  end
+
+  # Return the maximum record on this page.
+  def max_record
+    # Since the records are only singly-linked in the forward direction, in
+    # order to do find the last record, we must create a cursor and walk
+    # backwards one step.
+    unless max_cursor = record_cursor(supremum.offset, :backward)
+      raise "Couldn't position cursor"
+    end
+    # Note the deliberate use of prev_record rather than record; we want
+    # to skip over supremum itself.
+    max = max_cursor.prev_record
+    max if max != infimum
+  end
+
+  # Search for a record within a single page, and return either a perfect
+  # match for the key, or the last record closest to they key but not greater
+  # than the key. (If an exact match is desired, compare_key must be used to
+  # check if the returned record matches. This makes the function useful for
+  # search in both leaf and non-leaf pages.)
+  def linear_search_from_cursor(search_cursor, key)
+    Innodb::Stats.increment :linear_search_from_cursor
+
+    this_rec = search_cursor.record
+
+    if Innodb.debug?
+      puts "linear_search_from_cursor: page=%i, level=%i, start=(%s)" % [
+        offset,
+        level,
+        this_rec && this_rec.key_string,
+      ]
+    end
+
+    # Iterate through all records until finding either a matching record or
+    # one whose key is greater than the desired key.
+    while this_rec && next_rec = search_cursor.record
+      Innodb::Stats.increment :linear_search_from_cursor_record_scans
+
+      if Innodb.debug?
+        puts "linear_search_from_cursor: page=%i, level=%i, current=(%s)" % [
+          offset,
+          level,
+          this_rec && this_rec.key_string,
+        ]
+      end
+
+      # If we reach supremum, return the last non-system record we got.
+      return this_rec if next_rec.header[:type] == :supremum
+
+      if this_rec.compare_key(key) < 0
+        return this_rec
+      end
+
+      if (this_rec.compare_key(key) >= 0) &&
+        (next_rec.compare_key(key) < 0)
+        # The desired key is either an exact match for this_rec or is greater
+        # than it but less than next_rec. If this is a non-leaf page, that
+        # will mean that the record will fall on the leaf page this node
+        # pointer record points to, if it exists at all.
+        return this_rec
+      end
+
+      this_rec = next_rec
+    end
+
+    this_rec
+  end
+
+  # Search or a record within a single page using the page directory to limit
+  # the number of record comparisons required. Once the last page directory
+  # entry closest to but not greater than the key is found, fall back to
+  # linear search using linear_search_from_cursor to find the closest record
+  # whose key is not greater than the desired key. (If an exact match is
+  # desired, the returned record must be checked in the same way as the above
+  # linear_search_from_cursor function.)
+  def binary_search_by_directory(dir, key)
+    Innodb::Stats.increment :binary_search_by_directory
+
+    return nil if dir.empty?
+
+    # Split the directory at the mid-point (using integer math, so the division
+    # is rounding down). Retrieve the record that sits at the mid-point.
+    mid = ((dir.size-1) / 2)
+    rec = record(dir[mid])
+
+    if Innodb.debug?
+      puts "binary_search_by_directory: page=%i, level=%i, dir.size=%i, dir[%i]=(%s)" % [
+        offset,
+        level,
+        dir.size,
+        mid,
+        rec.key_string,
+      ]
+    end
+
+    # The mid-point record was the infimum record, which is not comparable with
+    # compare_key, so we need to just linear scan from here. If the mid-point
+    # is the beginning of the page there can't be many records left to check
+    # anyway.
+    if rec.header[:type] == :infimum
+      return linear_search_from_cursor(record_cursor(rec.next), key)
+    end
+
+    # Compare the desired key to the mid-point record's key.
+    case rec.compare_key(key)
+    when 0
+      # An exact match for the key was found. Return the record.
+      Innodb::Stats.increment :binary_search_by_directory_exact_match
+      rec
+    when +1
+      # The mid-point record's key is less than the desired key.
+      if dir.size > 2
+        # There are more entries remaining from the directory, recurse again
+        # using binary search on the right half of the directory, which
+        # represents values greater than or equal to the mid-point record's
+        # key.
+        Innodb::Stats.increment :binary_search_by_directory_recurse_right
+        binary_search_by_directory(dir[mid...dir.size], key)
+      else
+        next_rec = record(dir[mid+1])
+        next_key = next_rec && next_rec.compare_key(key)
+        if dir.size == 1 || next_key == -1 || next_key == 0
+          # This is the last entry remaining from the directory, or our key is
+          # greater than rec and less than rec+1's key. Use linear search to
+          # find the record starting at rec.
+          Innodb::Stats.increment :binary_search_by_directory_linear_search
+          linear_search_from_cursor(record_cursor(rec.offset), key)
+        elsif next_key == +1
+          Innodb::Stats.increment :binary_search_by_directory_linear_search
+          linear_search_from_cursor(record_cursor(next_rec.offset), key)
+        else
+          nil
+        end
+      end
+    when -1
+      # The mid-point record's key is greater than the desired key.
+      if dir.size == 1
+        # If this is the last entry remaining from the directory, we didn't
+        # find anything workable.
+        Innodb::Stats.increment :binary_search_by_directory_empty_result
+        nil
+      else
+        # Recurse on the left half of the directory, which represents values
+        # less than the mid-point record's key.
+        Innodb::Stats.increment :binary_search_by_directory_recurse_left
+        binary_search_by_directory(dir[0...mid], key)
+      end
+    end
   end
 
   # Iterate through all records.
@@ -638,6 +894,7 @@ class Innodb::Page::Index < Innodb::Page
     nil
   end
 
+  # Iterate through all records in the garbage list.
   def each_garbage_record
     unless block_given?
       return enum_for(:each_garbage_record)
@@ -673,19 +930,6 @@ class Innodb::Page::Index < Innodb::Page
     nil
   end
 
-  # Return an array of row offsets for all entries in the page directory.
-  def directory
-    return @directory if @directory
-
-    @directory = []
-    cursor(pos_directory).backward.name("page_directory") do |c|
-      directory_slots.times do |n|
-        @directory.push c.name("slot[#{n}]") { c.get_uint16 }
-      end
-    end
-
-    @directory
-  end
 
   # Dump the contents of a page for debugging purposes.
   def dump

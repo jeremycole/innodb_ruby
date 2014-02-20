@@ -46,6 +46,7 @@ Gem::Specification.new do |s|
     'lib/innodb/record.rb',
     'lib/innodb/record_describer.rb',
     'lib/innodb/space.rb',
+    'lib/innodb/stats.rb',
     'lib/innodb/system.rb',
     'lib/innodb/undo_log.rb',
     'lib/innodb/version.rb',
