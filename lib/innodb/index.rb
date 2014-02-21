@@ -286,53 +286,6 @@ class Innodb::Index
       @record
     end
 
-    # Move to the next record in the forward direction and return it.
-    def next_record
-      Innodb::Stats.increment :index_cursor_next_record
-
-      while true
-        if @record = @page_cursor.record
-          return @record
-        end
-
-        unless next_page = @page.next
-          return nil
-        end
-
-        unless @page = @index.page(next_page)
-          raise "Failed to load next page"
-        end
-
-        unless @page_cursor = @page.record_cursor(:min, @direction)
-          raise "Failed to position cursor"
-        end
-      end
-    end
-
-    # Move to the previous record in the backward direction and return it.
-    def prev_record
-      Innodb::Stats.increment :index_cursor_prev_record
-
-      while true
-        if @record = @page_cursor.record
-          return @record
-        end
-
-        unless prev_page = @page.prev
-          return nil
-        end
-
-        unless @page = @index.page(prev_page)
-          raise "Failed to load prev page"
-        end
-
-        unless @page_cursor = @page.record_cursor(:max, @direction)
-          raise "Failed to position cursor"
-        end
-      end
-      raise "Not implemented"
-    end
-
     # Return the next record in the order defined when the cursor was created.
     def record
       if @initial
@@ -357,6 +310,53 @@ class Innodb::Index
       while rec = record
         yield rec
       end
+    end
+
+    private
+
+    # Move the cursor to a new starting position in a given page.
+    def move_cursor(page, record)
+      unless @page = @index.page(page)
+        raise "Failed to load page"
+      end
+
+      unless @page_cursor = @page.record_cursor(record, @direction)
+        raise "Failed to position cursor"
+      end
+    end
+
+    # Move to the next record in the forward direction and return it.
+    def next_record
+      Innodb::Stats.increment :index_cursor_next_record
+
+      if @record = @page_cursor.record
+        return @record
+      end
+
+      unless next_page = @page.next
+        return nil
+      end
+
+      move_cursor(next_page, :min)
+
+      @record = @page_cursor.record
+    end
+
+    # Move to the previous record in the backward direction and return it.
+    def prev_record
+      Innodb::Stats.increment :index_cursor_prev_record
+
+      if @record = @page_cursor.record
+        return @record
+      end
+
+      unless prev_page = @page.prev
+        return nil
+      end
+
+      move_cursor(prev_page, :max)
+
+      @record = @page_cursor.record
     end
   end
 
