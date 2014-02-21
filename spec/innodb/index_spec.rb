@@ -190,6 +190,16 @@ describe Innodb::Index do
           cursor.record.key[0][:value].to_i.should eql v
         end
       end
+
+      it "handles index bounds" do
+        cursor = @index.cursor(:min, :backward)
+        cursor.record.key[0][:value].to_i.should eql 1
+        cursor.record.should be_nil
+
+        cursor = @index.cursor(:max, :forward)
+        cursor.record.key[0][:value].to_i.should eql 10000
+        cursor.record.should be_nil
+      end
     end
 
     describe "#each_record" do
