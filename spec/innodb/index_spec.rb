@@ -161,11 +161,34 @@ describe Innodb::Index do
         rec.page.offset.should eql 4
 
         # Skip 900 records.
-        900.times { cursor.record }
+        900.times { cursor.record.should_not be_nil }
 
         # We should have crossed a page boundary.
         rec = cursor.record
         rec.page.offset.should_not eql 4
+      end
+
+      it "tracks the current record" do
+        cursor = @index.cursor(:min, :forward)
+
+        900.times do
+          rec = cursor.record
+          rec.key.should eql cursor.current_record.key
+        end
+      end
+
+      it "iterates back and forth" do
+        cursor = @index.cursor(:min, :forward)
+
+        1.upto(900) do |v|
+          cursor.record.key[0][:value].to_i.should eql v
+        end
+
+        cursor = @index.cursor(cursor.current_record, :backward)
+
+        900.downto(1) do |v|
+          cursor.record.key[0][:value].to_i.should eql v
+        end
       end
     end
 

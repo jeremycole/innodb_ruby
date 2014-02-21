@@ -291,8 +291,8 @@ class Innodb::Index
       Innodb::Stats.increment :index_cursor_next_record
 
       while true
-        if rec = @page_cursor.record
-          return rec
+        if @record = @page_cursor.record
+          return @record
         end
 
         unless next_page = @page.next
@@ -314,8 +314,8 @@ class Innodb::Index
       Innodb::Stats.increment :index_cursor_prev_record
 
       while true
-        if rec = @page_cursor.record
-          return rec
+        if @record = @page_cursor.record
+          return @record
         end
 
         unless prev_page = @page.prev
