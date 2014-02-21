@@ -168,15 +168,6 @@ describe Innodb::Index do
         rec.page.offset.should_not eql 4
       end
 
-      it "tracks the current record" do
-        cursor = @index.cursor(:min, :forward)
-
-        900.times do
-          rec = cursor.record
-          rec.key.should eql cursor.current_record.key
-        end
-      end
-
       it "iterates back and forth" do
         cursor = @index.cursor(:min, :forward)
 
@@ -184,11 +175,13 @@ describe Innodb::Index do
           cursor.record.key[0][:value].to_i.should eql v
         end
 
-        cursor = @index.cursor(cursor.current_record, :backward)
+        cursor = @index.cursor(cursor.record, :backward)
 
-        900.downto(1) do |v|
+        901.downto(1) do |v|
           cursor.record.key[0][:value].to_i.should eql v
         end
+
+        cursor.record.should be_nil
       end
 
       it "handles index bounds" do

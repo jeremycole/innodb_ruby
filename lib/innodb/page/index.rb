@@ -649,11 +649,6 @@ class Innodb::Page::Index < Innodb::Page
       end
     end
 
-    # Return the current record, mostly as a helper.
-    def current_record
-      @record
-    end
-
     # Return the next record, and advance the cursor. Return nil when the
     # end of records (supremum) is reached.
     def next_record
@@ -696,7 +691,7 @@ class Innodb::Page::Index < Innodb::Page
     def record
       if @initial
         @initial = false
-        return current_record
+        return @record
       end
 
       case @direction

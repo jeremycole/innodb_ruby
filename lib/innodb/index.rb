@@ -261,7 +261,6 @@ class Innodb::Index
   class IndexCursor
     def initialize(index, record, direction)
       Innodb::Stats.increment :index_cursor_create
-      @initial = true
       @index = index
       @direction = direction
       case record
@@ -278,19 +277,12 @@ class Innodb::Index
         @page = record.page
         @page_cursor = @page.record_cursor(record.offset, direction)
       end
-      @record = @page_cursor.record
-    end
-
-    # Return the current record, mostly as a helper.
-    def current_record
-      @record
     end
 
     # Return the next record in the order defined when the cursor was created.
     def record
-      if @initial
-        @initial = false
-        return current_record
+      if rec = @page_cursor.record
+        return rec
       end
 
       case @direction
@@ -329,8 +321,8 @@ class Innodb::Index
     def next_record
       Innodb::Stats.increment :index_cursor_next_record
 
-      if @record = @page_cursor.record
-        return @record
+      if rec = @page_cursor.record
+        return rec
       end
 
       unless next_page = @page.next
@@ -339,15 +331,15 @@ class Innodb::Index
 
       move_cursor(next_page, :min)
 
-      @record = @page_cursor.record
+      @page_cursor.record
     end
 
     # Move to the previous record in the backward direction and return it.
     def prev_record
       Innodb::Stats.increment :index_cursor_prev_record
 
-      if @record = @page_cursor.record
-        return @record
+      if rec = @page_cursor.record
+        return rec
       end
 
       unless prev_page = @page.prev
@@ -356,7 +348,7 @@ class Innodb::Index
 
       move_cursor(prev_page, :max)
 
-      @record = @page_cursor.record
+      @page_cursor.record
     end
   end
 
