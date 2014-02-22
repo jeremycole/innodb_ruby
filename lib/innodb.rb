@@ -15,6 +15,7 @@ module Innodb
 end
 
 require "enumerator"
+require "innodb/util/buffer_cursor"
 
 require "innodb/version"
 require "innodb/stats"

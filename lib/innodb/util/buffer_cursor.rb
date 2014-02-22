@@ -2,8 +2,11 @@
 
 require "bindata"
 
-# A cursor to walk through InnoDB data structures to read fields.
-class Innodb::Cursor
+# A cursor to walk through data structures to read fields. The cursor can move
+# forwards, backwards, is seekable, and supports peeking without moving the
+# cursor. The BinData module is used for interpreting bytes as desired.
+class BufferCursor
+  VERSION = "0.9.0"
 
   # An entry in a stack of cursors. The cursor position, direction, and
   # name array are each attributes of the current cursor stack and are
@@ -26,11 +29,11 @@ class Innodb::Cursor
     end
   end
 
-  @@tracing = false
+  @@global_tracing = false
 
-  # Enable tracing for all Innodb::Cursor objects.
+  # Enable tracing for all BufferCursor objects globally.
   def self.trace!(arg=true)
-    @@tracing = arg
+    @@global_tracing = arg
   end
 
   # Initialize a cursor within a buffer at the given position.
@@ -38,7 +41,14 @@ class Innodb::Cursor
     @buffer = buffer
     @stack = [ StackEntry.new(self, position) ]
 
+    trace false
     trace_with :print_trace
+    trace_to STDOUT
+  end
+
+  def trace(arg=true)
+    @instance_tracing = arg
+    self
   end
 
   # Print a trace output for this cursor. The method is passed a cursor object,
@@ -46,13 +56,18 @@ class Innodb::Cursor
   def print_trace(cursor, position, bytes, name)
     slice_size = 16
     bytes.each_slice(slice_size).each_with_index do |slice_bytes, slice_count|
-      puts "%06i %s %-32s  %s" % [
+      @trace_io.puts "%06i %s %-32s  %s" % [
         position + (slice_count * slice_size),
         direction == :backward ? "←" : "→",
         slice_bytes.map { |n| "%02x" % n }.join,
         slice_count == 0 ? name.join(".") : "↵",
       ]
     end
+  end
+
+  def trace_to(file)
+    @trace_io = file
+    self
   end
 
   # Set a Proc or method on self to trace with.
@@ -66,11 +81,16 @@ class Innodb::Cursor
     else
       raise "Don't know how to trace with #{arg}"
     end
+    self
+  end
+
+  def tracing_enabled?
+    (@@global_tracing or @instance_tracing) && @trace_proc
   end
 
   # Generate a trace record from the current cursor.
-  def trace(position, bytes, name)
-    @trace_proc.call(self, position, bytes, name) if @@tracing && @trace_proc
+  def record_trace(position, bytes, name)
+    @trace_proc.call(self, position, bytes, name) if tracing_enabled?
   end
 
   # The current cursor object; the top of the stack.
@@ -170,7 +190,7 @@ class Innodb::Cursor
       data = @buffer.slice(current.position, length)
     end
 
-    trace(cursor_start, data.bytes, current.name)
+    record_trace(cursor_start, data.bytes, current.name)
     data
   end
 
@@ -179,6 +199,7 @@ class Innodb::Cursor
     read_and_advance(length)
   end
 
+  # Iterate through length bytes returning each as an unsigned 8-bit integer.
   def each_byte_as_uint8(length)
     unless block_given?
       return enum_for(:each_byte_as_uint8, length)
@@ -261,10 +282,11 @@ class Innodb::Cursor
     when 8
       get_uint64
     else
-      raise "Not implemented"
+      raise "Integer size #{size} not implemented"
     end
   end
 
+  # Read an array of count unsigned integers given their size in bytes.
   def get_uint_array_by_size(size, count)
     (0...count).to_a.inject([]) { |a, n| a << get_uint_by_size(size); a }
   end

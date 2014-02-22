@@ -1,7 +1,5 @@
 # -*- encoding : utf-8 -*-
 
-require "innodb/cursor"
-
 # A generic class for any type of page, which handles reading the common
 # FIL header and trailer, and can handle (via #parse) dispatching to a more
 # specialized class depending on page type (which comes from the FIL header).
@@ -61,12 +59,12 @@ class Innodb::Page
     @size ||= @buffer.size
   end
 
-  # If no block is passed, return an Innodb::Cursor object positioned at a
+  # If no block is passed, return an BufferCursor object positioned at a
   # specific offset. If a block is passed, create a cursor at the provided
   # offset and yield it to the provided block one time, and then return the
   # return value of the block.
   def cursor(offset)
-    new_cursor = Innodb::Cursor.new(@buffer, offset)
+    new_cursor = BufferCursor.new(@buffer, offset)
 
     if block_given?
       # Call the block once and return its return value.

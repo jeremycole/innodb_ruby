@@ -21,7 +21,6 @@ Gem::Specification.new do |s|
     'README.md',
     'lib/innodb.rb',
     'lib/innodb/checksum.rb',
-    'lib/innodb/cursor.rb',
     'lib/innodb/data_dictionary.rb',
     'lib/innodb/data_type.rb',
     'lib/innodb/field.rb',
@@ -49,6 +48,7 @@ Gem::Specification.new do |s|
     'lib/innodb/stats.rb',
     'lib/innodb/system.rb',
     'lib/innodb/undo_log.rb',
+    'lib/innodb/util/buffer_cursor.rb',
     'lib/innodb/version.rb',
     'lib/innodb/xdes.rb',
   ]

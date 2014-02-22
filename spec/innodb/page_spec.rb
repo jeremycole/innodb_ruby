@@ -83,7 +83,7 @@ describe Innodb::Page do
 
   describe "#cursor" do
     it "returns a cursor" do
-      @page.cursor(0).should be_an_instance_of Innodb::Cursor
+      @page.cursor(0).should be_an_instance_of BufferCursor
     end
 
     it "positions the cursor correctly" do

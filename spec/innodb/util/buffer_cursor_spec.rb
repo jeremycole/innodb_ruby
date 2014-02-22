@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-describe Innodb::Cursor do
+describe BufferCursor do
   before :all do
     @data = {
       :offset => {},
@@ -42,12 +42,12 @@ describe Innodb::Cursor do
   end
 
   before :each do
-    @cursor = Innodb::Cursor.new(@buffer, 0)
+    @cursor = BufferCursor.new(@buffer, 0)
   end
 
   describe "#new" do
-    it "returns an Innodb::Cursor" do
-      @cursor.should be_an_instance_of Innodb::Cursor
+    it "returns an BufferCursor" do
+      @cursor.should be_an_instance_of BufferCursor
     end
   end
 
@@ -99,7 +99,7 @@ describe Innodb::Cursor do
     it "returns self" do
       @cursor.forward.should eql @cursor
     end
-    
+
     it "sets the direction to forwards" do
       @cursor.forward
       @cursor.direction.should eql :forward
@@ -117,7 +117,7 @@ describe Innodb::Cursor do
     it "returns self" do
       @cursor.backward.should eql @cursor
     end
-    
+
     it "sets the direction to backward" do
       @cursor.backward
       @cursor.direction.should eql :backward
@@ -141,7 +141,7 @@ describe Innodb::Cursor do
       @cursor.push(10)
       @cursor.position.should eql 10
       @cursor.pop
-      @cursor.position.should eql 0      
+      @cursor.position.should eql 0
     end
   end
 
@@ -150,7 +150,7 @@ describe Innodb::Cursor do
       @cursor.peek { true }.should eql true
       @cursor.peek { false }.should eql false
     end
-    
+
     it "doesn't disturb the cursor position or direction on return" do
       @cursor.position.should eql 0
       @cursor.direction.should eql :forward
@@ -312,6 +312,49 @@ describe Innodb::Cursor do
 
     it "can handle large bit arrays" do
       @cursor.get_bit_array(64).size.should eql 64
+    end
+  end
+
+  describe "#trace!" do
+    it "enables tracing globally" do
+      BufferCursor.trace!
+
+      trace_string = ""
+      trace_output = StringIO.new(trace_string, "w")
+
+      c1 = BufferCursor.new(@buffer, 0)
+      c1.trace_to(trace_output)
+      c1.get_bytes(4).should eql "\x00\x01\x02\x03"
+
+      trace_string.should match(/000000 → 00010203/)
+
+      c2 = BufferCursor.new(@buffer, 0)
+      c2.trace_to(trace_output)
+      c2.seek(4).get_bytes(4).should eql "\x04\x05\x06\x07"
+
+      trace_string.should match(/000004 → 04050607/)
+
+      BufferCursor.trace!(false)
+    end
+  end
+
+  describe "#trace" do
+    it "enables tracing per instance" do
+      trace_string = ""
+      trace_output = StringIO.new(trace_string, "w")
+
+      c1 = BufferCursor.new(@buffer, 0)
+      c1.trace
+      c1.trace_to(trace_output)
+      c1.get_bytes(4).should eql "\x00\x01\x02\x03"
+
+      trace_string.should match(/000000 → 00010203/)
+
+      c2 = BufferCursor.new(@buffer, 0)
+      c2.trace_to(trace_output)
+      c2.seek(4).get_bytes(4).should eql "\x04\x05\x06\x07"
+
+      trace_string.should_not match(/000004 → 04050607/)
     end
   end
 end

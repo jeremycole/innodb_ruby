@@ -1,6 +1,5 @@
 # -*- encoding : utf-8 -*-
 
-require "innodb/cursor"
 require "pp"
 
 # An InnoDB transaction log block.
@@ -27,9 +26,9 @@ class Innodb::LogBlock
     @buffer = buffer
   end
 
-  # Return an Innodb::Cursor object positioned at a specific offset.
+  # Return an BufferCursor object positioned at a specific offset.
   def cursor(offset)
-    Innodb::Cursor.new(@buffer, offset)
+    BufferCursor.new(@buffer, offset)
   end
 
   # Return the log block header.
