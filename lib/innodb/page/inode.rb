@@ -50,7 +50,7 @@ class Innodb::Page::Inode < Innodb::Page
   # Read a single Inode entry from the provided byte offset by creating a
   # cursor and reading the inode using the inode method.
   def inode_at(cursor)
-    cursor.name("inode") { |c| Innodb::Inode.new_from_cursor(@space, c) }
+    cursor.name("inode[#{cursor.position}]") { |c| Innodb::Inode.new_from_cursor(@space, c) }
   end
 
   # Iterate through all Inodes in the inode array.

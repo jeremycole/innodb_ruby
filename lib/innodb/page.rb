@@ -59,12 +59,26 @@ class Innodb::Page
     @size ||= @buffer.size
   end
 
+  # Return a simple string to uniquely identify this page within the space.
+  # Be careful not to call anything which would instantiate a BufferCursor
+  # so that we can use this method in cursor initialization.
+  def name
+    page_offset = BinData::Uint32be.read(@buffer.slice(4, 4))
+    page_type = BinData::Uint16be.read(@buffer.slice(24, 2))
+    "%i,%s" % [
+      page_offset,
+      PAGE_TYPE_BY_VALUE[page_type],
+    ]
+  end
+
   # If no block is passed, return an BufferCursor object positioned at a
   # specific offset. If a block is passed, create a cursor at the provided
   # offset and yield it to the provided block one time, and then return the
   # return value of the block.
-  def cursor(offset)
-    new_cursor = BufferCursor.new(@buffer, offset)
+  def cursor(buffer_offset)
+    new_cursor = BufferCursor.new(@buffer, buffer_offset)
+    new_cursor.push_name("space[#{space.name}]")
+    new_cursor.push_name("page[#{name}]")
 
     if block_given?
       # Call the block once and return its return value.

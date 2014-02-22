@@ -54,6 +54,20 @@ class Innodb::Space
   # The number of pages in the space.
   attr_reader :pages
 
+  # Return a string which can uniquely identify this space. Be careful not
+  # to do anything which could instantiate a BufferCursor so that we can use
+  # this method in cursor initialization.
+  def name
+    return @name if @name
+
+    prefix = ""
+    if File.extname(@file) == ".ibd"
+      prefix = File.basename(File.dirname(@file)) + "/"
+    end
+
+    @name = prefix + File.basename(@file)
+  end
+
   # Read the FSP header "flags" field by byte offset within the space file.
   # This is useful in order to initialize the page size, as we can't properly
   # read the FSP_HDR page before we know its size.

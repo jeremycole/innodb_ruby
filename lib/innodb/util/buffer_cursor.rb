@@ -98,6 +98,14 @@ class BufferCursor
     @stack.last
   end
 
+  def push_name(name_arg)
+    current.name.push name_arg
+  end
+
+  def pop_name
+    current.name.pop
+  end
+
   # Set the field name.
   def name(name_arg=nil)
     if name_arg.nil?
