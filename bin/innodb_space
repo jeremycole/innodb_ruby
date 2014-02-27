@@ -5,6 +5,37 @@ require "getoptlong"
 require "ostruct"
 require "innodb"
 
+# Return the text supplied with ANSI 256-color coloring applied.
+def ansi_color(color, text)
+  "\x1b[38;5;#{color}m#{text}\x1b[0m"
+end
+
+# Zero through 0/8 through 8/8 illustrations.
+BLOCK_CHARS = ["░", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+#BLOCK_CHARS = ["░", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"]
+
+# A reasonably large prime number to multiply identifiers by in order to
+# space out the colors used for similar identifiers.
+COLOR_SPACING_PRIME = 999983
+
+# Return a string with a possibly colored filled block for use in printing
+# to an ANSI-capable Unicode-enabled terminal.
+def filled_block(fraction, identifier=nil)
+  if fraction == 0.0
+    block = BLOCK_CHARS[0]
+  else
+    parts = (fraction.to_f * (BLOCK_CHARS.size.to_f-1)).floor
+    block = BLOCK_CHARS[[BLOCK_CHARS.size-1, parts+1].min]
+  end
+  if identifier
+    # ANSI 256-color mode, color palette starts at 10 and contains 216 colors.
+    color = 16 + ((identifier * COLOR_SPACING_PRIME)  % 216)
+    ansi_color(color, block)
+  else
+    block
+  end
+end
+
 # Print metadata about each list in an array of InnoDB::List objects.
 def print_lists(lists)
   puts "%-20s%-12s%-12s%-12s%-12s%-12s" % [
@@ -30,7 +61,7 @@ end
 
 # Print a page usage bitmap for each extent descriptor in an array of
 # Innodb::XdesEntry objects.
-def print_xdes_list(list)
+def print_xdes_list(space, list)
   puts "%-12s%-64s" % [
     "start_page",
     "page_used_bitmap"
@@ -40,7 +71,9 @@ def print_xdes_list(list)
     puts "%-12i%-64s" % [
       entry.xdes[:start_page],
       entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
-        bitmap += page_status[:free] ? "." : "#"
+        if page_number < space.pages
+          bitmap += page_status[:free] ? "." : "#"
+        end
         bitmap
       },
     ]
@@ -278,7 +311,7 @@ def space_list_iterate(space, list_name)
 
   case fsp[list_name]
   when Innodb::List::Xdes
-    print_xdes_list(fsp[list_name])
+    print_xdes_list(space, fsp[list_name])
   when Innodb::List::Inode
     puts "%-12s" % [
       "page",
@@ -364,7 +397,64 @@ def space_index_pages_free_plot(space, image, start_page)
 end
 
 def space_extents(space)
-  print_xdes_list(space.each_xdes)
+  print_xdes_list(space, space.each_xdes)
+end
+
+# Illustrate the space by printing each extent and for each page, printing a
+# filled block colored based on the index the page is part of. Print a legend
+# for the colors used afterwards.
+def space_extents_illustrate(space)
+  puts
+  puts "%12s ╭%-64s╮" % [ "Start Page", "─" * 64 ]
+
+  identifiers = {}
+
+  space.each_xdes do |entry|
+    puts "%12i │%-64s│" % [
+      entry.xdes[:start_page],
+      entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
+        if page_number < space.pages
+          used_fraction = 1.0
+          identifier = nil
+          if page_status[:free]
+            used_fraction = 0.0
+          else
+            page = space.page(page_number)
+            if page.respond_to?(:used_space)
+              used_fraction = page.used_space.to_f / page.size.to_f
+            end
+            if page.respond_to?(:index_id)
+              identifier = page.index_id
+              unless identifiers[identifier]
+                identifiers[identifier] = "Index #{page.index_id}"
+                if space.innodb_system
+                  table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
+                  if table && index
+                    identifiers[identifier] += " (%s.%s)" % [table, index]
+                  end
+                end
+              end
+            end
+          end
+          bitmap += filled_block(used_fraction, identifier)
+        else
+          bitmap += " "
+        end
+        bitmap
+      },
+    ]
+  end
+
+  puts "%12s ╰%-64s╯" % [ "", "─" * 64 ]
+
+  puts
+  puts "Legend:"
+  puts "  %s %s" % [filled_block(1.0, nil), "System"]
+  identifiers.sort.each do |identifier, description|
+    puts "  %s %s" % [filled_block(1.0, identifier), description]
+  end
+  puts "  %s %s" % [filled_block(0.0, nil), "Free space"]
+  puts
 end
 
 def print_inode_summary(inode)
@@ -554,7 +644,7 @@ def index_fseg_list_iterate(index, fseg_name, list_name)
     raise "List '#{list_name}' doesn't exist"
   end
 
-  print_xdes_list(list)
+  print_xdes_list(index.space, list)
 end
 
 def index_fseg_frag_pages(index, fseg_name)
@@ -787,6 +877,11 @@ The following modes are supported:
   space-extents
     Iterate through all extents, printing the extent descriptor bitmap.
 
+  space-extents-illustrate
+    Iterate through all extents, illustrating the extent usage using ANSI
+    color and Unicode box drawing characters to show page usage throughout
+    the space.
+
   space-inodes-summary
     Iterate through all inodes, printing a short summary of each FSEG.
 
@@ -1012,6 +1107,8 @@ when "space-indexes"
   space_indexes(innodb_system, space)
 when "space-extents"
   space_extents(space)
+when "space-extents-illustrate"
+  space_extents_illustrate(space)
 when "space-inodes-summary"
   space_inodes_summary(space)
 when "space-inodes-detail"
