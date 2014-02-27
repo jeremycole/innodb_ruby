@@ -30,7 +30,7 @@ end
 
 # Print a page usage bitmap for each extent descriptor in an array of
 # Innodb::XdesEntry objects.
-def print_xdes_list(list)
+def print_xdes_list(space, list)
   puts "%-12s%-64s" % [
     "start_page",
     "page_used_bitmap"
@@ -40,7 +40,9 @@ def print_xdes_list(list)
     puts "%-12i%-64s" % [
       entry.xdes[:start_page],
       entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
-        bitmap += page_status[:free] ? "." : "#"
+        if page_number < space.pages
+          bitmap += page_status[:free] ? "." : "#"
+        end
         bitmap
       },
     ]
@@ -278,7 +280,7 @@ def space_list_iterate(space, list_name)
 
   case fsp[list_name]
   when Innodb::List::Xdes
-    print_xdes_list(fsp[list_name])
+    print_xdes_list(space, fsp[list_name])
   when Innodb::List::Inode
     puts "%-12s" % [
       "page",
@@ -364,7 +366,7 @@ def space_index_pages_free_plot(space, image, start_page)
 end
 
 def space_extents(space)
-  print_xdes_list(space.each_xdes)
+  print_xdes_list(space, space.each_xdes)
 end
 
 def print_inode_summary(inode)
@@ -554,7 +556,7 @@ def index_fseg_list_iterate(index, fseg_name, list_name)
     raise "List '#{list_name}' doesn't exist"
   end
 
-  print_xdes_list(list)
+  print_xdes_list(index.space, list)
 end
 
 def index_fseg_frag_pages(index, fseg_name)
