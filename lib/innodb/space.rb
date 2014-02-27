@@ -61,11 +61,11 @@ class Innodb::Space
     return @name if @name
 
     prefix = ""
-    if File.extname(@file) == ".ibd"
-      prefix = File.basename(File.dirname(@file)) + "/"
+    if File.extname(@file.path) == ".ibd"
+      prefix = File.basename(File.dirname(@file.path)) + "/"
     end
 
-    @name = prefix + File.basename(@file)
+    @name = prefix + File.basename(@file.path)
   end
 
   # Read the FSP header "flags" field by byte offset within the space file.
