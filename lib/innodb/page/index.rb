@@ -654,13 +654,15 @@ class Innodb::Page::Index < Innodb::Page
     def next_record
       Innodb::Stats.increment :page_record_cursor_next_record
 
-      @record = @page.record(@record.next)
+      rec = @page.record(@record.next)
 
-      if @record == @page.supremum
+      # The garbage record list's end is self-linked, so we must check for
+      # both supremum and the current record's offset.
+      if rec == @page.supremum || rec.offset == @record.offset
         # We've reached the end of the linked list at supremum.
         nil
       else
-        @record
+        @record = rec
       end
     end
 
@@ -880,7 +882,7 @@ class Innodb::Page::Index < Innodb::Page
       return enum_for(:each_record)
     end
 
-    c = record_cursor(infimum.next)
+    c = record_cursor(:min)
 
     while rec = c.record
       yield rec
