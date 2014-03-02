@@ -437,7 +437,7 @@ class Innodb::DataDictionary
     end
 
     unless table = table_by_name(table_name)
-      raise "Table not found"
+      raise "Table #{table_name} not found"
     end
 
     each_index_by_table_id(table["ID"]) do |record|
@@ -467,7 +467,7 @@ class Innodb::DataDictionary
     end
 
     unless index = index_by_name(table_name, index_name)
-      raise "Index not found"
+      raise "Index #{index_name} for table #{table_name} not found"
     end
 
     each_field_by_index_id(index["ID"]) do |record|
@@ -497,7 +497,7 @@ class Innodb::DataDictionary
     end
 
     unless table = table_by_name(table_name)
-      raise "Table not found"
+      raise "Table #{table_name} not found"
     end
 
     each_column_by_table_id(table["ID"]) do |record|
@@ -543,7 +543,7 @@ class Innodb::DataDictionary
   # for a given table name.
   def clustered_index_name_by_table_name(table_name)
     unless table_record = table_by_name(table_name)
-      raise "Table not found"
+      raise "Table #{table_name} not found"
     end
 
     if index_record = object_by_two_fields(:each_index,
@@ -576,7 +576,7 @@ class Innodb::DataDictionary
     end
 
     unless index = index_by_name(table_name, index_name)
-      raise "Index not found"
+      raise "Index #{index_name} for table #{table_name} not found"
     end
 
     columns_in_index = {}
@@ -606,7 +606,7 @@ class Innodb::DataDictionary
   # index by table name and index name.
   def record_describer_by_index_name(table_name, index_name)
     unless index = index_by_name(table_name, index_name)
-      raise "Index not found"
+      raise "Index #{index_name} for table #{table_name} not found"
     end
 
     describer = Innodb::RecordDescriber.new
@@ -633,11 +633,11 @@ class Innodb::DataDictionary
   # in a given index by index ID.
   def record_describer_by_index_id(index_id)
     unless index = index_by_id(index_id)
-      raise "Index not found"
+      raise "Index #{index_id} not found"
     end
 
     unless table = table_by_id(index["TABLE_ID"])
-      raise "Table not found"
+      raise "Table #{INDEX["TABLE_ID"]} not found"
     end
 
     record_describer_by_index_name(table["NAME"], index["NAME"])
