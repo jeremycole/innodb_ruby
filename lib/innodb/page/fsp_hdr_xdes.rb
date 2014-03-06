@@ -74,6 +74,14 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
     size / space.pages_per_extent
   end
 
+  def size_xdes_entry
+    @size_xdes_entry ||= Innodb::Xdes.new(self, cursor(pos_xdes_array)).size_entry
+  end
+
+  def size_xdes_array
+    entries_in_xdes_array * size_xdes_entry
+  end
+
   # Read the FSP (filespace) header, which contains a few counters and flags,
   # as well as list base nodes for each list maintained in the filespace.
   def fsp_header
@@ -132,6 +140,34 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
         yield Innodb::Xdes.new(self, c)
       end
     end
+  end
+
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    super do |region|
+      yield region
+    end
+
+    yield({
+      :offset => pos_fsp_header,
+      :length => size_fsp_header,
+      :name => :fsp_header,
+      :info => "FSP Header",
+    })
+
+    each_xdes do |xdes|
+      yield({
+        :offset => xdes.offset,
+        :length => size_xdes_entry,
+        :name => :xdes,
+        :info => "Extent Descriptor",
+      })
+    end
+
+    nil
   end
 
   # Dump the contents of a page for debugging purposes.

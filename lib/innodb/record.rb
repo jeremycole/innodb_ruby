@@ -17,6 +17,10 @@ class Innodb::Record
     record[:offset]
   end
 
+  def length
+    record[:length]
+  end
+
   def next
     record[:next]
   end

@@ -41,6 +41,25 @@ class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
     end
   end
 
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    super do |region|
+      yield region
+    end
+
+    yield({
+      :offset => pos_data_dictionary_header,
+      :length => size_data_dictionary_header,
+      :name => :data_dictionary_header,
+      :info => "Data Dictionary Header",
+    })
+
+    nil
+  end
+
   def dump
     super
 

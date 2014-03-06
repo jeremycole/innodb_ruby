@@ -29,6 +29,7 @@ class Innodb::Inode
   # Construct a new Inode by reading an FSEG header from a cursor.
   def self.new_from_cursor(space, cursor)
     data = {
+      :offset => cursor.position,
       :fseg_id => cursor.name("fseg_id") {
         cursor.get_uint64
       },
@@ -62,6 +63,7 @@ class Innodb::Inode
     @data = data
   end
 
+  def offset;           @data[:offset];           end
   def fseg_id;          @data[:fseg_id];          end
   def not_full_n_used;  @data[:not_full_n_used];  end
   def free;             @data[:free];             end

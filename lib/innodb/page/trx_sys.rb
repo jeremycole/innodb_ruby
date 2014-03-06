@@ -15,6 +15,18 @@ class Innodb::Page::TrxSys < Innodb::Page
     pos_fil_header + size_fil_header
   end
 
+  def size_trx_sys_header
+    8 + Innodb::FsegEntry::SIZE
+  end
+
+  def pos_rsegs_array
+    pos_trx_sys_header + size_trx_sys_header
+  end
+
+  def size_mysql_log_info
+    4 + 8 + 100
+  end
+
   # The master's binary log information is located 2000 bytes from the end of
   # the page.
   def pos_mysql_master_log_info
@@ -33,6 +45,10 @@ class Innodb::Page::TrxSys < Innodb::Page
     size - 200
   end
 
+  def size_doublewrite_info
+    Innodb::FsegEntry::SIZE + (2 * (4 + 4 + 4)) + 4
+  end
+
   # A magic number present in each MySQL binary log information structure,
   # which helps identify whether the structure is populated or not.
   MYSQL_LOG_MAGIC_N = 873422344
@@ -41,6 +57,7 @@ class Innodb::Page::TrxSys < Innodb::Page
     @rsegs_array ||= (0...256).to_a.inject([]) do |a, n|
       cursor.name("slot[#{n}]") do |c|
         slot = {
+          :offset => c.position,
           :space_id => c.name("space_id") {
             Innodb::Page.maybe_undefined(c.get_uint32)
           },
@@ -133,6 +150,55 @@ class Innodb::Page::TrxSys < Innodb::Page
   def binary_log;   trx_sys[:binary_log];   end
   def master_log;   trx_sys[:master_log];   end
   def doublewrite;  trx_sys[:doublewrite];  end
+
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    super do |region|
+      yield region
+    end
+
+    yield({
+      :offset => pos_trx_sys_header,
+      :length => size_trx_sys_header,
+      :name => :trx_sys_header,
+      :info => "Transaction System Header",
+    })
+
+    rsegs.each do |rseg|
+      yield({
+        :offset => rseg[:offset],
+        :length => 4 + 4,
+        :name => :rseg,
+        :info => "Rollback Segment",
+      })
+    end
+
+    yield({
+      :offset => pos_mysql_binary_log_info,
+      :length => size_mysql_log_info,
+      :name => :mysql_binary_log_info,
+      :info => "Binary Log Info",
+    })
+
+    yield({
+      :offset => pos_mysql_master_log_info,
+      :length => size_mysql_log_info,
+      :name => :mysql_master_log_info,
+      :info => "Master Log Info",
+    })
+
+    yield({
+      :offset => pos_doublewrite_info,
+      :length => size_doublewrite_info,
+      :name => :doublewrite_info,
+      :info => "Double Write Buffer Info",
+    })
+
+    nil
+  end
 
   # Dump the contents of a page for debugging purposes.
   def dump

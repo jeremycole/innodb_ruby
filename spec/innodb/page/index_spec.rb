@@ -94,7 +94,7 @@ describe Innodb::Page::Index do
     end
     
     it "has the right keys and values" do
-      @header.size.should eql 6
+      @header.size.should eql 7
       @header[:type].should eql :infimum
       @header[:next].should eql 112
       @header[:heap_number].should eql 0

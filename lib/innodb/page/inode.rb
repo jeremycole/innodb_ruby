@@ -28,6 +28,10 @@ class Innodb::Page::Inode < Innodb::Page
     (size - pos_inode_array - 10) / Innodb::Inode::SIZE
   end
 
+  def size_inode_array
+    inodes_per_page * Innodb::Inode::SIZE
+  end
+
   # Return the list entry.
   def list_entry
     cursor(pos_list_entry).name("list") do |c|
@@ -66,6 +70,34 @@ class Innodb::Page::Inode < Innodb::Page
         yield this_inode if this_inode.allocated?
       end
     end
+  end
+
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    super do |region|
+      yield region
+    end
+
+    yield({
+      :offset => pos_list_entry,
+      :length => size_list_entry,
+      :name => :list_entry,
+      :info => "Inode List Entry",
+    })
+
+    each_inode do |inode|
+      yield({
+        :offset => inode.offset,
+        :length => Innodb::Inode::SIZE,
+        :name => :inode,
+        :info => "Inode",
+      })
+    end
+
+    nil
   end
 
   # Dump the contents of a page for debugging purposes.

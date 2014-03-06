@@ -62,6 +62,7 @@ class Innodb::Xdes
     start_page = page.offset + (extent_number * page.space.pages_per_extent)
     cursor.name("xdes[#{extent_number}]") do |c|
       {
+        :offset     => c.position,
         :start_page => start_page,
         :end_page   => start_page + page.space.pages_per_extent - 1,
         :fseg_id    => c.name("fseg_id") { c.get_uint64 },
@@ -78,6 +79,7 @@ class Innodb::Xdes
     @xdes
   end
 
+  def offset;     @xdes[:offset];     end
   def start_page; @xdes[:start_page]; end
   def end_page;   @xdes[:end_page];   end
   def fseg_id;    @xdes[:fseg_id];    end

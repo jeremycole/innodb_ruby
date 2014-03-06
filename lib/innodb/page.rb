@@ -289,6 +289,28 @@ class Innodb::Page
     checksum != calculate_checksum
   end
 
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    yield({
+      :offset => pos_fil_header,
+      :length => size_fil_header,
+      :name   => :fil_header,
+      :info   => "FIL Header",
+    })
+
+    yield({
+      :offset => pos_fil_trailer,
+      :length => size_fil_trailer,
+      :name   => :fil_trailer,
+      :info   => "FIL Trailer",
+    })
+
+    nil
+  end
+
   # Implement a custom inspect method to avoid irb printing the contents of
   # the page buffer, since it's very large and mostly not interesting.
   def inspect

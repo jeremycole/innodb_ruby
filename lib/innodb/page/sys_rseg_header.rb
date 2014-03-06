@@ -44,6 +44,34 @@ class Innodb::Page::SysRsegHeader < Innodb::Page
     end
   end
 
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    super do |region|
+      yield region
+    end
+
+    yield({
+      :offset => pos_rseg_header,
+      :length => size_rseg_header,
+      :name => :rseg_header,
+      :info => "Rollback Segment Header",
+    })
+
+    1024.times do |n|
+      yield({
+        :offset => pos_undo_segment_array + (n * 4),
+        :length => 4,
+        :name => :undo_segment_slot,
+        :info => "Undo Segment Slot",
+      })
+    end
+
+    nil
+  end
+
   def dump
     super
 

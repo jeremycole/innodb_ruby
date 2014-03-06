@@ -41,6 +41,32 @@ class Innodb::Page::Blob < Innodb::Page
     end
   end
 
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    super do |region|
+      yield region
+    end
+
+    yield({
+      :offset => pos_blob_header,
+      :length => size_blob_header,
+      :name => :blob_header,
+      :info => "Blob Header",
+    })
+
+    yield({
+      :offset => pos_blob_data,
+      :length => blob_header[:length],
+      :name => :blob_data,
+      :info => "Blob Data",
+    })
+
+    nil
+  end
+
   # Dump the contents of a page for debugging purposes.
   def dump
     super

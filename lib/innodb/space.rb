@@ -204,10 +204,11 @@ class Innodb::Space
 
   def rseg_page?(page_number)
     if trx_sys
-      trx_sys.rsegs.include?({
-        :space_id => 0,
-        :page_number => page_number,
-      })
+      rseg_match = trx_sys.rsegs.select { |rseg|
+        rseg[:space_id] == 0 && rseg[:page_number] == page_number
+      }
+
+      ! rseg_match.empty?
     end
   end
 

@@ -11,8 +11,8 @@ def ansi_color(color, text)
 end
 
 # Zero through 0/8 through 8/8 illustrations.
-BLOCK_CHARS = ["░", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
-#BLOCK_CHARS = ["░", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"]
+BLOCK_CHARS_V = ["░", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+BLOCK_CHARS_H = ["░", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"]
 
 # A reasonably large prime number to multiply identifiers by in order to
 # space out the colors used for similar identifiers.
@@ -20,12 +20,12 @@ COLOR_SPACING_PRIME = 999983
 
 # Return a string with a possibly colored filled block for use in printing
 # to an ANSI-capable Unicode-enabled terminal.
-def filled_block(fraction, identifier=nil)
+def filled_block(fraction, identifier=nil, block_chars=BLOCK_CHARS_V)
   if fraction == 0.0
-    block = BLOCK_CHARS[0]
+    block = block_chars[0]
   else
-    parts = (fraction.to_f * (BLOCK_CHARS.size.to_f-1)).floor
-    block = BLOCK_CHARS[[BLOCK_CHARS.size-1, parts+1].min]
+    parts = (fraction.to_f * (block_chars.size.to_f-1)).floor
+    block = block_chars[[block_chars.size-1, parts+1].min]
   end
   if identifier
     # ANSI 256-color mode, color palette starts at 10 and contains 216 colors.
@@ -627,6 +627,59 @@ def page_directory_summary(page_number)
   end
 end
 
+def page_illustrate(page)
+  width = 256
+  blocks = Array.new(page.size, " ")
+  identifiers = {}
+  identifier_sort = 0
+
+  page.each_region.sort { |a,b| a[:offset] <=> b[:offset]}.each do |region|
+    region[:length].times do |n|
+      identifier = nil
+      fraction = 0.0
+      if region[:name] != :garbage
+        if n ==  region[:length] - 1
+          fraction = 0.5
+        else
+          fraction = 1.0
+        end
+        identifier = region[:name].hash.abs
+        unless identifiers[identifier]
+          # Prefix an integer <0123> on each name so that the legend can be
+          # sorted by the appearance of each region in the page.
+          identifiers[identifier] = "<%04i>%s" % [
+            identifier_sort,
+            region[:info]
+          ]
+          identifier_sort += 1
+        end
+      end
+      blocks[region[:offset] + n] = filled_block(fraction, identifier, BLOCK_CHARS_H)
+    end
+  end
+
+  puts
+  puts "%12s ╭%-#{width}s╮" % [ "Offset", "─" * width ]
+  offset = 0
+  blocks.each_slice(width) do |slice|
+    puts "%12i │%-s│" % [offset, slice.join]
+    offset += width
+  end
+  puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
+
+  puts
+  puts "Legend:"
+  identifiers.sort { |a,b| a[1] <=> b[1] }.each do |identifier, description|
+    puts "  %s %s" % [
+      filled_block(1.0, identifier),
+      description.gsub(/^<\d+>/, "")
+    ]
+  end
+  puts "  %s %s" % [filled_block(0.0, nil), "Garbage"]
+
+  puts
+end
+
 def index_fseg_lists(index, fseg_name)
   unless index.fseg(fseg_name)
     raise "File segment '#{fseg_name}' doesn't exist"
@@ -1139,6 +1192,8 @@ when "page-account"
   page_account(innodb_system, space, @options.page)
 when "page-directory-summary"
   page_directory_summary(@options.page)
+when "page-illustrate"
+  page_illustrate(space.page(@options.page))
 else
   usage 1, "Unknown mode: #{mode}"
 end

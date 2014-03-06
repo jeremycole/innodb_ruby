@@ -312,6 +312,8 @@ class Innodb::Page::Index < Innodb::Page
       when :redundant
         record_header_redundant_additional(header, cursor)
       end
+
+      header[:length] = origin - cursor.position
     end
 
     header
@@ -437,6 +439,7 @@ class Innodb::Page::Index < Innodb::Page
         :header => header,
         :next => header[:next],
         :data => c.name("data") { c.get_bytes(size_mum_record) },
+        :length => c.position - offset,
       })
     end
   end
@@ -577,6 +580,8 @@ class Innodb::Page::Index < Innodb::Page
           this_record[:child_page_number] =
             c.name("child_page_number") { c.get_uint32 }
         end
+
+        this_record[:length] = c.position - offset
       end
 
       Innodb::Record.new(self, this_record)
@@ -927,6 +932,80 @@ class Innodb::Page::Index < Innodb::Page
     nil
   end
 
+  def each_region
+    unless block_given?
+      return enum_for(:each_region)
+    end
+
+    super do |region|
+      yield region
+    end
+
+    yield({
+      :offset => pos_index_header,
+      :length => size_index_header,
+      :name   => :index_header,
+      :info   => "Index Header",
+    })
+
+    yield({
+      :offset => pos_fseg_header,
+      :length => size_fseg_header,
+      :name   => :fseg_header,
+      :info   => "File Segment Header",
+    })
+
+    yield({
+      :offset => pos_infimum - 5,
+      :length => size_mum_record + 5,
+      :name   => :infimum,
+      :info   => "Infimum",
+    })
+
+    yield({
+      :offset => pos_supremum - 5,
+      :length => size_mum_record + 5,
+      :name   => :supremum,
+      :info   => "Supremum",
+    })
+
+
+    directory_slots.times do |n|
+      yield({
+        :offset => pos_directory - (n * 2),
+        :length => 2,
+        :name   => :directory,
+        :info   => "Page Directory",
+      })
+    end
+
+    each_garbage_record do |record|
+      yield({
+        :offset => record.offset - record.header[:length],
+        :length => record.length + record.header[:length],
+        :name   => :garbage,
+        :info   => "Garbage",
+      })
+    end
+
+    each_record do |record|
+      yield({
+        :offset => record.offset - record.header[:length],
+        :length => record.header[:length],
+        :name   => :record_header,
+        :info   => "Record Header",
+      })
+
+      yield({
+        :offset => record.offset,
+        :length => record.length,
+        :name   => :record_data,
+        :info   => "Record Data",
+      })
+    end
+
+    nil
+  end
 
   # Dump the contents of a page for debugging purposes.
   def dump
