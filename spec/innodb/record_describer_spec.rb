@@ -36,12 +36,12 @@ describe Innodb::RecordDescriber do
   describe "first record" do
     it "has one NULL field" do
       rec = @space.index(3).each_record.next
-      rec.header[:field_nulls].count(true).should eql 1
+      rec.header[:nulls].size.should eql 1
     end
 
     it "has one externally stored field" do
       rec = @space.index(3).each_record.next
-      rec.header[:field_externs].count(true).should eql 1
+      rec.header[:externs].size.should eql 1
     end
 
     it "key is (1)" do

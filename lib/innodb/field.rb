@@ -26,12 +26,12 @@ class Innodb::Field
 
   # Return whether this field is NULL.
   def null?(record)
-    nullable? && record[:header][:field_nulls][position]
+    nullable? && record[:header][:nulls].include?(@name)
   end
 
   # Return whether a part of this field is stored externally (off-page).
   def extern?(record)
-    record[:header][:field_externs][position]
+    record[:header][:externs].include?(@name)
   end
 
   def variable?
@@ -46,8 +46,9 @@ class Innodb::Field
 
   # Return the actual length of this variable-length field.
   def length(record)
-    if variable?
-      len = record[:header][:field_lengths][position]
+    if record[:header][:lengths].include?(@name)
+      len = record[:header][:lengths][@name]
+      raise "Fixed-length mismatch" unless variable? || len == @data_type.width
     else
       len = @data_type.width
     end

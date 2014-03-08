@@ -327,13 +327,13 @@ class Innodb::Page::Index < Innodb::Page
       # bit vector indicating NULL fields and the length of each
       # non-NULL variable-length field.
       if record_format
-        header[:field_nulls] = cursor.name("field_nulls") {
+        header[:nulls] = cursor.name("nulls") {
           record_header_compact_null_bitmap(cursor)
         }
-        header[:field_lengths], header[:field_externs] =
-          cursor.name("field_lengths_and_externs") {
+        header[:lengths], header[:externs] =
+          cursor.name("lengths_and_externs") {
             record_header_compact_variable_lengths_and_externs(cursor,
-              header[:field_nulls])
+              header[:nulls])
           }
       end
     end
@@ -347,33 +347,29 @@ class Innodb::Page::Index < Innodb::Page
     size = fields.count { |f| f.nullable? }
 
     # There is no bitmap if there are no nullable fields.
-    return nil unless size > 0
-
-    # To simplify later checks, expand bitmap to one for each field.
-    bitmap = Array.new(fields.last.position + 1, false)
+    return [] unless size > 0
 
     null_bit_array = cursor.get_bit_array(size).reverse!
 
-    # For every nullable field, set whether the field is actually null.
-    fields.each do |f|
-      bitmap[f.position] = f.nullable? ? (null_bit_array.shift == 1) : false
+    # For every nullable field, select the ones which are actually null.
+    fields.inject([]) do |nulls, f|
+      nulls << f.name if f.nullable? && (null_bit_array.shift == 1)
+      nulls
     end
-
-    return bitmap
   end
 
   # Return an array containing an array of the length of each variable-length
   # field and an array indicating which fields are stored externally.
-  def record_header_compact_variable_lengths_and_externs(cursor, null_bitmap)
+  def record_header_compact_variable_lengths_and_externs(cursor, nulls)
     fields = (record_format[:key] + record_format[:row])
 
-    len_array = Array.new(fields.last.position + 1, 0)
-    ext_array = Array.new(fields.last.position + 1, false)
+    lengths = {}
+    externs = []
 
     # For each non-NULL variable-length field, the record header contains
     # the length in one or two bytes.
     fields.each do |f|
-      next if !f.variable? or (null_bitmap && null_bitmap[f.position])
+      next if !f.variable? || nulls.include?(f.name)
 
       len = cursor.get_uint8
       ext = false
@@ -385,18 +381,16 @@ class Innodb::Page::Index < Innodb::Page
         len = ((len & 0x3f) << 8) + cursor.get_uint8
       end
 
-      len_array[f.position] = len
-      ext_array[f.position] = ext
+      lengths[f.name] = len
+      externs << f.name if ext
     end
 
-    return len_array, ext_array
+    return lengths, externs
   end
 
   # Read additional header information from a redundant format record header.
   def record_header_redundant_additional(header, cursor)
-    header[:field_lengths] = []
-    header[:field_nulls] = []
-    header[:field_externs] = []
+    lengths, nulls, externs = [], [], []
 
     field_offsets = record_header_redundant_field_end_offsets(header, cursor)
 
@@ -405,16 +399,30 @@ class Innodb::Page::Index < Innodb::Page
       case header[:offset_size]
       when 1
         next_field_offset = (n & RECORD_REDUNDANT_OFF1_OFFSET_MASK)
-        header[:field_lengths]  << (next_field_offset - this_field_offset)
-        header[:field_nulls]    << ((n & RECORD_REDUNDANT_OFF1_NULL_MASK) != 0)
-        header[:field_externs]  << false
+        lengths << (next_field_offset - this_field_offset)
+        nulls   << ((n & RECORD_REDUNDANT_OFF1_NULL_MASK) != 0)
+        externs << false
       when 2
         next_field_offset = (n & RECORD_REDUNDANT_OFF2_OFFSET_MASK)
-        header[:field_lengths]  << (next_field_offset - this_field_offset)
-        header[:field_nulls]    << ((n & RECORD_REDUNDANT_OFF2_NULL_MASK) != 0)
-        header[:field_externs]  << ((n & RECORD_REDUNDANT_OFF2_EXTERN_MASK) != 0)
+        lengths << (next_field_offset - this_field_offset)
+        nulls   << ((n & RECORD_REDUNDANT_OFF2_NULL_MASK) != 0)
+        externs << ((n & RECORD_REDUNDANT_OFF2_EXTERN_MASK) != 0)
       end
       this_field_offset = next_field_offset
+    end
+
+    # If possible, refer to fields by name rather than position for
+    # better formatting (i.e. pp).
+    if record_format
+      header[:lengths], header[:nulls], header[:externs] = {}, [], []
+
+      (record_format[:key] + record_format[:row]).each do |f|
+        header[:lengths][f.name] = lengths[f.position]
+        header[:nulls] << f.name if nulls[f.position]
+        header[:externs] << f.name if externs[f.position]
+      end
+    else
+      header[:lengths], header[:nulls], header[:externs] = lengths, nulls, externs
     end
   end
 
