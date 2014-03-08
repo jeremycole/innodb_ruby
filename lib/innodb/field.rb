@@ -63,8 +63,13 @@ class Innodb::Field
   # Read the data value (e.g. encoded in the data).
   def value(record, cursor)
     return :NULL if null?(record)
-    data = read(record, cursor)
-    @data_type.respond_to?(:value) ? @data_type.value(data) : data
+    if @data_type.respond_to?(:read)
+      cursor.name(@data_type.name) { @data_type.read(cursor) }
+    elsif @data_type.respond_to?(:value)
+      @data_type.value(read(record, cursor))
+    else
+      read(record, cursor)
+    end
   end
 
   # Read an InnoDB external pointer field.
@@ -92,7 +97,7 @@ class Innodb::Field
 
   # Parse a data type definition and extract the base type and any modifiers.
   def parse_type_definition(type_string)
-    if matches = /^([a-zA-Z0-9]+)(\(([0-9, ]+)\))?$/.match(type_string)
+    if matches = /^([a-zA-Z0-9_]+)(\(([0-9, ]+)\))?$/.match(type_string)
       base_type = matches[1].upcase.to_sym
       if matches[3]
         modifiers = matches[3].sub(/[ ]/, "").split(/,/).map { |s| s.to_i }

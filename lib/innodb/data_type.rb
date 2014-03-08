@@ -317,6 +317,48 @@ class Innodb::DataType
     end
   end
 
+  #
+  # Data types for InnoDB system columns.
+  #
+
+  # Transaction ID.
+  class TransactionIdType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = 6
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
+    def read(c)
+      c.name("transaction_id") { c.get_hex(6) }
+    end
+  end
+
+  # Rollback data pointer.
+  class RollPointerType
+    attr_reader :name, :width
+
+    def initialize(base_type, modifiers, properties)
+      @width = 7
+      @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    end
+
+    def read(c)
+      rseg_id_insert_flag = c.name("rseg_id_insert_flag") { c.get_uint8 }
+      {
+        :is_insert  => (rseg_id_insert_flag & 0x80) == 0x80,
+        :rseg_id    => rseg_id_insert_flag & 0x7f,
+        :undo_log   => c.name("undo_log") {
+          {
+            :page   => c.name("page")   { c.get_uint32 },
+            :offset => c.name("offset") { c.get_uint16 },
+          }
+        }
+      }
+    end
+  end
+
   # Maps base type to data type class.
   TYPES = {
     :BIT        => BitType,
@@ -349,6 +391,8 @@ class Innodb::DataType
     :DATE       => DateType,
     :DATETIME   => DatetimeType,
     :TIMESTAMP  => TimestampType,
+    :TRX_ID     => TransactionIdType,
+    :ROLL_PTR   => RollPointerType,
   }
 
   def self.make_name(base_type, modifiers, properties)

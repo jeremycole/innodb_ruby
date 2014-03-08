@@ -41,6 +41,14 @@ class Innodb::Record
     row && row.map { |r| "%s=%s" % [r[:name], r[:value].inspect] }.join(", ")
   end
 
+  def transaction_id
+    record[:transaction_id]
+  end
+
+  def roll_pointer
+    record[:roll_pointer]
+  end
+
   def child_page_number
     record[:child_page_number]
   end

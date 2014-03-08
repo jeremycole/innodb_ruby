@@ -31,6 +31,11 @@ class Innodb::Page::Index < Innodb::Page
   # "compact" record format.
   RECORD_COMPACT_BITS_SIZE = 3
 
+  # Maximum number of fields.
+  RECORD_MAX_N_SYSTEM_FIELDS  = 3
+  RECORD_MAX_N_FIELDS         = 1024 - 1
+  RECORD_MAX_N_USER_FIELDS    = RECORD_MAX_N_FIELDS - RECORD_MAX_N_SYSTEM_FIELDS * 2
+
   # Page direction values possible in the page_header's :direction field.
   PAGE_DIRECTION = {
     1 => :left,           # Inserts have been in descending order.
@@ -341,7 +346,7 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return an array indicating which fields are null.
   def record_header_compact_null_bitmap(cursor)
-    fields = (record_format[:key] + record_format[:row])
+    fields = record_fields
 
     # The number of bits in the bitmap is the number of nullable fields.
     size = fields.count { |f| f.nullable? }
@@ -416,7 +421,7 @@ class Innodb::Page::Index < Innodb::Page
     if record_format
       header[:lengths], header[:nulls], header[:externs] = {}, [], []
 
-      (record_format[:key] + record_format[:row]).each do |f|
+      record_fields.each do |f|
         header[:lengths][f.name] = lengths[f.position]
         header[:nulls] << f.name if nulls[f.position]
         header[:externs] << f.name if externs[f.position]
@@ -481,24 +486,28 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return a set of field objects that describe the record.
   def make_record_description
+    position = (0..RECORD_MAX_N_FIELDS).each
     description = record_describer.description
-
-    position = 0
-    fields = {:type => description[:type], :key => [], :row => []}
+    fields = {:type => description[:type], :key => [], :sys => [], :row => []}
 
     description[:key].each do |field|
-      fields[:key] << Innodb::Field.new(position, field[:name], *field[:type])
-      position += 1
+      fields[:key] << Innodb::Field.new(position.next, field[:name], *field[:type])
     end
 
-    if description[:type] == :clustered
-      # Account for TRX_ID and ROLL_PTR.
-      position += 2
+    # If this is a leaf page of the clustered index, read InnoDB's internal
+    # fields, a transaction ID and roll pointer.
+    if level == 0 && fields[:type] == :clustered
+      [["DB_TRX_ID", :TRX_ID,],["DB_ROLL_PTR", :ROLL_PTR]].each do |name, type|
+        fields[:sys] << Innodb::Field.new(position.next, name, type, :NOT_NULL)
+      end
     end
 
-    description[:row].each do |field|
-      fields[:row] << Innodb::Field.new(position, field[:name], *field[:type])
-      position += 1
+    # If this is a leaf page of the clustered index, or any page of a
+    # secondary index, read the non-key fields.
+    if (level == 0 && fields[:type] == :clustered) || (fields[:type] == :secondary)
+      description[:row].each do |field|
+        fields[:row] << Innodb::Field.new(position.next, field[:name], *field[:type])
+      end
     end
 
     fields
@@ -508,6 +517,13 @@ class Innodb::Page::Index < Innodb::Page
   def record_format
     if record_describer
       @record_format ||= make_record_description()
+    end
+  end
+
+  # Returns the (ordered) set of fields that describe records in this page.
+  def record_fields
+    if record_format
+      record_format.values_at(:key, :sys, :row).flatten.sort_by {|f| f.position}
     end
   end
 
@@ -531,53 +547,23 @@ class Innodb::Page::Index < Innodb::Page
       if record_format
         this_record[:type] = record_format[:type]
 
-        # Read the key fields present in all types of pages.
-        this_record[:key] = []
-        record_format[:key].each do |f|
-          c.name("key[#{f.name}]") do
-            this_record[:key] << {
+        # Used to indicate whether a field is part of key/row/sys.
+        fmap = [:key, :row, :sys].inject({}) do |h, k|
+          this_record[k] = []
+          record_format[k].each { |f| h[f.position] = k }
+          h
+        end
+
+        # Read the fields present in this record.
+        record_fields.each do |f|
+          p = fmap[f.position]
+          c.name("#{p.to_s}[#{f.name}]") do
+            this_record[p] << {
               :name => f.name,
               :type => f.data_type.name,
               :value => f.value(this_record, c),
               :extern => f.extern(this_record, c),
-            }
-          end
-        end
-
-        # If this is a leaf page of the clustered index, read InnoDB's internal
-        # fields, a transaction ID and roll pointer.
-        if level == 0 && record_format[:type] == :clustered
-          this_record[:transaction_id] = c.name("transaction_id") { c.get_hex(6) }
-          c.name("roll_pointer") do
-            rseg_id_insert_flag = c.name("rseg_id_insert_flag") { c.get_uint8 }
-            this_record[:roll_pointer]   = {
-              :is_insert  => (rseg_id_insert_flag & 0x80) == 0x80,
-              :rseg_id    => rseg_id_insert_flag & 0x7f,
-              :undo_log   => c.name("undo_log") {
-                {
-                  :page   => c.name("page")   { c.get_uint32 },
-                  :offset => c.name("offset") { c.get_uint16 },
-                }
-              }
-            }
-          end
-        end
-
-        # If this is a leaf page of the clustered index, or any page of a
-        # secondary index, read the non-key fields.
-        if (level == 0 && record_format[:type] == :clustered) ||
-          (record_format[:type] == :secondary)
-          # Read the non-key fields.
-          this_record[:row] = []
-          record_format[:row].each do |f|
-            c.name("row[#{f.name}]") do
-              this_record[:row] << {
-                :name => f.name,
-                :type => f.data_type.name,
-                :value => f.value(this_record, c),
-                :extern => f.extern(this_record, c),
-              }
-            end
+            }.reject { |k, v| v.nil? }
           end
         end
 
@@ -590,6 +576,16 @@ class Innodb::Page::Index < Innodb::Page
         end
 
         this_record[:length] = c.position - offset
+
+        # Add system field accessors for convenience.
+        this_record[:sys].each do |f|
+          case f[:name]
+          when "DB_TRX_ID"
+            this_record[:transaction_id] = f[:value]
+          when "DB_ROLL_PTR"
+            this_record[:roll_pointer] = f[:value]
+          end
+        end
       end
 
       Innodb::Record.new(self, this_record)
