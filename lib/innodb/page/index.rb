@@ -31,6 +31,11 @@ class Innodb::Page::Index < Innodb::Page
   # "compact" record format.
   RECORD_COMPACT_BITS_SIZE = 3
 
+  # Maximum number of fields.
+  RECORD_MAX_N_SYSTEM_FIELDS  = 3
+  RECORD_MAX_N_FIELDS         = 1024 - 1
+  RECORD_MAX_N_USER_FIELDS    = RECORD_MAX_N_FIELDS - RECORD_MAX_N_SYSTEM_FIELDS * 2
+
   # Page direction values possible in the page_header's :direction field.
   PAGE_DIRECTION = {
     1 => :left,           # Inserts have been in descending order.
@@ -327,13 +332,13 @@ class Innodb::Page::Index < Innodb::Page
       # bit vector indicating NULL fields and the length of each
       # non-NULL variable-length field.
       if record_format
-        header[:field_nulls] = cursor.name("field_nulls") {
+        header[:nulls] = cursor.name("nulls") {
           record_header_compact_null_bitmap(cursor)
         }
-        header[:field_lengths], header[:field_externs] =
-          cursor.name("field_lengths_and_externs") {
+        header[:lengths], header[:externs] =
+          cursor.name("lengths_and_externs") {
             record_header_compact_variable_lengths_and_externs(cursor,
-              header[:field_nulls])
+              header[:nulls])
           }
       end
     end
@@ -341,39 +346,35 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return an array indicating which fields are null.
   def record_header_compact_null_bitmap(cursor)
-    fields = (record_format[:key] + record_format[:row])
+    fields = record_fields
 
     # The number of bits in the bitmap is the number of nullable fields.
     size = fields.count { |f| f.nullable? }
 
     # There is no bitmap if there are no nullable fields.
-    return nil unless size > 0
-
-    # To simplify later checks, expand bitmap to one for each field.
-    bitmap = Array.new(fields.last.position + 1, false)
+    return [] unless size > 0
 
     null_bit_array = cursor.get_bit_array(size).reverse!
 
-    # For every nullable field, set whether the field is actually null.
-    fields.each do |f|
-      bitmap[f.position] = f.nullable? ? (null_bit_array.shift == 1) : false
+    # For every nullable field, select the ones which are actually null.
+    fields.inject([]) do |nulls, f|
+      nulls << f.name if f.nullable? && (null_bit_array.shift == 1)
+      nulls
     end
-
-    return bitmap
   end
 
   # Return an array containing an array of the length of each variable-length
   # field and an array indicating which fields are stored externally.
-  def record_header_compact_variable_lengths_and_externs(cursor, null_bitmap)
+  def record_header_compact_variable_lengths_and_externs(cursor, nulls)
     fields = (record_format[:key] + record_format[:row])
 
-    len_array = Array.new(fields.last.position + 1, 0)
-    ext_array = Array.new(fields.last.position + 1, false)
+    lengths = {}
+    externs = []
 
     # For each non-NULL variable-length field, the record header contains
     # the length in one or two bytes.
     fields.each do |f|
-      next if !f.variable? or (null_bitmap && null_bitmap[f.position])
+      next if !f.variable? || nulls.include?(f.name)
 
       len = cursor.get_uint8
       ext = false
@@ -385,18 +386,16 @@ class Innodb::Page::Index < Innodb::Page
         len = ((len & 0x3f) << 8) + cursor.get_uint8
       end
 
-      len_array[f.position] = len
-      ext_array[f.position] = ext
+      lengths[f.name] = len
+      externs << f.name if ext
     end
 
-    return len_array, ext_array
+    return lengths, externs
   end
 
   # Read additional header information from a redundant format record header.
   def record_header_redundant_additional(header, cursor)
-    header[:field_lengths] = []
-    header[:field_nulls] = []
-    header[:field_externs] = []
+    lengths, nulls, externs = [], [], []
 
     field_offsets = record_header_redundant_field_end_offsets(header, cursor)
 
@@ -405,16 +404,30 @@ class Innodb::Page::Index < Innodb::Page
       case header[:offset_size]
       when 1
         next_field_offset = (n & RECORD_REDUNDANT_OFF1_OFFSET_MASK)
-        header[:field_lengths]  << (next_field_offset - this_field_offset)
-        header[:field_nulls]    << ((n & RECORD_REDUNDANT_OFF1_NULL_MASK) != 0)
-        header[:field_externs]  << false
+        lengths << (next_field_offset - this_field_offset)
+        nulls   << ((n & RECORD_REDUNDANT_OFF1_NULL_MASK) != 0)
+        externs << false
       when 2
         next_field_offset = (n & RECORD_REDUNDANT_OFF2_OFFSET_MASK)
-        header[:field_lengths]  << (next_field_offset - this_field_offset)
-        header[:field_nulls]    << ((n & RECORD_REDUNDANT_OFF2_NULL_MASK) != 0)
-        header[:field_externs]  << ((n & RECORD_REDUNDANT_OFF2_EXTERN_MASK) != 0)
+        lengths << (next_field_offset - this_field_offset)
+        nulls   << ((n & RECORD_REDUNDANT_OFF2_NULL_MASK) != 0)
+        externs << ((n & RECORD_REDUNDANT_OFF2_EXTERN_MASK) != 0)
       end
       this_field_offset = next_field_offset
+    end
+
+    # If possible, refer to fields by name rather than position for
+    # better formatting (i.e. pp).
+    if record_format
+      header[:lengths], header[:nulls], header[:externs] = {}, [], []
+
+      record_fields.each do |f|
+        header[:lengths][f.name] = lengths[f.position]
+        header[:nulls] << f.name if nulls[f.position]
+        header[:externs] << f.name if externs[f.position]
+      end
+    else
+      header[:lengths], header[:nulls], header[:externs] = lengths, nulls, externs
     end
   end
 
@@ -473,24 +486,28 @@ class Innodb::Page::Index < Innodb::Page
 
   # Return a set of field objects that describe the record.
   def make_record_description
+    position = (0..RECORD_MAX_N_FIELDS).each
     description = record_describer.description
-
-    position = 0
-    fields = {:type => description[:type], :key => [], :row => []}
+    fields = {:type => description[:type], :key => [], :sys => [], :row => []}
 
     description[:key].each do |field|
-      fields[:key] << Innodb::Field.new(position, field[:name], *field[:type])
-      position += 1
+      fields[:key] << Innodb::Field.new(position.next, field[:name], *field[:type])
     end
 
-    if description[:type] == :clustered
-      # Account for TRX_ID and ROLL_PTR.
-      position += 2
+    # If this is a leaf page of the clustered index, read InnoDB's internal
+    # fields, a transaction ID and roll pointer.
+    if level == 0 && fields[:type] == :clustered
+      [["DB_TRX_ID", :TRX_ID,],["DB_ROLL_PTR", :ROLL_PTR]].each do |name, type|
+        fields[:sys] << Innodb::Field.new(position.next, name, type, :NOT_NULL)
+      end
     end
 
-    description[:row].each do |field|
-      fields[:row] << Innodb::Field.new(position, field[:name], *field[:type])
-      position += 1
+    # If this is a leaf page of the clustered index, or any page of a
+    # secondary index, read the non-key fields.
+    if (level == 0 && fields[:type] == :clustered) || (fields[:type] == :secondary)
+      description[:row].each do |field|
+        fields[:row] << Innodb::Field.new(position.next, field[:name], *field[:type])
+      end
     end
 
     fields
@@ -500,6 +517,13 @@ class Innodb::Page::Index < Innodb::Page
   def record_format
     if record_describer
       @record_format ||= make_record_description()
+    end
+  end
+
+  # Returns the (ordered) set of fields that describe records in this page.
+  def record_fields
+    if record_format
+      record_format.values_at(:key, :sys, :row).flatten.sort_by {|f| f.position}
     end
   end
 
@@ -523,53 +547,23 @@ class Innodb::Page::Index < Innodb::Page
       if record_format
         this_record[:type] = record_format[:type]
 
-        # Read the key fields present in all types of pages.
-        this_record[:key] = []
-        record_format[:key].each do |f|
-          c.name("key[#{f.name}]") do
-            this_record[:key] << {
+        # Used to indicate whether a field is part of key/row/sys.
+        fmap = [:key, :row, :sys].inject({}) do |h, k|
+          this_record[k] = []
+          record_format[k].each { |f| h[f.position] = k }
+          h
+        end
+
+        # Read the fields present in this record.
+        record_fields.each do |f|
+          p = fmap[f.position]
+          c.name("#{p.to_s}[#{f.name}]") do
+            this_record[p] << {
               :name => f.name,
               :type => f.data_type.name,
               :value => f.value(this_record, c),
               :extern => f.extern(this_record, c),
-            }
-          end
-        end
-
-        # If this is a leaf page of the clustered index, read InnoDB's internal
-        # fields, a transaction ID and roll pointer.
-        if level == 0 && record_format[:type] == :clustered
-          this_record[:transaction_id] = c.name("transaction_id") { c.get_hex(6) }
-          c.name("roll_pointer") do
-            rseg_id_insert_flag = c.name("rseg_id_insert_flag") { c.get_uint8 }
-            this_record[:roll_pointer]   = {
-              :is_insert  => (rseg_id_insert_flag & 0x80) == 0x80,
-              :rseg_id    => rseg_id_insert_flag & 0x7f,
-              :undo_log   => c.name("undo_log") {
-                {
-                  :page   => c.name("page")   { c.get_uint32 },
-                  :offset => c.name("offset") { c.get_uint16 },
-                }
-              }
-            }
-          end
-        end
-
-        # If this is a leaf page of the clustered index, or any page of a
-        # secondary index, read the non-key fields.
-        if (level == 0 && record_format[:type] == :clustered) ||
-          (record_format[:type] == :secondary)
-          # Read the non-key fields.
-          this_record[:row] = []
-          record_format[:row].each do |f|
-            c.name("row[#{f.name}]") do
-              this_record[:row] << {
-                :name => f.name,
-                :type => f.data_type.name,
-                :value => f.value(this_record, c),
-                :extern => f.extern(this_record, c),
-              }
-            end
+            }.reject { |k, v| v.nil? }
           end
         end
 
@@ -582,6 +576,16 @@ class Innodb::Page::Index < Innodb::Page
         end
 
         this_record[:length] = c.position - offset
+
+        # Add system field accessors for convenience.
+        this_record[:sys].each do |f|
+          case f[:name]
+          when "DB_TRX_ID"
+            this_record[:transaction_id] = f[:value]
+          when "DB_ROLL_PTR"
+            this_record[:roll_pointer] = f[:value]
+          end
+        end
       end
 
       Innodb::Record.new(self, this_record)
