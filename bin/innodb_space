@@ -5,12 +5,59 @@ require "getoptlong"
 require "ostruct"
 require "innodb"
 
+# Convert a floating point RGB array into an ANSI color number approximating it.
+def rgb_to_ansi(rgb)
+  rgb_n = rgb.map { |c| (c * 5.0).round }
+  16 + (rgb_n[0] * 36) + (rgb_n[1] * 6) + rgb_n[2]
+end
+
+# Interpolate intermediate float-arrays between two float-arrays. Do not
+# include the points a and b in the result.
+def interpolate(a, b, count)
+  deltas = a.each_index.map { |i| b[i] - a[i] }
+  steps = a.each_index.map { |i| deltas[i].to_f / (count.to_f + 1) }
+
+  count.times.to_a.map { |i| a.each_index.map { |j| a[j] + ((i+1).to_f * steps[j]) } }
+end
+
+# Interpolate intermediate float-arrays between each step in a sequence of
+# float-arrays. Include each step in the sequence.
+def interpolate_sequence(sequence, count)
+  result = []
+  result << sequence.first
+  (sequence.size-1).times.map { |n| [sequence[n], sequence[n+1]] }.each do |from, to|
+    interpolate(from, to, count).each do |step|
+      result << step
+    end
+    result << to
+  end
+
+  result
+end
+
+# The RGB values of the typical heatmap progression.
+HEATMAP_PROGRESSION = [
+  [0.0, 0.0, 0.0], # Black
+  [0.0, 0.0, 1.0], # Blue
+  [0.0, 1.0, 1.0], # Cyan
+  [0.0, 1.0, 0.0], # Green
+  [1.0, 1.0, 0.0], # Yellow
+  [1.0, 0.0, 0.0], # Red
+  [1.0, 0.0, 1.0], # Purple
+]
+
+# Typical heatmap color progression.
+ANSI_COLORS_HEATMAP = interpolate_sequence(HEATMAP_PROGRESSION, 6).map { |rgb| rgb_to_ansi(rgb) }
+
+# The 24-step grayscale progression.
+ANSI_COLORS_GRAYSCALE = (0xe8..0xff).to_a
+
 # Return the text supplied with ANSI 256-color coloring applied.
 def ansi_color(color, text)
   "\x1b[38;5;#{color}m#{text}\x1b[0m"
 end
 
-# Zero through 0/8 through 8/8 illustrations.
+# Zero and 1/8 through 8/8 illustrations.
 BLOCK_CHARS_V = ["░", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 BLOCK_CHARS_H = ["░", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"]
 
@@ -455,6 +502,59 @@ def space_extents_illustrate(space)
   end
   puts "  %s %s" % [filled_block(0.0, nil), "Free space"]
   puts
+end
+
+def space_lsn_age_illustrate(space)
+  colors = ANSI_COLORS_HEATMAP
+
+  # Calculate the minimum and maximum LSN in the space. This is pretty
+  # inefficient as we end up scanning all pages twice.
+  page_lsn = Array.new(space.pages)
+
+  lsn_min = lsn_max = space.page(0).lsn
+  space.each_page do |page_number, page|
+    if page.lsn != 0
+      page_lsn[page_number] = page.lsn
+      lsn_min = page.lsn < lsn_min ? page.lsn : lsn_min
+      lsn_max = page.lsn > lsn_max ? page.lsn : lsn_max
+    end
+  end
+  lsn_delta = lsn_max - lsn_min
+
+  puts
+  puts "%12s ╭%-64s╮" % [ "Start Page", "─" * 64 ]
+
+  start_page = 0
+  page_lsn.each_slice(64) do |slice|
+    puts "%12i │%-64s│" % [
+      start_page,
+      slice.inject("") { |line, lsn|
+        if lsn
+          age_ratio = (lsn - lsn_min).to_f / lsn_delta.to_f
+          color = colors[(age_ratio * colors.size.to_f).floor]
+          line += ansi_color(color, filled_block(1.0, nil))
+        else
+          line += " "
+        end
+        line
+      },
+    ]
+    start_page += 64
+  end
+
+  puts "%12s ╰%-64s╯" % [ "", "─" * 64 ]
+
+  puts
+  puts "Legend:"
+  puts "  %12s %s %-12s" % [
+    "Min LSN",
+    "<" + ("─" * (colors.size - 2)) + ">",
+    "Max LSN" ]
+  puts "  %12i %s %-12i" % [
+    lsn_min,
+    colors.map { |c| ansi_color(c, filled_block(1.0, nil)) }.join,
+    lsn_max,
+  ]
 end
 
 def print_inode_summary(inode)
@@ -1162,6 +1262,8 @@ when "space-extents"
   space_extents(space)
 when "space-extents-illustrate"
   space_extents_illustrate(space)
+when "space-lsn-age-illustrate"
+  space_lsn_age_illustrate(space)
 when "space-inodes-summary"
   space_inodes_summary(space)
 when "space-inodes-detail"
