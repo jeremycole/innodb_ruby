@@ -544,11 +544,38 @@ def space_lsn_age_illustrate(space)
 
   puts "%12s ╰%-64s╯" % [ "", "─" * 64 ]
 
+  lsn_legend = "<" + ("─" * (colors.size - 2)) + ">"
+
+  begin
+    # Try to optionally replace the boring lsn_legend with a histogram of
+    # page age distribution. If histogram/array is not available, move on.
+
+    require 'histogram/array'
+
+    lsn_bins, lsn_freq = page_lsn.select { |lsn| !lsn.nil? }.
+      histogram(colors.size, :min => lsn_min, :max => lsn_max)
+
+    lsn_freq_delta = lsn_freq.max - lsn_freq.min
+
+    lsn_legend = ""
+    lsn_freq.each do |freq|
+      freq_norm = freq / lsn_freq_delta
+      if freq_norm > 0.0
+        lsn_legend << filled_block(freq_norm)
+      else
+        # Avoid the "empty" block used for 0.0.
+        lsn_legend << " "
+      end
+    end
+  rescue LoadError
+    # That's okay! Leave the legend boring.
+  end
+
   puts
   puts "Legend:"
   puts "  %12s %s %-12s" % [
     "Min LSN",
-    "<" + ("─" * (colors.size - 2)) + ">",
+    lsn_legend,
     "Max LSN" ]
   puts "  %12i %s %-12i" % [
     lsn_min,
