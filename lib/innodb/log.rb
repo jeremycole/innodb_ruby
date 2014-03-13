@@ -1,7 +1,6 @@
 # -*- encoding : utf-8 -*-
 
 # An InnoDB transaction log file.
-
 class Innodb::Log
   # A map of the name and position of the blocks that form the log header.
   LOG_HEADER_BLOCK_MAP = {
@@ -18,8 +17,8 @@ class Innodb::Log
   LOG_CHECKPOINT_GROUPS = 32
 
   # Open a log file.
-  def initialize(file)
-    @file = File.open(file)
+  def initialize(filename)
+    @file = File.open(filename)
     @size = @file.stat.size
     @blocks = (@size / Innodb::LogBlock::BLOCK_SIZE) - LOG_HEADER_BLOCKS
   end

@@ -6,14 +6,14 @@ require "ostruct"
 require "set"
 require "innodb"
 
-def log_summary(log, space_ids)
+def log_summary(log_group, space_ids)
   puts "%-10s%-30s%-10s%-10s" % [
     "block",
     "type",
     "space",
     "page",
   ]
-  log.each_block do |block_index, block|
+  log_group.each_block do |block_index, block|
     record = block.first_record_preamble
     if record
       space_id = record[:space]
@@ -37,10 +37,13 @@ def usage(exit_code, message = nil)
 
   print <<'END_OF_USAGE'
 
-Usage: innodb_log [-d] [-s] <file> [<mode>]
+Usage: innodb_log [-d] [-s] -f <log file> <mode>
 
   --help, -?
     Print this usage text.
+
+  --log-file, -f
+    Load a InnoDB redo log file. Repeat for each log file in the log group.
 
   --dump-blocks, -d
     Dump block header, trailer, and record.
@@ -51,7 +54,7 @@ Usage: innodb_log [-d] [-s] <file> [<mode>]
 The following modes are supported:
 
   log-summary (default)
-    A summary of all blocks within log that contain at least one record.
+    A summary of all blocks within the logs that contain at least one record.
 
 END_OF_USAGE
 
@@ -59,11 +62,13 @@ END_OF_USAGE
 end
 
 @options = OpenStruct.new
+@options.log_files = []
 @options.dump = false
 @options.space_ids = Set.new
 
 getopt_options = [
   [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
+  [ "--log-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--dump-blocks",            "-d",     GetoptLong::NO_ARGUMENT ],
   [ "--space-id",               "-s",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
@@ -74,6 +79,8 @@ getopt.each do |opt, arg|
   case opt
   when "--help"
     usage 0
+  when "--log-file"
+    @options.log_files << arg
   when "--dump-blocks"
     @options.dump = true
   when "--space-id"
@@ -81,18 +88,21 @@ getopt.each do |opt, arg|
   end
 end
 
-filename, mode = ARGV.shift(2)
-if filename.nil?
-  usage 1
+mode = ARGV.shift
+
+unless mode
+  usage 1, "At least one mode must be provided"
 end
 
-log = Innodb::Log.new(filename)
+if @options.log_files.empty?
+  usage 1, "At least one log file (-f) must be specified"
+end
 
-mode ||= "log-summary"
+log_group = Innodb::LogGroup.new(@options.log_files.sort)
 
 case mode
 when "log-summary"
-  log_summary(log, @options.space_ids)
+  log_summary(log_group, @options.space_ids)
 else
   usage 1, "Unknown mode: #{mode}"
 end
