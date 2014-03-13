@@ -1,7 +1,5 @@
 # -*- encoding : utf-8 -*-
 
-require "pp"
-
 # An InnoDB transaction log block.
 class Innodb::LogBlock
   # Log blocks are fixed-length at 512 bytes in InnoDB.

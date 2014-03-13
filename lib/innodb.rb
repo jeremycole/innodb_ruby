@@ -14,6 +14,7 @@ module Innodb
   end
 end
 
+require "pp"
 require "enumerator"
 require "innodb/util/buffer_cursor"
 
