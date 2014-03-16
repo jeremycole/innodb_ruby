@@ -95,10 +95,14 @@ class Innodb::Log
     @checkpoint ||=
       {
         :checkpoint_1 => block_cursor(offset1).name("checkpoint_1") do |cursor|
-          read_checkpoint(cursor)
+          cp = read_checkpoint(cursor)
+          cp.delete(:group_array)
+          cp
         end,
         :checkpoint_2 => block_cursor(offset2).name("checkpoint_2") do |cursor|
-          read_checkpoint(cursor)
+          cp = read_checkpoint(cursor)
+          cp.delete(:group_array)
+          cp
         end
       }
   end
