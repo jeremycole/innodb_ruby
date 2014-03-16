@@ -60,7 +60,7 @@ describe BufferCursor do
   end
 
   describe "#seek" do
-    it "moves the cursor the the provided position" do
+    it "moves the cursor to the provided position" do
       @cursor.position.should eql 0
       @cursor.seek(5)
       @cursor.position.should eql 5

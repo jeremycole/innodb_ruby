@@ -320,6 +320,13 @@ class BufferCursor
     end
   end
 
+  # Read an InnoDB-compressed unsigned 64-bit integer.
+  def get_ic_uint64
+    num = get_ic_uint32
+    num <<= 32
+    num |= get_uint32
+  end
+
   # Read an array of 1-bit integers.
   def get_bit_array(num_bits)
     size = (num_bits + 7) / 8

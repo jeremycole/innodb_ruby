@@ -13,6 +13,9 @@ class Innodb::Log
   # Number of blocks in the log file header.
   LOG_HEADER_BLOCKS = LOG_HEADER_BLOCK_MAP.size
 
+  # The size in bytes of the log file header.
+  LOG_HEADER_SIZE = LOG_HEADER_BLOCKS * Innodb::LogBlock::BLOCK_SIZE
+
   # Maximum number of log group checkpoints.
   LOG_CHECKPOINT_GROUPS = 32
 
@@ -21,12 +24,16 @@ class Innodb::Log
     @file = File.open(filename)
     @size = @file.stat.size
     @blocks = (@size / Innodb::LogBlock::BLOCK_SIZE) - LOG_HEADER_BLOCKS
+    @capacity = @blocks * Innodb::LogBlock::BLOCK_SIZE
   end
 
   # The size (in bytes) of the log.
   attr_reader :size
 
-  # The number of blocks in the the log.
+  # The log capacity (in bytes).
+  attr_reader :capacity
+
+  # The number of blocks in the log.
   attr_reader :blocks
 
   # Get the raw byte buffer for a specific block by block offset.

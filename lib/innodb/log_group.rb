@@ -33,4 +33,43 @@ class Innodb::LogGroup
       end
     end
   end
+
+  # The number of log files in the group.
+  def logs
+    @logs.count
+  end
+
+  # Returns the log at the given position in the log group.
+  def log(log_no)
+    @logs.at(log_no)
+  end
+
+  # The size in byes of each and every log in the group.
+  def log_size
+    @logs.first.size
+  end
+
+  # The size of the log group (in bytes)
+  def size
+    @logs.first.size * @logs.count
+  end
+
+  # The log group capacity (in bytes).
+  def capacity
+    @logs.first.capacity * @logs.count
+  end
+
+  # Returns a LogReader using the start of the log as the reference
+  # coordinates.
+  def reader
+    lsn_no = @logs.first.header[:start_lsn]
+    offset = Innodb::Log::LOG_HEADER_SIZE
+    lsn = Innodb::LogSequenceNumber.new(lsn_no, offset)
+    Innodb::LogReader.new(lsn, self)
+  end
+
+  # Parse and return a record at a given LSN.
+  def record(lsn_no)
+    reader.seek(lsn_no).record
+  end
 end

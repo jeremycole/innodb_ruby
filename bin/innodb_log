@@ -32,6 +32,10 @@ def log_summary(log_group, space_ids)
   end
 end
 
+def record_dump(log_group, lsn)
+  log_group.record(lsn).dump
+end
+
 def usage(exit_code, message = nil)
   print "Error: #{message}\n" unless message.nil?
 
@@ -51,10 +55,16 @@ Usage: innodb_log [-d] [-s] -f <log file> <mode>
   --space-id, -s
     Print only given space id (may provide multiple times).
 
+  --lsn <number>, -l
+    Use the log sequence number <number>.
+
 The following modes are supported:
 
   log-summary (default)
     A summary of all blocks within the logs that contain at least one record.
+
+  record-dump
+    Dump the contents of a log record, using the Ruby pp ("pretty-print") module.
 
 END_OF_USAGE
 
@@ -65,12 +75,14 @@ end
 @options.log_files = []
 @options.dump = false
 @options.space_ids = Set.new
+@options.lsn = nil
 
 getopt_options = [
   [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
   [ "--log-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--dump-blocks",            "-d",     GetoptLong::NO_ARGUMENT ],
   [ "--space-id",               "-s",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--lsn",                    "-l",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
 
 getopt = GetoptLong.new(*getopt_options)
@@ -84,7 +96,9 @@ getopt.each do |opt, arg|
   when "--dump-blocks"
     @options.dump = true
   when "--space-id"
-    @options.space_ids << Integer(arg)
+    @options.space_ids << arg.to_i
+  when "--lsn"
+    @options.lsn = arg.to_i
   end
 end
 
@@ -98,11 +112,17 @@ if @options.log_files.empty?
   usage 1, "At least one log file (-f) must be specified"
 end
 
+if /^record-/.match(mode) and !@options.lsn
+  usage 1, "LSN must be specified using -l/--lsn"
+end
+
 log_group = Innodb::LogGroup.new(@options.log_files.sort)
 
 case mode
 when "log-summary"
   log_summary(log_group, @options.space_ids)
+when "record-dump"
+  record_dump(log_group, @options.lsn)
 else
   usage 1, "Unknown mode: #{mode}"
 end
