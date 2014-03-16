@@ -55,7 +55,8 @@ class Innodb::Log
       {
         :group_id   => c.name("group_id")   { c.get_uint32 },
         :start_lsn  => c.name("start_lsn")  { c.get_uint64 },
-        :created_by => c.name("created_by") { c.seek(16).get_bytes(4) }
+        :file_no    => c.name("file_no")    { c.get_uint32 },
+        :created_by => c.name("created_by") { c.get_string(32) }
       }
     end
   end

@@ -207,6 +207,11 @@ class BufferCursor
     read_and_advance(length)
   end
 
+  # Return a null-terminated string.
+  def get_string(length)
+    BinData::Stringz.read(read_and_advance(length))
+  end
+
   # Iterate through length bytes returning each as an unsigned 8-bit integer.
   def each_byte_as_uint8(length)
     unless block_given?

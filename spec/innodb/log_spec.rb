@@ -60,10 +60,11 @@ describe Innodb::Log do
     end
 
     it "has the right keys and values" do
-      @log.header.size.should eql 3
+      @log.header.size.should eql 4
       @log.header.should include(
         :group_id   => 0,
         :start_lsn  => 8192,
+        :file_no    => 0,
         :created_by => "    ")
     end
   end
