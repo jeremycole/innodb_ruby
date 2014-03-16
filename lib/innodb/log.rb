@@ -69,7 +69,7 @@ class Innodb::Log
     {
       :number         => c.name("number")       { c.get_uint64 },
       :lsn            => c.name("lsn")          { c.get_uint64 },
-      :offset         => c.name("offset")       { c.get_uint32 },
+      :lsn_offset     => c.name("lsn_offset")   { c.get_uint32 },
       :buffer_size    => c.name("buffer_size")  { c.get_uint32 },
       :archived_lsn   => c.name("archived_lsn") { c.get_uint64 },
       :group_array    =>

@@ -84,7 +84,7 @@ describe Innodb::Log do
       @log.checkpoint[:checkpoint_1].should include(
         :number         => 10,
         :lsn            => 1603732,
-        :offset         => 1597588,
+        :lsn_offset     => 1597588,
         :buffer_size    => 1048576,
         :archived_lsn   => 18446744073709551615,
         # :group_array
@@ -98,7 +98,7 @@ describe Innodb::Log do
       @log.checkpoint[:checkpoint_2].should include(
         :number         => 11,
         :lsn            => 1603732,
-        :offset         => 1597588,
+        :lsn_offset     => 1597588,
         :buffer_size    => 1048576,
         :archived_lsn   => 18446744073709551615,
         # :group_array
