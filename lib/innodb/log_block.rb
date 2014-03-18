@@ -83,6 +83,30 @@ class Innodb::LogBlock
     end
   end
 
+  # A helper function to return the checksum from the trailer, for
+  # easier access.
+  def checksum
+    trailer[:checksum]
+  end
+
+  # Calculate the checksum of the block using InnoDB's log block
+  # checksum algorithm.
+  def calculate_checksum
+    cksum = 1
+    shift = (0..24).cycle
+    cursor(0).each_byte_as_uint8(TRAILER_OFFSET) do |b|
+      cksum &= 0x7fffffff
+      cksum += b + (b << shift.next)
+    end
+    cksum
+  end
+
+  # Is the block corrupt? Calculate the checksum of the block and compare to
+  # the stored checksum; return true or false.
+  def corrupt?
+    checksum != calculate_checksum
+  end
+
   # Dump the contents of a log block for debugging purposes.
   def dump
     puts
