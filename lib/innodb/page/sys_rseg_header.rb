@@ -1,6 +1,9 @@
 # -*- encoding : utf-8 -*-
 
 class Innodb::Page::SysRsegHeader < Innodb::Page
+  # The number of undo log slots in the page.
+  UNDO_SEGMENT_SLOTS = 1024
+
   # The position of the rollback segment header within the page.
   def pos_rseg_header
     pos_fil_header + size_fil_header
@@ -13,6 +16,10 @@ class Innodb::Page::SysRsegHeader < Innodb::Page
 
   def pos_undo_segment_array
     pos_rseg_header + size_rseg_header
+  end
+
+  def size_undo_segment_slot
+    4
   end
 
   # Parse the rollback segment header from the page.
@@ -35,11 +42,11 @@ class Innodb::Page::SysRsegHeader < Innodb::Page
     end
 
     cursor(pos_undo_segment_array).name("undo_segment_array") do |c|
-      (0...1023).each do |slot|
+      (0...UNDO_SEGMENT_SLOTS).each do |slot|
         page_number = c.name("slot[#{slot}]") {
           Innodb::Page.maybe_undefined(c.get_uint32)
         }
-        yield slot, page_number if page_number
+        yield slot, page_number
       end
     end
   end
@@ -60,10 +67,10 @@ class Innodb::Page::SysRsegHeader < Innodb::Page
       :info => "Rollback Segment Header",
     })
 
-    1024.times do |n|
+    (0...UNDO_SEGMENT_SLOTS).each do |slot|
       yield({
-        :offset => pos_undo_segment_array + (n * 4),
-        :length => 4,
+        :offset => pos_undo_segment_array + (slot * size_undo_segment_slot),
+        :length => size_undo_segment_slot,
         :name => :undo_segment_slot,
         :info => "Undo Segment Slot",
       })
