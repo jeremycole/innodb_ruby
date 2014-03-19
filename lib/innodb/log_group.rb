@@ -59,6 +59,11 @@ class Innodb::LogGroup
     @logs.first.capacity * @logs.count
   end
 
+  # Returns the LSN of the data at the start of the log group.
+  def start_lsn
+    @logs.first.header[:start_lsn]
+  end
+
   # Returns a LogReader using the start of the log as the reference
   # coordinates.
   def reader

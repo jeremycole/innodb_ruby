@@ -6,29 +6,26 @@ require "ostruct"
 require "set"
 require "innodb"
 
-def log_summary(log_group, space_ids)
-  puts "%-10s%-30s%-10s%-10s" % [
+def log_summary(log_group)
+  puts "%-10s%-10s%-10s%-12s%-10s" % [
+    "lsn",
     "block",
-    "type",
-    "space",
-    "page",
+    "length",
+    "first_rec",
+    "checkpoint",
   ]
+  lsn = log_group.start_lsn
   log_group.each_block do |block_index, block|
-    record = block.first_record_preamble
-    if record
-      space_id = record[:space]
-      if @options.space_ids.empty? or @options.space_ids.include?(space_id)
-        puts "%-10i%-30s%-10i%-10i" % [
-          block_index,
-          record[:type],
-          space_id,
-          record[:page_number],
-        ]
-        if @options.dump
-          block.dump
-        end
-      end
-    end
+    header = block.header
+    puts "%-10i%-10i%-10i%-12i%-10i" % [
+      lsn,
+      header[:block_number],
+      header[:data_length],
+      header[:first_rec_group],
+      header[:checkpoint_no],
+    ]
+    block.dump if @options.dump
+    lsn += Innodb::LogBlock::BLOCK_SIZE
   end
 end
 
@@ -52,16 +49,13 @@ Usage: innodb_log [-d] [-s] -f <log file> <mode>
   --dump-blocks, -d
     Dump block header, trailer, and record.
 
-  --space-id, -s
-    Print only given space id (may provide multiple times).
-
   --lsn <number>, -l
     Use the log sequence number <number>.
 
 The following modes are supported:
 
-  log-summary (default)
-    A summary of all blocks within the logs that contain at least one record.
+  log-summary
+    A summary of each block within the logs.
 
   record-dump
     Dump the contents of a log record, using the Ruby pp ("pretty-print") module.
@@ -74,14 +68,12 @@ end
 @options = OpenStruct.new
 @options.log_files = []
 @options.dump = false
-@options.space_ids = Set.new
 @options.lsn = nil
 
 getopt_options = [
   [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
   [ "--log-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--dump-blocks",            "-d",     GetoptLong::NO_ARGUMENT ],
-  [ "--space-id",               "-s",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--lsn",                    "-l",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
 
@@ -95,8 +87,6 @@ getopt.each do |opt, arg|
     @options.log_files << arg
   when "--dump-blocks"
     @options.dump = true
-  when "--space-id"
-    @options.space_ids << arg.to_i
   when "--lsn"
     @options.lsn = arg.to_i
   end
@@ -120,7 +110,7 @@ log_group = Innodb::LogGroup.new(@options.log_files.sort)
 
 case mode
 when "log-summary"
-  log_summary(log_group, @options.space_ids)
+  log_summary(log_group)
 when "record-dump"
   record_dump(log_group, @options.lsn)
 else
