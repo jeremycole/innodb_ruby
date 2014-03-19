@@ -68,6 +68,15 @@ class Innodb::Space
     @name = prefix + File.basename(@file.path)
   end
 
+  def inspect
+    "<%s file=%s, page_size=%i, pages=%i>" % [
+      self.class.name,
+      name.inspect,
+      page_size,
+      pages,
+    ]
+  end
+
   # Read the FSP header "flags" field by byte offset within the space file.
   # This is useful in order to initialize the page size, as we can't properly
   # read the FSP_HDR page before we know its size.

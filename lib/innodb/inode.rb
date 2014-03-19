@@ -72,6 +72,14 @@ class Innodb::Inode
   def magic_n;          @data[:magic_n];          end
   def frag_array;       @data[:frag_array];       end
 
+  def inspect
+    "<%s space=%s, fseg=%i>" % [
+      self.class.name,
+      space.inspect,
+      fseg_id,
+    ]
+  end
+
   # Helper method to determine if an Inode is in use. Inodes that are not in
   # use have an fseg_id of 0.
   def allocated?
