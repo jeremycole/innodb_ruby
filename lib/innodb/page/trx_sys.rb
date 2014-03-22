@@ -53,8 +53,10 @@ class Innodb::Page::TrxSys < Innodb::Page
   # which helps identify whether the structure is populated or not.
   MYSQL_LOG_MAGIC_N = 873422344
 
+  N_RSEGS = 128
+
   def rsegs_array(cursor)
-    @rsegs_array ||= (0...256).to_a.inject([]) do |a, n|
+    @rsegs_array ||= (0...N_RSEGS).to_a.inject([]) do |a, n|
       cursor.name("slot[#{n}]") do |c|
         slot = {
           :offset => c.position,
