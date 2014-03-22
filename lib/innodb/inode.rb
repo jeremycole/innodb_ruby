@@ -134,7 +134,7 @@ class Innodb::Inode
 
   # Compare one Innodb::Inode to another.
   def ==(other)
-    fseg_id == other.fseg_id
+    fseg_id == other.fseg_id if other
   end
 
   # Dump a summary of this object for debugging purposes.
