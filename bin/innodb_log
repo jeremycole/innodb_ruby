@@ -29,6 +29,33 @@ def log_summary(log_group)
   end
 end
 
+def log_follow_tail_summary(log_group)
+  reader = log_group.reader(log_group.max_checkpoint_lsn)
+  reader.checksum = true
+
+  puts "%-10s%-10s%-20s%-10s%-10s%-10s" % [
+    "time",
+    "lsn",
+    "type",
+    "size",
+    "space",
+    "page"
+  ]
+
+  reader.each_record(true) do |rec|
+    preamble = rec.preamble.dup
+    preamble.default = ""
+    puts "%-10s%-10i%-20s%-10i%-10s%-10s" % [
+      (Time.now.strftime "%H:%M:%S"),
+      rec.lsn.first,
+      preamble[:type].to_s,
+      rec.size,
+      rec.preamble[:space].to_s,
+      rec.preamble[:page_number].to_s,
+    ]
+  end
+end
+
 def record_dump(log_group, lsn)
   log_group.record(lsn).dump
 end
@@ -56,6 +83,9 @@ The following modes are supported:
 
   log-summary
     A summary of each block within the logs.
+
+  log-follow-tail-summary
+    Follow the tail of the log and print a summary of each newly logged record.
 
   record-dump
     Dump the contents of a log record, using the Ruby pp ("pretty-print") module.
@@ -113,6 +143,8 @@ when "log-summary"
   log_summary(log_group)
 when "record-dump"
   record_dump(log_group, @options.lsn)
+when "log-follow-tail-summary"
+  log_follow_tail_summary(log_group)
 else
   usage 1, "Unknown mode: #{mode}"
 end

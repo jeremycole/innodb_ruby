@@ -59,17 +59,21 @@ class Innodb::LogGroup
     @logs.first.capacity * @logs.count
   end
 
-  # Returns the LSN of the data at the start of the log group.
+  # Returns the LSN coordinates of the data at the start of the log group.
   def start_lsn
-    @logs.first.header[:start_lsn]
+    [@logs.first.header[:start_lsn], Innodb::Log::LOG_HEADER_SIZE]
   end
 
-  # Returns a LogReader using the start of the log as the reference
-  # coordinates.
-  def reader
-    lsn_no = @logs.first.header[:start_lsn]
-    offset = Innodb::Log::LOG_HEADER_SIZE
-    lsn = Innodb::LogSequenceNumber.new(lsn_no, offset)
+  # Returns the LSN coordinates of the most recent (highest) checkpoint.
+  def max_checkpoint_lsn
+    checkpoint = @logs.first.checkpoint.max_by{|f,v| v[:number]}.last
+    checkpoint.values_at(:lsn, :lsn_offset)
+  end
+
+  # Returns a LogReader using the given LSN reference coordinates.
+  def reader(lsn_coord = start_lsn)
+    lsn_no, lsn_offset = lsn_coord
+    lsn = Innodb::LSN.new(lsn_no, lsn_offset)
     Innodb::LogReader.new(lsn, self)
   end
 

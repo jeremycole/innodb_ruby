@@ -40,7 +40,7 @@ class Innodb::Log
   def block_data(offset)
     raise "Invalid block offset" unless (offset % Innodb::LogBlock::BLOCK_SIZE).zero?
     @file.seek(offset)
-    @file.read(Innodb::LogBlock::BLOCK_SIZE)
+    @file.sysread(Innodb::LogBlock::BLOCK_SIZE)
   end
 
   # Get a cursor to a block in a given offset of the log.

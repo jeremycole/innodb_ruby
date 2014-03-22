@@ -1,7 +1,7 @@
 # -*- encoding : utf-8 -*-
 
 # A Log Sequence Number and its byte offset into the log group.
-class Innodb::LogSequenceNumber
+class Innodb::LSN
   # The Log Sequence Number.
   attr_reader :lsn_no
 

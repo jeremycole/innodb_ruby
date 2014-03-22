@@ -5,6 +5,9 @@ require "ostruct"
 # Representation of the log group as a seekable stream of log records.
 class Innodb::LogReader
 
+  # Whether to checksum blocks.
+  attr_accessor :checksum
+
   def initialize(lsn, group)
     @group = group
     @context = OpenStruct.new(:buffer => String.new,
@@ -34,6 +37,17 @@ class Innodb::LogReader
     record
   end
 
+  # Call the given block once for each record in the log until the
+  # end of the log (or a corrupted block) is reached. If the follow
+  # argument is true, retry.
+  def each_record(follow, wait=0.5)
+    begin
+      loop { yield record }
+    rescue EOFError, ChecksumError
+      sleep(wait) and retry if follow
+    end
+  end
+
   # Read a slice of log data (that is, log data used for records).
   def slice(position, length)
     buffer = @context.buffer
@@ -44,6 +58,14 @@ class Innodb::LogReader
     end
 
     buffer.slice(position, length - position)
+  end
+
+  # Checksum failed exception.
+  class ChecksumError < RuntimeError
+  end
+
+  # EOF reached exception.
+  class EOFError < EOFError
   end
 
   private
@@ -80,6 +102,7 @@ class Innodb::LogReader
     # a whole and offset points to the start of the next block to read.
     while buffer.size < size
       block, offset = get_block(buffer_lsn)
+      break if checksum && corrupt = block.corrupt?
       data = offset == 0 ? block.data : block.data(offset)
       data_length = block.header[:data_length]
       buffer << data
@@ -87,6 +110,7 @@ class Innodb::LogReader
       break if data_length < Innodb::LogBlock::BLOCK_SIZE
     end
 
+    raise ChecksumError, "Block is corrupted" if corrupt
     raise EOFError, "End of log reached" if buffer.size < size
   end
 end
