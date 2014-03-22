@@ -24,6 +24,14 @@ class BufferCursor
       @name = name || []
     end
 
+    def inspect
+      "<%s direction=%s position=%s>" % [
+        self.class.name,
+        @direction.inspect,
+        @position,
+      ]
+    end
+
     def dup
       StackEntry.new(cursor, position, direction, name.dup)
     end
@@ -44,6 +52,14 @@ class BufferCursor
     trace false
     trace_with :print_trace
     trace_to STDOUT
+  end
+
+  def inspect
+    "<%s size=%i current=%s>" % [
+      self.class.name,
+      @buffer.size,
+      current.inspect,
+    ]
   end
 
   def trace(arg=true)
