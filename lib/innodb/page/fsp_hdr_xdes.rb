@@ -13,15 +13,11 @@ require "innodb/xdes"
 # The basic structure of FSP_HDR and XDES pages is: FIL header, FSP header,
 # an array of 256 XDES entries, empty (unused) space, and FIL trailer.
 class Innodb::Page::FspHdrXdes < Innodb::Page
+  extend ReadBitsAtOffset
+
   # A value added to the adjusted exponent stored in the page size field of
   # the flags in the FSP header.
   FLAGS_PAGE_SIZE_ADJUST = 9
-
-  # Read a given number of bits from an integer at a specific bit offset. The
-  # value returned is 0-based so does not need further shifting or adjustment.
-  def self.read_bits_at_offset(data, bits, offset)
-    ((data & (((1 << bits) - 1) << offset)) >> offset)
-  end
 
   # Decode the "flags" field in the FSP header, returning a hash of useful
   # decoded flags. Unfortunately, InnoDB has a fairly weird and broken

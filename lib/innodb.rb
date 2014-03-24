@@ -17,6 +17,7 @@ end
 require "pp"
 require "enumerator"
 require "innodb/util/buffer_cursor"
+require "innodb/util/read_bits_at_offset"
 
 require "innodb/version"
 require "innodb/stats"

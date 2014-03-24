@@ -52,6 +52,7 @@ Gem::Specification.new do |s|
     'lib/innodb/system.rb',
     'lib/innodb/undo_log.rb',
     'lib/innodb/util/buffer_cursor.rb',
+    'lib/innodb/util/read_bits_at_offset.rb',
     'lib/innodb/version.rb',
     'lib/innodb/xdes.rb',
   ]

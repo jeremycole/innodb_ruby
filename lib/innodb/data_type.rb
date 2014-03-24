@@ -337,6 +337,8 @@ class Innodb::DataType
 
   # Rollback data pointer.
   class RollPointerType
+    extend ReadBitsAtOffset
+
     attr_reader :name, :width
 
     def initialize(base_type, modifiers, properties)
@@ -344,19 +346,22 @@ class Innodb::DataType
       @name = Innodb::DataType.make_name(base_type, modifiers, properties)
     end
 
-    def read(c)
-      rseg_id_insert_flag = c.name("rseg_id_insert_flag") { c.get_uint8 }
+    def self.parse_roll_pointer(roll_ptr)
       {
-        :is_insert  => (rseg_id_insert_flag & 0x80) == 0x80,
-        :rseg_id    => rseg_id_insert_flag & 0x7f,
-        :undo_log   => c.name("undo_log") {
-          {
-            :page   => c.name("page")   { c.get_uint32 },
-            :offset => c.name("offset") { c.get_uint16 },
-          }
+        :is_insert  => read_bits_at_offset(roll_ptr, 1, 55) == 1,
+        :rseg_id    => read_bits_at_offset(roll_ptr, 7, 48),
+        :undo_log   => {
+          :page   => read_bits_at_offset(roll_ptr, 32, 16),
+          :offset => read_bits_at_offset(roll_ptr, 16, 0),
         }
       }
     end
+
+    def value(data)
+      roll_ptr = BinData::Uint56be.read(data)
+      self.class.parse_roll_pointer(roll_ptr)
+    end
+
   end
 
   # Maps base type to data type class.
