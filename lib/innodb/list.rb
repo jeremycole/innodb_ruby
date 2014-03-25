@@ -109,8 +109,8 @@ class Innodb::List
   end
 
   # Return a list cursor for the list.
-  def list_cursor(node=nil)
-    ListCursor.new(self, node)
+  def list_cursor(node=:min, direction=:forward)
+    ListCursor.new(self, node, direction)
   end
 
   # Return whether the given item is present in the list. This depends on the
@@ -127,36 +127,50 @@ class Innodb::List
       return enum_for(:each)
     end
 
-    c = list_cursor
-    while e = c.next
-      yield e
+    list_cursor.each_node do |node|
+      yield node
     end
   end
 
   # A list iteration cursor used primarily by the Innodb::List #cursor method
   # implicitly. Keeps its own state for iterating through lists efficiently.
   class ListCursor
-    def initialize(list, node=nil)
-      @list   = list
-      @cursor = node
+    def initialize(list, node=:min, direction=:forward)
+      @initial = true
+      @list = list
+      @direction = direction
+
+      case node
+      when :min
+        @node = @list.first
+      when :max
+        @node = @list.last
+      else
+        @node = node
+      end
     end
 
-    # Reset the list cursor to its default starting state, which will allow
-    # iteration forwards from the first entry (using #next) or backwards
-    # from the last entry (using #prev).
-    def reset
-      @cursor = nil
+    def node
+      if @initial
+        @initial = false
+        return @node
+      end
+
+      case @direction
+      when :forward
+        next_node
+      when :backward
+        prev_node
+      end
     end
 
     # Return the previous entry from the current position, and advance the
     # cursor position to the returned entry. If the cursor is currently nil,
     # return the last entry in the list and adjust the cursor position to
     # that entry.
-    def prev
-      if @cursor
-        @cursor = @list.prev(@cursor)
-      else
-        @cursor = @list.last
+    def prev_node
+      if node = @list.prev(@node)
+        @node = node
       end
     end
 
@@ -164,11 +178,19 @@ class Innodb::List
     # cursor position to the returned entry. If the cursor is currently nil,
     # return the first entry in the list and adjust the cursor position to
     # that entry.
-    def next
-      if @cursor
-        @cursor = @list.next(@cursor)
-      else
-        @cursor = @list.first
+    def next_node
+      if node = @list.next(@node)
+        @node = node
+      end
+    end
+
+    def each_node
+      unless block_given?
+        return enum_for(:each_node)
+      end
+
+      while n = node
+        yield n
       end
     end
   end
