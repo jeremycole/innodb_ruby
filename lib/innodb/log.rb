@@ -39,7 +39,7 @@ class Innodb::Log
   # Get the raw byte buffer for a specific block by block offset.
   def block_data(offset)
     raise "Invalid block offset" unless (offset % Innodb::LogBlock::BLOCK_SIZE).zero?
-    @file.seek(offset)
+    @file.sysseek(offset)
     @file.sysread(Innodb::LogBlock::BLOCK_SIZE)
   end
 
