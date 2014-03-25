@@ -320,32 +320,80 @@ class BufferCursor
     (0...count).to_a.inject([]) { |a, n| a << get_uint_by_size(size); a }
   end
 
-  # Read an InnoDB-compressed unsigned 32-bit integer.
-  def get_ic_uint32
-    flag = peek { name("ic_uint32") { get_uint8 } }
+  # Read an InnoDB-compressed unsigned 32-bit integer (1-5 bytes).
+  #
+  # The first byte makes up part of the value stored as well as indicating
+  # the number of bytes stored, maximally an additional 4 bytes after the
+  # flag for integers >= 0xf0000000.
+  #
+  # Optionally accept a flag (first byte) if it has already been read (as is
+  # the case in get_imc_uint64).
+  def get_ic_uint32(flag=nil)
+    name("ic_uint32") {
+      if !flag
+        flag = peek { name("uint8_or_flag") { get_uint8 } }
+      end
 
-    case
-    when flag < 0x80
-      name("uint8") { get_uint8 }
-    when flag < 0xc0
-      name("uint16") { get_uint16 } & 0x7fff
-    when flag < 0xe0
-      name("uint24") { get_uint24 } & 0x3fffff
-    when flag < 0xf0
-      name("uint32") { get_uint32 } & 0x1fffffff
-    when flag == 0xf0
-      adjust(+1) # Skip the flag.
-      name("uint32+1") { get_uint32 }
-    else
-      raise "Invalid flag #{flag.to_s} seen"
-    end
+      case
+      when flag < 0x80
+        adjust(+1)
+        flag
+      when flag < 0xc0
+        name("uint16") { get_uint16 } & 0x7fff
+      when flag < 0xe0
+        name("uint24") { get_uint24 } & 0x3fffff
+      when flag < 0xf0
+        name("uint32") { get_uint32 } & 0x1fffffff
+      when flag == 0xf0
+        adjust(+1) # Skip the flag byte.
+        name("uint32+1") { get_uint32 }
+      else
+        raise "Invalid flag #{flag.to_s} seen"
+      end
+    }
   end
 
-  # Read an InnoDB-compressed unsigned 64-bit integer.
+  # Read an InnoDB-compressed unsigned 64-bit integer (5-9 bytes).
+  #
+  # The high 32 bits are stored as an InnoDB-compressed unsigned 32-bit
+  # integer (1-5 bytes) while the low 32 bits are stored as a standard
+  # big-endian 32-bit integer (4 bytes). This makes a combined size of
+  # between 5 and 9 bytes.
   def get_ic_uint64
-    num = get_ic_uint32
-    num <<= 32
-    num |= get_uint32
+    name("ic_uint64") {
+      high = name("high") { get_ic_uint32 }
+      low  = name("low")  { name("uint32") { get_uint32 } }
+
+      (high << 32) | low
+    }
+  end
+
+  # Read an InnoDB-"much compressed" unsigned 64-bit integer (1-11 bytes).
+  #
+  # If the first byte is 0xff, this indicates that the high 32 bits are
+  # stored immediately afterwards as an InnoDB-compressed 32-bit unsigned
+  # integer. If it is any other value it represents the first byte (which
+  # is also a flag) of the low 32 bits of the value, also as an InnoDB-
+  # compressed 32-bit unsigned integer. This makes for a combined size
+  # of between 1 and 11 bytes.
+  def get_imc_uint64
+    name("imc_uint64") {
+      high = 0
+      flag = peek { name("uint8_or_flag") { get_uint8 } }
+
+      if flag == 0xff
+        # The high 32-bits are stored first as an ic_uint32.
+        adjust(+1) # Skip the flag byte.
+        high = name("high") { get_ic_uint32 }
+        flag = nil
+      end
+
+      # The low 32-bits are stored as an ic_uint32; pass the flag we already
+      # read, so we don't have to read it again.
+      low = name("low") { get_ic_uint32(flag) }
+
+      (high << 32) | low
+    }
   end
 
   # Read an array of 1-bit integers.

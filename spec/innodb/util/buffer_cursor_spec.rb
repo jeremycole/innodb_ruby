@@ -23,20 +23,67 @@ describe BufferCursor do
     @data[:buffer] << "abcdefghijklmnopqrstuvwxyz"
 
     # InnoDB-compressed unsigned 32-bit integers.
-    @data[:offset][:innodb_comp_uint32_1] = @data[:buffer].size
+    @data[:offset][:ic_uint32_00000000] = @data[:buffer].size
+    @data[:buffer] << "\x00"
+
+    @data[:offset][:ic_uint32_0000007f] = @data[:buffer].size
     @data[:buffer] << "\x7f"
 
-    @data[:offset][:innodb_comp_uint32_2] = @data[:buffer].size
+    @data[:offset][:ic_uint32_00003fff] = @data[:buffer].size
     @data[:buffer] << "\xbf\xff"
 
-    @data[:offset][:innodb_comp_uint32_3] = @data[:buffer].size
+    @data[:offset][:ic_uint32_001fffff] = @data[:buffer].size
     @data[:buffer] << "\xdf\xff\xff"
 
-    @data[:offset][:innodb_comp_uint32_4] = @data[:buffer].size
+    @data[:offset][:ic_uint32_0fffffff] = @data[:buffer].size
     @data[:buffer] << "\xef\xff\xff\xff"
 
-    @data[:offset][:innodb_comp_uint32_5] = @data[:buffer].size
+    @data[:offset][:ic_uint32_ffffffff] = @data[:buffer].size
     @data[:buffer] << "\xf0\xff\xff\xff\xff"
+
+    # InnoDB-compressed unsigned 64-bit integers.
+    @data[:offset][:ic_uint64_0000000000000000] = @data[:buffer].size
+    @data[:buffer] << "\x00\x00\x00\x00\x00"
+
+    @data[:offset][:ic_uint64_0000000100000001] = @data[:buffer].size
+    @data[:buffer] << "\x01\x00\x00\x00\x01"
+
+    @data[:offset][:ic_uint64_00000000ffffffff] = @data[:buffer].size
+    @data[:buffer] << "\x00\xff\xff\xff\xff"
+
+    @data[:offset][:ic_uint64_ffffffff00000000] = @data[:buffer].size
+    @data[:buffer] << "\xf0\xff\xff\xff\xff\x00\x00\x00\x00"
+
+    @data[:offset][:ic_uint64_0000ffff0000ffff] = @data[:buffer].size
+    @data[:buffer] << "\xc0\xff\xff\x00\x00\xff\xff"
+
+    @data[:offset][:ic_uint64_ffff0000ffff0000] = @data[:buffer].size
+    @data[:buffer] << "\xf0\xff\xff\x00\x00\xff\xff\x00\x00"
+
+    @data[:offset][:ic_uint64_ffffffffffffffff] = @data[:buffer].size
+    @data[:buffer] << "\xf0\xff\xff\xff\xff\xff\xff\xff\xff"
+
+    # InnoDB-"much compressed" unsigned 64-bit integers.
+    @data[:offset][:imc_uint64_0000000000000000] = @data[:buffer].size
+    @data[:buffer] << "\x00"
+
+    @data[:offset][:imc_uint64_0000000100000001] = @data[:buffer].size
+    @data[:buffer] << "\xff\x01\x01"
+
+    @data[:offset][:imc_uint64_00000000ffffffff] = @data[:buffer].size
+    @data[:buffer] << "\xf0\xff\xff\xff\xff"
+
+    @data[:offset][:imc_uint64_ffffffff00000000] = @data[:buffer].size
+    @data[:buffer] << "\xff\xf0\xff\xff\xff\xff\x00"
+
+    @data[:offset][:imc_uint64_0000ffff0000ffff] = @data[:buffer].size
+    @data[:buffer] << "\xff\xc0\xff\xff\xc0\xff\xff"
+
+    @data[:offset][:imc_uint64_ffff0000ffff0000] = @data[:buffer].size
+    @data[:buffer] << "\xff\xf0\xff\xff\x00\x00\xf0\xff\xff\x00\x00"
+
+    @data[:offset][:imc_uint64_ffffffffffffffff] = @data[:buffer].size
+    @data[:buffer] << "\xff\xf0\xff\xff\xff\xff\xf0\xff\xff\xff\xff"
 
     @buffer = @data[:buffer]
   end
@@ -267,34 +314,128 @@ describe BufferCursor do
   end
 
   describe "#get_ic_uint32" do
-    it "reads an InnoDB-compressed 1-byte uint correctly" do
-      @cursor.seek(@data[:offset][:innodb_comp_uint32_1])
-      @cursor.get_ic_uint32.should eql 0xff ^ 0x80
-      @cursor.position.should eql @data[:offset][:innodb_comp_uint32_1] + 1
+    it "reads a 1-byte zero value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint32_00000000])
+      @cursor.get_ic_uint32.should eql 0
+      @cursor.position.should eql @data[:offset][:ic_uint32_00000000] + 1
     end
 
-    it "reads an InnoDB-compressed 2-byte uint correctly" do
-      @cursor.seek(@data[:offset][:innodb_comp_uint32_2])
-      @cursor.get_ic_uint32.should eql 0xffff ^ 0xc000
-      @cursor.position.should eql @data[:offset][:innodb_comp_uint32_2] + 2
+    it "reads a 1-byte maximal value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint32_0000007f])
+      @cursor.get_ic_uint32.should eql 0x7f
+      @cursor.position.should eql @data[:offset][:ic_uint32_0000007f] + 1
     end
 
-    it "reads an InnoDB-compressed 3-byte uint correctly" do
-      @cursor.seek(@data[:offset][:innodb_comp_uint32_3])
-      @cursor.get_ic_uint32.should eql 0xffffff ^ 0xe00000
-      @cursor.position.should eql @data[:offset][:innodb_comp_uint32_3] + 3
+    it "reads a 2-byte maximal value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint32_00003fff])
+      @cursor.get_ic_uint32.should eql 0x3fff
+      @cursor.position.should eql @data[:offset][:ic_uint32_00003fff] + 2
     end
 
-    it "reads an InnoDB-compressed 4-byte uint correctly" do
-      @cursor.seek(@data[:offset][:innodb_comp_uint32_4])
-      @cursor.get_ic_uint32.should eql 0xffffffff ^ 0xf0000000
-      @cursor.position.should eql @data[:offset][:innodb_comp_uint32_4] + 4
+    it "reads a 3-byte maximal value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint32_001fffff])
+      @cursor.get_ic_uint32.should eql 0x1fffff
+      @cursor.position.should eql @data[:offset][:ic_uint32_001fffff] + 3
     end
 
-    it "reads an InnoDB-compressed 5-byte uint correctly" do
-      @cursor.seek(@data[:offset][:innodb_comp_uint32_5])
+    it "reads a 4-byte maximal value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint32_0fffffff])
+      @cursor.get_ic_uint32.should eql 0x0fffffff
+      @cursor.position.should eql @data[:offset][:ic_uint32_0fffffff] + 4
+    end
+
+    it "reads a 5-byte maximal value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint32_ffffffff])
       @cursor.get_ic_uint32.should eql 0xffffffff
-      @cursor.position.should eql @data[:offset][:innodb_comp_uint32_5] + 5
+      @cursor.position.should eql @data[:offset][:ic_uint32_ffffffff] + 5
+    end
+  end
+
+  describe "#get_ic_uint64" do
+    it "reads a 5-byte zero value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint64_0000000000000000])
+      @cursor.get_ic_uint64.should eql 0
+      @cursor.position.should eql @data[:offset][:ic_uint64_0000000000000000] + 5
+    end
+
+    it "reads a 5-byte interesting value 0x0000000100000001 correctly" do
+      @cursor.seek(@data[:offset][:ic_uint64_0000000100000001])
+      @cursor.get_ic_uint64.should eql 0x0000000100000001
+      @cursor.position.should eql @data[:offset][:ic_uint64_0000000100000001] + 5
+    end
+
+    it "reads a 5-byte interesting value 0x00000000ffffffff correctly" do
+      @cursor.seek(@data[:offset][:ic_uint64_00000000ffffffff])
+      @cursor.get_ic_uint64.should eql 0x00000000ffffffff
+      @cursor.position.should eql @data[:offset][:ic_uint64_00000000ffffffff] + 5
+    end
+
+    it "reads a 9-byte interesting value 0xffffffff00000000 correctly" do
+      @cursor.seek(@data[:offset][:ic_uint64_ffffffff00000000])
+      @cursor.get_ic_uint64.should eql 0xffffffff00000000
+      @cursor.position.should eql @data[:offset][:ic_uint64_ffffffff00000000] + 9
+    end
+
+    it "reads a 7-byte interesting value 0x0000ffff0000ffff correctly" do
+      @cursor.seek(@data[:offset][:ic_uint64_0000ffff0000ffff])
+      @cursor.get_ic_uint64.should eql 0x0000ffff0000ffff
+      @cursor.position.should eql @data[:offset][:ic_uint64_0000ffff0000ffff] + 7
+    end
+
+    it "reads a 9-byte interesting value 0xffff0000ffff0000 correctly" do
+      @cursor.seek(@data[:offset][:ic_uint64_ffff0000ffff0000])
+      @cursor.get_ic_uint64.should eql 0xffff0000ffff0000
+      @cursor.position.should eql @data[:offset][:ic_uint64_ffff0000ffff0000] + 9
+    end
+
+    it "reads a 9-byte maximal value correctly" do
+      @cursor.seek(@data[:offset][:ic_uint64_ffffffffffffffff])
+      @cursor.get_ic_uint64.should eql 0xffffffffffffffff
+      @cursor.position.should eql @data[:offset][:ic_uint64_ffffffffffffffff] + 9
+    end
+  end
+
+  describe "#get_imc_uint64" do
+    it "reads a 1-byte zero value correctly" do
+      @cursor.seek(@data[:offset][:imc_uint64_0000000000000000])
+      @cursor.get_imc_uint64.should eql 0
+      @cursor.position.should eql @data[:offset][:imc_uint64_0000000000000000] + 1
+    end
+
+    it "reads a 3-byte interesting value 0x0000000100000001 correctly" do
+      @cursor.seek(@data[:offset][:imc_uint64_0000000100000001])
+      @cursor.get_imc_uint64.should eql 0x0000000100000001
+      @cursor.position.should eql @data[:offset][:imc_uint64_0000000100000001] + 3
+    end
+
+    it "reads a 5-byte interesting value 0x00000000ffffffff correctly" do
+      @cursor.seek(@data[:offset][:imc_uint64_00000000ffffffff])
+      @cursor.get_imc_uint64.should eql 0x00000000ffffffff
+      @cursor.position.should eql @data[:offset][:imc_uint64_00000000ffffffff] + 5
+    end
+
+    it "reads a 7-byte interesting value 0xffffffff00000000 correctly" do
+      @cursor.seek(@data[:offset][:imc_uint64_ffffffff00000000])
+      @cursor.get_imc_uint64.should eql 0xffffffff00000000
+      @cursor.position.should eql @data[:offset][:imc_uint64_ffffffff00000000] + 7
+    end
+
+    it "reads a 7-byte interesting value 0x0000ffff0000ffff correctly" do
+      @cursor.seek(@data[:offset][:imc_uint64_0000ffff0000ffff])
+      @cursor.get_imc_uint64.should eql 0x0000ffff0000ffff
+      @cursor.position.should eql @data[:offset][:imc_uint64_0000ffff0000ffff] + 7
+    end
+
+    it "reads a 11-byte interesting value 0xffff0000ffff0000 correctly" do
+      @cursor.seek(@data[:offset][:imc_uint64_ffff0000ffff0000])
+      @cursor.get_imc_uint64.should eql 0xffff0000ffff0000
+      @cursor.position.should eql @data[:offset][:imc_uint64_ffff0000ffff0000] + 11
+    end
+
+    it "reads a 11-byte maximal value correctly" do
+      @cursor.seek(@data[:offset][:imc_uint64_ffffffffffffffff])
+      @cursor.get_imc_uint64.should eql 0xffffffffffffffff
+      @cursor.position.should eql @data[:offset][:imc_uint64_ffffffffffffffff] + 11
     end
   end
 
