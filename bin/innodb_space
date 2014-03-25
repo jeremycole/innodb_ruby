@@ -1136,9 +1136,9 @@ getopt_options = [
   [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
   [ "--trace",                  "-t",     GetoptLong::NO_ARGUMENT ],
   [ "--system-space-file",      "-s",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--space-file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--table-name",             "-T",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--index-name",             "-I",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--space-file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--page",                   "-p",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--level",                  "-l",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--list",                   "-L",     GetoptLong::REQUIRED_ARGUMENT ],
@@ -1155,8 +1155,6 @@ getopt.each do |opt, arg|
     usage 0
   when "--trace"
     BufferCursor.trace!
-  when "--mode"
-    @options.mode = arg
   when "--system-space-file"
     @options.system_space_file = arg
   when "--space-file"
