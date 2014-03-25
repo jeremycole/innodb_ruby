@@ -43,9 +43,6 @@ class Innodb::LogRecord
   # Types of undo log segments.
   UNDO_TYPES = { 1 => :UNDO_INSERT, 2 => :UNDO_UPDATE }
 
-  SINGLE_RECORD_MASK = 0x80
-  RECORD_TYPE_MASK   = 0x7f
-
   def read(cursor)
     origin = cursor.position
     @preamble = read_preamble(cursor)
@@ -58,11 +55,16 @@ class Innodb::LogRecord
     pp({:lsn => lsn, :size => size, :content => @preamble.merge(@payload)})
   end
 
+  # Single record flag is masked in the record type.
+  SINGLE_RECORD_MASK = 0x80
+  RECORD_TYPE_MASK   = 0x7f
+
   # Return a preamble of the first record in this block.
   def read_preamble(c)
     type_and_flag = c.name("type") { c.get_uint8 }
     type = type_and_flag & RECORD_TYPE_MASK
     type = RECORD_TYPES[type] || type
+    # Whether this is a single record for a single page.
     single_record = (type_and_flag & SINGLE_RECORD_MASK) > 0
     case type
     when :MULTI_REC_END, :DUMMY_RECORD
@@ -77,7 +79,8 @@ class Innodb::LogRecord
     end
   end
 
-  # XXX: mlog_parse_index
+  # Read the index part of a log record for a compact record insert.
+  # Ref. mlog_parse_index
   def read_index(c)
     n_cols = c.name("n_cols") { c.get_uint16 }
     n_uniq = c.name("n_uniq") { c.get_uint16 }
@@ -96,12 +99,16 @@ class Innodb::LogRecord
     }
   end
 
-  # XXX: page_cur_parse_insert_rec
+  # Flag of whether an insert log record contains info and status.
+  INFO_AND_STATUS_MASK = 0x1
+
+  # Read the insert record into page part of a insert log.
+  # Ref. page_cur_parse_insert_rec
   def read_insert_record(c)
     page_offset = c.name("page_offset") { c.get_uint16 }
     end_seg_len = c.name("end_seg_len") { c.get_ic_uint32 }
 
-    if (end_seg_len & 0x1) != 0
+    if (end_seg_len & INFO_AND_STATUS_MASK) != 0
       info_and_status_bits = c.get_uint8
       origin_offset = c.get_ic_uint32
       mismatch_index = c.get_ic_uint32
@@ -117,17 +124,71 @@ class Innodb::LogRecord
     }
   end
 
+  # Read the log record for an in-place update.
+  # Ref. btr_cur_parse_update_in_place
+  def read_update_in_place_record(c)
+    {
+      :flags => c.name("flags") { c.get_uint8 },
+      :sys_fields => read_sys_fields(c),
+      :rec_offset => c.name("rec_offset") { c.get_uint16 },
+      :update_index => read_update_index(c),
+    }
+  end
+
+  LENGTH_NULL = 0xFFFFFFFF
+
+  # Read the update vector for an update log record.
+  # Ref. row_upd_index_parse
+  def read_update_index(c)
+    info_bits = c.name("info_bits") { c.get_uint8 }
+    n_fields  = c.name("n_fields") { c.get_ic_uint32 }
+    fields = n_fields.times.collect do
+      {
+        :field_no => c.name("field_no") { c.get_ic_uint32 },
+        :len      => len = c.name("len") { c.get_ic_uint32 },
+        :data     => c.name("data") { len != LENGTH_NULL ? c.get_bytes(len) : :NULL },
+      }
+    end
+    {
+      :info_bits => info_bits,
+      :n_fields  => n_fields,
+      :fields    => fields,
+    }
+  end
+
+  # Read system fields values in a log record.
+  # Ref. row_upd_parse_sys_vals
+  def read_sys_fields(c)
+    {
+      :trx_id_pos => c.name("trx_id_pos") { c.get_ic_uint32 },
+      :roll_ptr   => c.name("roll_ptr") { c.get_bytes(7) },
+      :trx_id     => c.name("trx_id") { c.get_ic_uint64 },
+    }
+  end
+
+  # Read the log record for delete marking or unmarking of a clustered
+  # index record.
+  # Ref. btr_cur_parse_del_mark_set_clust_rec
+  def read_clust_delete_mark(c)
+    {
+      :flags => c.name("flags") { c.get_uint8 },
+      :value => c.name("value") { c.get_uint8 },
+      :sys_fields => c.name("sys_fields") { read_sys_fields(c) },
+      :offset => c.name("offset") { c.get_uint16 },
+    }
+  end
+
   def read_payload(type, c)
     case type
     when :MLOG_1BYTE, :MLOG_2BYTE, :MLOG_4BYTE
       {
         :page_offset => c.name("page_offset") { c.get_uint16 },
-        :value => c.name("value")  { c.get_ic_uint32 }
+        :value       => c.name("value")  { c.get_ic_uint32 }
       }
     when :MLOG_8BYTE
       {
-        :offset  => c.name("offset") { c.get_uint16 },
-        :value   => c.name("value")  { c.get_ic_uint64 }
+        :offset   => c.name("offset") { c.get_uint16 },
+        :value    => c.name("value")  { c.get_ic_uint64 }
       }
     when :UNDO_HDR_CREATE, :UNDO_HDR_REUSE
       {
@@ -140,12 +201,21 @@ class Innodb::LogRecord
       }
     when :REC_INSERT
       {
-        :record      => c.name("record") { read_insert_record(c) }
+        :record   => c.name("record") { read_insert_record(c) }
       }
     when :COMP_REC_INSERT
       {
-        :index       => c.name("index")  { read_index(c) },
-        :record      => c.name("record") { read_insert_record(c) }
+        :index    => c.name("index")  { read_index(c) },
+        :record   => c.name("record") { read_insert_record(c) }
+      }
+    when :COMP_REC_UPDATE_IN_PLACE
+      {
+        :index    => c.name("index")  { read_index(c) },
+        :record   => c.name("record") { read_update_in_place_record(c) }
+      }
+    when :REC_UPDATE_IN_PLACE
+      {
+        :record   => c.name("record") { read_update_in_place_record(c) }
       }
     when :WRITE_STRING
       {
@@ -157,8 +227,53 @@ class Innodb::LogRecord
       {
         :type     => c.name("type")   { UNDO_TYPES[c.get_ic_uint32] }
       }
+    when :FILE_CREATE, :FILE_DELETE
+      {
+        :name_len => len = c.name("name_len") { c.get_uint16 },
+        :name     => c.name("name") { c.get_bytes(len) },
+      }
+    when :FILE_CREATE2
+      {
+        :flags    => c.name("flags") { c.get_uint32 },
+        :name_len => len = c.name("name_len") { c.get_uint16 },
+        :name     => c.name("name") { c.get_bytes(len) },
+      }
+    when :FILE_RENAME
+      {
+        :old => {
+          :name_len => len = c.name("name_len") { c.get_uint16 },
+          :name     => c.name("name") { c.get_bytes(len) },
+        },
+        :new => {
+          :name_len => len = c.name("name_len") { c.get_uint16 },
+          :name     => c.name("name") { c.get_bytes(len) },
+        }
+      }
+    when :COMP_REC_CLUST_DELETE_MARK
+      {
+        :index    => c.name("index")  { read_index(c) },
+        :record   => c.name("record") { read_clust_delete_mark(c) }
+      }
+    when :REC_CLUST_DELETE_MARK
+      {
+        :record   => c.name("record") { read_clust_delete_mark(c) }
+      }
+    when :REC_SEC_DELETE_MARK
+      {
+        :value    => c.name("value") { c.get_uint8 },
+        :offset   => c.name("offset") { c.get_uint16 },
+      }
+    when :REC_DELETE
+      {
+        :offset   => c.name("offset") { c.get_uint16 },
+      }
+    when :COMP_REC_DELETE
+      {
+        :index    => c.name("index")  { read_index(c) },
+        :offset   => c.name("offset") { c.get_uint16 },
+      }
     when :MULTI_REC_END, :INIT_FILE_PAGE, :IBUF_BITMAP_INIT,
-         :PAGE_CREATE
+         :PAGE_CREATE, :COMP_PAGE_CREATE
       {}
     else
       raise "Unsupported log record type: #{type.to_s}"
