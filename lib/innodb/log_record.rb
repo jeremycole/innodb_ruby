@@ -258,9 +258,15 @@ class Innodb::LogRecord
       {
         :record   => c.name("record") { read_clust_delete_mark(c) }
       }
+    when :COMP_REC_SEC_DELETE_MARK
+      {
+        :index    => c.name("index")  { read_index(c) },
+        :value    => c.name("value")  { c.get_uint8 },
+        :offset   => c.name("offset") { c.get_uint16 },
+      }
     when :REC_SEC_DELETE_MARK
       {
-        :value    => c.name("value") { c.get_uint8 },
+        :value    => c.name("value")  { c.get_uint8 },
         :offset   => c.name("offset") { c.get_uint16 },
       }
     when :REC_DELETE
@@ -272,8 +278,37 @@ class Innodb::LogRecord
         :index    => c.name("index")  { read_index(c) },
         :offset   => c.name("offset") { c.get_uint16 },
       }
-    when :MULTI_REC_END, :INIT_FILE_PAGE, :IBUF_BITMAP_INIT,
-         :PAGE_CREATE, :COMP_PAGE_CREATE
+    when :REC_MIN_MARK, :COMP_REC_MIN_MARK
+      {
+        :offset   => c.name("offset") { c.get_uint16 },
+      }
+    when :LIST_START_DELETE, :LIST_END_DELETE
+      {
+        :offset   => c.name("offset") { c.get_uint16 },
+      }
+    when :COMP_LIST_START_DELETE, :COMP_LIST_END_DELETE
+      {
+        :index    => c.name("index")  { read_index(c) },
+        :offset   => c.name("offset") { c.get_uint16 },
+      }
+    when :LIST_END_COPY_CREATED
+      {
+        :length   => len = c.name("length") { c.get_uint32 },
+        :data     => c.name("data") { c.get_bytes(len) }
+      }
+    when :COMP_LIST_END_COPY_CREATE
+      {
+        :index    => c.name("index")  { read_index(c) },
+        :length   => len = c.name("length") { c.get_uint32 },
+        :data     => c.name("data") { c.get_bytes(len) }
+      }
+    when :COMP_PAGE_REORGANIZE
+      {
+        :index    => c.name("index")  { read_index(c) },
+      }
+    when :DUMMY_RECORD, :MULTI_REC_END, :INIT_FILE_PAGE,
+         :IBUF_BITMAP_INIT, :PAGE_CREATE, :COMP_PAGE_CREATE,
+         :PAGE_REORGANIZE, :UNDO_ERASE_END, :UNDO_HDR_DISCARD
       {}
     else
       raise "Unsupported log record type: #{type.to_s}"
