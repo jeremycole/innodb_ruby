@@ -7,17 +7,17 @@ require "set"
 require "innodb"
 
 def log_summary(log_group)
-  puts "%-10s%-10s%-10s%-12s%-10s" % [
+  puts "%-20s%-15s%-10s%-12s%-10s" % [
     "lsn",
     "block",
     "length",
     "first_rec",
     "checkpoint",
   ]
-  lsn = log_group.start_lsn
+  lsn = log_group.start_lsn.first
   log_group.each_block do |block_index, block|
     header = block.header
-    puts "%-10i%-10i%-10i%-12i%-10i" % [
+    puts "%-20i%-15i%-10i%-12i%-10i" % [
       lsn,
       header[:block_number],
       header[:data_length],
