@@ -29,10 +29,7 @@ def log_summary(log_group)
   end
 end
 
-def log_follow_tail_summary(log_group)
-  reader = log_group.reader(log_group.max_checkpoint_lsn)
-  reader.checksum = true
-
+def log_reader_record_summary(reader, follow)
   puts "%-10s%-10s%-20s%-10s%-10s%-10s" % [
     "time",
     "lsn",
@@ -42,7 +39,7 @@ def log_follow_tail_summary(log_group)
     "page"
   ]
 
-  reader.each_record(true) do |rec|
+  reader.each_record(follow) do |rec|
     preamble = rec.preamble.dup
     preamble.default = ""
     puts "%-10s%-10i%-20s%-10i%-10s%-10s" % [
@@ -54,6 +51,18 @@ def log_follow_tail_summary(log_group)
       rec.preamble[:page_number].to_s,
     ]
   end
+end
+
+def log_follow_tail_summary(log_group)
+  reader = log_group.reader(log_group.max_checkpoint_lsn)
+  reader.checksum = true
+  log_reader_record_summary(reader, true)
+end
+
+def log_record_summary(log_group, lsn_no)
+  reader = log_group.reader(log_group.start_lsn)
+  reader.seek(lsn_no)
+  log_reader_record_summary(reader, false)
 end
 
 def record_dump(log_group, lsn)
@@ -86,6 +95,9 @@ The following modes are supported:
 
   log-follow-tail-summary
     Follow the tail of the log and print a summary of each newly logged record.
+
+  log-record-summary
+    Print a summary of each log record following a given LSN.
 
   record-dump
     Dump the contents of a log record, using the Ruby pp ("pretty-print") module.
@@ -132,7 +144,7 @@ if @options.log_files.empty?
   usage 1, "At least one log file (-f) must be specified"
 end
 
-if /^record-/.match(mode) and !@options.lsn
+if /^(log-)?record-/.match(mode) and !@options.lsn
   usage 1, "LSN must be specified using -l/--lsn"
 end
 
@@ -141,10 +153,12 @@ log_group = Innodb::LogGroup.new(@options.log_files.sort)
 case mode
 when "log-summary"
   log_summary(log_group)
-when "record-dump"
-  record_dump(log_group, @options.lsn)
 when "log-follow-tail-summary"
   log_follow_tail_summary(log_group)
+when "log-record-summary"
+  log_record_summary(log_group, @options.lsn)
+when "record-dump"
+  record_dump(log_group, @options.lsn)
 else
   usage 1, "Unknown mode: #{mode}"
 end
