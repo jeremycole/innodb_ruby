@@ -49,6 +49,31 @@ class Innodb::Record
     record[:roll_pointer]
   end
 
+  def undo
+    if innodb_system = @page.space.innodb_system
+      undo_space = innodb_system.system_space
+      if undo_page = undo_space.page(roll_pointer[:undo_log][:page])
+        new_undo_record = Innodb::UndoRecord.new(undo_page, roll_pointer[:undo_log][:offset])
+        new_undo_record.index_page = page
+        new_undo_record
+      end
+    end
+  end
+
+  def each_undo_record
+    unless block_given?
+      return enum_for(:each_undo_record)
+    end
+
+    undo_record = undo
+    while undo_record
+      yield undo_record
+      undo_record = undo_record.prev_by_history
+    end
+
+    nil
+  end
+
   def child_page_number
     record[:child_page_number]
   end

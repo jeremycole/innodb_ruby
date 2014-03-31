@@ -36,6 +36,10 @@ class Innodb::Page::SysRsegHeader < Innodb::Page
     end
   end
 
+  def history_list
+    Innodb::HistoryList.new(rseg_header[:history_list])
+  end
+
   def each_undo_segment
     unless block_given?
       return enum_for(:each_undo_segment)

@@ -561,8 +561,8 @@ class Innodb::Page::Index < Innodb::Page
             this_record[p] << {
               :name => f.name,
               :type => f.data_type.name,
-              :value => f.value(this_record, c),
-              :extern => f.extern(this_record, c),
+              :value => f.value(c, this_record),
+              :extern => f.extern(c, this_record),
             }.reject { |k, v| v.nil? }
           end
         end

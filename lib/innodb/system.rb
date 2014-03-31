@@ -165,4 +165,8 @@ class Innodb::System
 
     index
   end
+
+  def history
+    Innodb::History.new(self)
+  end
 end
