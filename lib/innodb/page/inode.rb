@@ -67,8 +67,19 @@ class Innodb::Page::Inode < Innodb::Page
     inodes_per_page.times do |n|
       inode_cursor.name("inode[#{n}]") do |c|
         this_inode = Innodb::Inode.new_from_cursor(@space, c)
-        yield this_inode if this_inode.allocated?
+        yield this_inode
       end
+    end
+  end
+
+  # Iterate through all allocated inodes in the inode array.
+  def each_allocated_inode
+    unless block_given?
+      return enum_for(:each_allocated_inode)
+    end
+
+    each_inode do |this_inode|
+      yield this_inode if this_inode.allocated?
     end
   end
 
@@ -89,12 +100,21 @@ class Innodb::Page::Inode < Innodb::Page
     })
 
     each_inode do |inode|
-      yield({
-        :offset => inode.offset,
-        :length => Innodb::Inode::SIZE,
-        :name => :inode,
-        :info => "Inode",
-      })
+      if inode.allocated?
+        yield({
+          :offset => inode.offset,
+          :length => Innodb::Inode::SIZE,
+          :name => :inode_used,
+          :info => "Inode (used)",
+        })
+      else
+        yield({
+          :offset => inode.offset,
+          :length => Innodb::Inode::SIZE,
+          :name => :inode_free,
+          :info => "Inode (free)",
+        })
+      end
     end
 
     nil

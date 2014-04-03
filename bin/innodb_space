@@ -613,13 +613,13 @@ def print_inode_detail(inode)
 end
 
 def space_inodes_summary(space)
-  space.each_inode do |inode|
+  space.each_allocated_inode do |inode|
     print_inode_summary(inode)
   end
 end
 
 def space_inodes_detail(space)
-  space.each_inode do |inode|
+  space.each_allocated_inode do |inode|
     print_inode_detail(inode)
   end
 end
@@ -666,7 +666,7 @@ def page_account(innodb_system, space, page_number)
   end
 
   page_inode = nil
-  space.each_inode do |inode|
+  space.each_allocated_inode do |inode|
     inode.each_list do |name, list|
       if list.include? xdes
         page_inode = inode
@@ -755,7 +755,7 @@ def page_directory_summary(page_number)
 end
 
 def page_illustrate(page)
-  width = 256
+  width = 64
   blocks = Array.new(page.size, " ")
   identifiers = {}
   identifier_sort = 0
@@ -1062,6 +1062,10 @@ The following modes are supported:
     color and Unicode box drawing characters to show page usage throughout
     the space.
 
+  space-lsn-age-illustrate
+    Iterate through all pages, producing a heat map colored by the page LSN
+    allowing the user to get an overview of page modification recency.
+
   space-inodes-summary
     Iterate through all inodes, printing a short summary of each FSEG.
 
@@ -1112,6 +1116,9 @@ The following modes are supported:
   page-directory-summary
     Summarize the record contents of the page directory in a page. If a record
     describer is available, the key of each record will be printed.
+
+  page-illustrate
+    Produce an illustration of the contents of a page.
 
 END_OF_USAGE
 

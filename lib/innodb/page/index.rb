@@ -973,7 +973,6 @@ class Innodb::Page::Index < Innodb::Page
       :info   => "Supremum",
     })
 
-
     directory_slots.times do |n|
       yield({
         :offset => pos_directory - (n * 2),
@@ -1002,7 +1001,7 @@ class Innodb::Page::Index < Innodb::Page
 
       yield({
         :offset => record.offset,
-        :length => record.length,
+        :length => record.length || 1,
         :name   => :record_data,
         :info   => "Record Data",
       })

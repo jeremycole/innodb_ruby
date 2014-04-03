@@ -43,7 +43,7 @@ describe Innodb::Page::Inode do
 
   describe "#each_inode" do
     it "yields Innodb::Inode objects" do
-      @page.each_inode.to_a.map { |v| v.class}.uniq.should eql [Innodb::Inode]
+      @page.each_inode.to_a.map { |v| v.class }.uniq.should eql [Innodb::Inode]
     end
 
     it "yields Hashes with the right keys and values" do
@@ -55,6 +55,18 @@ describe Innodb::Page::Inode do
       inode.full.should be_an_instance_of Innodb::List::Xdes
       inode.magic_n.should eql Innodb::Inode::MAGIC_N_VALUE
       inode.frag_array.should be_an_instance_of Array
+    end
+  end
+
+  describe "#each_allocated_inode" do
+    it "yields Innodb::Inode objects" do
+      @page.each_allocated_inode.to_a.map { |v| v.class }.uniq.should eql [Innodb::Inode]
+    end
+
+    it "yields only allocated inodes" do
+      @page.each_allocated_inode do |inode|
+        inode.allocated?.should be_true
+      end
     end
   end
 end

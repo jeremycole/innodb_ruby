@@ -307,7 +307,7 @@ class Innodb::Space
 
     each_inode_list.each do |name, list|
       list.each do |page|
-        page.each_inode do |inode|
+        page.each_allocated_inode do |inode|
           yield inode
         end
       end
