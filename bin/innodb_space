@@ -613,7 +613,7 @@ def print_inode_detail(inode)
 end
 
 def space_inodes_summary(space)
-  space.each_allocated_inode do |inode|
+  space.each_inode do |inode|
     print_inode_summary(inode)
   end
 end
