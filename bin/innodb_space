@@ -619,7 +619,7 @@ def space_inodes_summary(space)
 end
 
 def space_inodes_detail(space)
-  space.each_allocated_inode do |inode|
+  space.each_inode do |inode|
     print_inode_detail(inode)
   end
 end
@@ -666,7 +666,7 @@ def page_account(innodb_system, space, page_number)
   end
 
   page_inode = nil
-  space.each_allocated_inode do |inode|
+  space.each_inode do |inode|
     inode.each_list do |name, list|
       if list.include? xdes
         page_inode = inode
