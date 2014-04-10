@@ -184,7 +184,7 @@ def system_spaces(innodb_system)
     next unless space
     print_space_information.call(table_name, space)
   end
-  if innodb_system.each_orphans
+  if not innodb_system.orphans.empty?
     print_space_orphan_information.call("(orphans)")
     innodb_system.each_orphans do |table_name|
        print_space_orphan_information.call(table_name)
