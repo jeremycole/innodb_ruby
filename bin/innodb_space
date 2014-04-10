@@ -184,7 +184,7 @@ def system_spaces(innodb_system)
   end
 
   innodb_system.each_orphan do |table_name|
-       print_space_orphan_information.call(table_name)
+    print_space_orphan_information.call(table_name)
   end
 
 end
