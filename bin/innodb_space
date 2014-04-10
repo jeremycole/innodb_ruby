@@ -178,6 +178,10 @@ def system_spaces(innodb_system)
     next unless space
     print_space_information.call(table_name, space)
   end
+
+  innodb_system.each_orphan do |table_name|
+    puts "%-43s (orphan/tmp)" % table_name
+  end
 end
 
 # Print the contents of the SYS_TABLES data dictionary table.

@@ -12,11 +12,15 @@ class Innodb::System
   # The Innodb::DataDictionary for this system.
   attr_reader :data_dictionary
 
+  # A hash of orphaned spaces
+  attr_reader :orphans
+
   # The space ID of the system space, always 0.
   SYSTEM_SPACE_ID = 0
 
   def initialize(system_space_file)
     @spaces = {}
+    @orphans = []
     @config = {
       :datadir => File.dirname(system_space_file),
     }
@@ -47,10 +51,20 @@ class Innodb::System
     add_space(space)
   end
 
+  # Add an orphaned space.
+  def add_space_orphan(space_file)
+    orphans << space_file
+  end
+
   # Add a space by table name, constructing an appropriate filename
   # from the provided table name.
   def add_table(table_name)
-    add_space_file("%s/%s.ibd" % [config[:datadir], table_name])
+    space_file = "%s/%s.ibd" % [config[:datadir], table_name]
+    if File.exist?(space_file)
+      add_space_file(space_file)
+    else
+      add_space_orphan(table_name)
+    end
   end
 
   # Return an Innodb::Space object for a given space ID, looking up
@@ -88,6 +102,19 @@ class Innodb::System
 
     data_dictionary.each_table do |record|
       yield record["NAME"]
+    end
+
+    nil
+  end
+
+  # Iterate throught all orphaned spaces.
+  def each_orphan
+    unless block_given?
+      return enum_for(:each_orphan)
+    end
+
+    orphans.each do |space_name|
+      yield space_name
     end
 
     nil
