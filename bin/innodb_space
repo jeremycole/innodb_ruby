@@ -172,9 +172,7 @@ def system_spaces(innodb_system)
   end
 
   print_space_orphan_information = lambda do | name | 
-    puts "%-60s" % [
-       name
-    ]
+    puts "%-60s" % name
   end
 
   print_space_information.call("(system)", innodb_system.system_space)
@@ -186,7 +184,7 @@ def system_spaces(innodb_system)
   end
   if not innodb_system.orphans.empty?
     print_space_orphan_information.call("(orphans)")
-    innodb_system.each_orphans do |table_name|
+    innodb_system.each_orphan do |table_name|
        print_space_orphan_information.call(table_name)
     end
   end

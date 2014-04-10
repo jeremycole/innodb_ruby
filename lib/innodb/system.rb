@@ -107,7 +107,11 @@ class Innodb::System
   end
 
   # Iterate throught all orphaned spaces.
-  def each_orphans
+  def each_orphan
+    unless block_given?
+      return enum_for(:each_orphan)
+    end
+
     orphans.each do |table|
       yield table
     end
