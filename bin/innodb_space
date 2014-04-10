@@ -183,7 +183,8 @@ def system_spaces(innodb_system)
     print_space_information.call(table_name, space)
   end
   if not innodb_system.orphans.empty?
-    print_space_orphan_information.call("(orphans)")
+    # files not in datadir/tmp will be seen as orphan even if present
+    print_space_orphan_information.call("(orphans/tmp)")
     innodb_system.each_orphan do |table_name|
        print_space_orphan_information.call(table_name)
     end
