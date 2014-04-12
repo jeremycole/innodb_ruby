@@ -174,4 +174,22 @@ describe Innodb::System do
     end
   end
 
+  describe "#each_orphan" do
+    before :all do
+      @system = Innodb::System.new("spec/data/ibdata1")
+    end
+
+    it "has an orphan space" do
+      @system.space_by_table_name("test/t_empty").should be_nil
+    end
+
+    it "is an enumerator" do
+      is_enumerator?(@system.each_orphan).should be_true
+    end
+
+    it "returns the orphan space" do
+      @system.each_orphan.next.should eql "test/t_empty"
+    end
+  end
+
 end

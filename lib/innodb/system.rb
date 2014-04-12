@@ -9,11 +9,11 @@ class Innodb::System
   # A hash of spaces by space ID.
   attr_reader :spaces
 
+  # Array of space names for which a space file was not found.
+  attr_reader :orphans
+
   # The Innodb::DataDictionary for this system.
   attr_reader :data_dictionary
-
-  # A hash of orphaned spaces
-  attr_reader :orphans
 
   # The space ID of the system space, always 0.
   SYSTEM_SPACE_ID = 0
