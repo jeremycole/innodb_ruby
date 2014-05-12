@@ -3,6 +3,7 @@
 # An InnoDB index B-tree, given an Innodb::Space and a root page number.
 class Innodb::Index
   attr_reader :root
+  attr_reader :space
   attr_accessor :record_describer
 
   def initialize(space, root_page_number, record_describer=nil)
