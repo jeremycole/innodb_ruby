@@ -1001,10 +1001,6 @@ The following options are supported:
   --describer, -d <describer>
     Use the named record describer to parse records in index pages.
 
-  --page-size, -P <size>
-    Provide the page size, overriding auto-detection (in KiB): 16, 8, 4, 2, 1.
-    Page sizes other than 16 may not work well, or at all.
-
 The following modes are supported:
 
   system-spaces
@@ -1140,7 +1136,6 @@ Signal.trap("PIPE") { exit }
 @options.page                   = nil
 @options.level                  = nil
 @options.list                   = nil
-@options.page_size              = nil
 @options.describer              = nil
 
 getopt_options = [
@@ -1154,7 +1149,6 @@ getopt_options = [
   [ "--level",                  "-l",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--list",                   "-L",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--require",                "-r",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--page-size",              "-P",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--describer",              "-d",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
 
@@ -1182,11 +1176,6 @@ getopt.each do |opt, arg|
     @options.list = arg.to_sym
   when "--require"
     require File.expand_path(arg)
-  when "--page-size"
-    unless [1, 2, 4, 8, 16].include?(arg.to_i)
-      usage 1, "Page size #{arg} is not understood"
-    end
-    @options.page_size = arg.to_i * 1024
   when "--describer"
     @options.describer = arg
   end
@@ -1209,7 +1198,7 @@ space = innodb_system ? innodb_system.system_space : nil
 if innodb_system and @options.table_name
   space = innodb_system.space_by_table_name(@options.table_name)
 elsif @options.space_file
-  space = Innodb::Space.new(@options.space_file, @options.page_size)
+  space = Innodb::Space.new(@options.space_file)
 end
 
 if @options.describer

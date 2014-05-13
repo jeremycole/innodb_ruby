@@ -17,33 +17,43 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
 
   # A value added to the adjusted exponent stored in the page size field of
   # the flags in the FSP header.
-  FLAGS_PAGE_SIZE_ADJUST = 9
+  FLAGS_PAGE_SIZE_SHIFT = 9
+
+  def self.shift_page_size(page_size_shifted)
+    if page_size_shifted != 0
+      (1 << (FLAGS_PAGE_SIZE_SHIFT + page_size_shifted))
+    end
+  end
 
   # Decode the "flags" field in the FSP header, returning a hash of useful
-  # decoded flags. Unfortunately, InnoDB has a fairly weird and broken
-  # implementation of these flags. The flags are:
+  # decodings of the flags (based on MySQl 5.6 definitions). The flags are:
   #
   # Offset    Size    Description
-  # 0         1       Page Format (redundant, compact). This is unfortunately
-  #                   coerced to 0 if it is "compact" and no other flags are
-  #                   set, making it useless to innodb_ruby.
+  # 0         1       Post-Antelope Flag.
   # 1         4       Compressed Page Size (zip_size). This is stored as a
   #                   power of 2, minus 9. Since 0 is reserved to mean "not
   #                   compressed", the minimum value is 1, thus making the
   #                   smallest page size 1024 (2 ** (9 + 1)).
-  # 5         1       Table Format (Antelope, Barracuda). This was supposed
-  #                   to reserve 6 bits, but due to a bug in InnoDB only
-  #                   actually reserved 1 bit.
+  # 5         1       Atomic Blobs Flag.
+  # 6         4       System Page Size (innodb_page_size, UNIV_PAGE_SIZE).
+  #                   The setting of the system page size when the tablespace
+  #                   was created, stored in the same format as the compressed
+  #                   page size above.
+  # 10        1       Data Directory Flag.
   #
   def self.decode_flags(flags)
-    # The page size for compressed pages is stored at bit offset 1 and consumes
-    # 4 bits. Value 0 means the page is not compressed.
-    page_size = read_bits_at_offset(flags, 4, 1)
+    system_page_size =
+      shift_page_size(read_bits_at_offset(flags, 4, 6)) ||
+      Innodb::Space::DEFAULT_PAGE_SIZE
+    compressed_page_size = shift_page_size(read_bits_at_offset(flags, 4, 1))
+
     {
-      :compressed => page_size == 0 ? false : true,
-      :page_size => page_size == 0 ?
-        Innodb::Space::DEFAULT_PAGE_SIZE :
-        (1 << (FLAGS_PAGE_SIZE_ADJUST + page_size)),
+      :system_page_size => system_page_size,
+      :compressed => compressed_page_size ? false : true,
+      :page_size => compressed_page_size || system_page_size,
+      :post_antelope => read_bits_at_offset(flags, 1, 0) == 1,
+      :atomic_blogs => read_bits_at_offset(flags, 1, 5) == 1,
+      :data_directory => read_bits_at_offset(flags, 1, 10) == 1,
       :value => flags,
     }
   end
@@ -87,7 +97,7 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
         :unused             => c.name("unused") { c.get_uint32 },
         :size               => c.name("size") { c.get_uint32 },
         :free_limit         => c.name("free_limit") { c.get_uint32 },
-        :flags              => c.name("flags") { 
+        :flags              => c.name("flags") {
           self.class.decode_flags(c.get_uint32)
         },
         :frag_n_used        => c.name("frag_n_used") { c.get_uint32 },

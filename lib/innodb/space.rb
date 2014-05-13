@@ -22,18 +22,15 @@ class Innodb::Space
 
   # Open a space file, optionally providing the page size to use. Pages
   # that aren't 16 KiB may not be supported well.
-  def initialize(file, page_size=nil)
+  def initialize(file)
     @file = File.open(file)
     @size = @file.stat.size
 
-    if page_size
-      @page_size = page_size
-    else
-      @page_size = fsp_flags[:page_size]
-    end
+    @system_page_size = fsp_flags[:system_page_size]
+    @page_size        = fsp_flags[:page_size]
+    @compressed       = fsp_flags[:compressed]
 
     @pages = (@size / @page_size)
-    @compressed = fsp_flags[:compressed]
     @innodb_system = nil
     @record_describer = nil
   end
@@ -44,6 +41,9 @@ class Innodb::Space
   # An object which can be used to describe records found in pages within
   # this space.
   attr_accessor :record_describer
+
+  # The system default page size (in bytes), equivalent to UNIV_PAGE_SIZE.
+  attr_reader :system_page_size
 
   # The size (in bytes) of each page in the space.
   attr_reader :page_size
@@ -113,14 +113,40 @@ class Innodb::Space
     end
   end
 
-  # The size (in bytes) of an extent.
-  def extent_size
-    1048576
-  end
-
   # The number of pages per extent.
   def pages_per_extent
-    extent_size / page_size
+    # Note that uncompressed tables and compressed tables using the same page
+    # size will have a different number of pages per "extent" because InnoDB
+    # compression uses the FSP_EXTENT_SIZE define (which is then based on the
+    # UNIV_PAGE_SIZE define, which may be based on the innodb_page_size system
+    # variable) for compressed tables rather than something based on the actual
+    # compressed page size.
+    #
+    # For this reason, an "extent" differs in size as follows (the maximum page
+    # size supported for compressed tables is the innodb_page_size):
+    #
+    #   innodb_page_size                | innodb compression              |
+    #   page size | extent size | pages | page size | extent size | pages |
+    #   16384     | 1 MiB       | 64    | 16384     | 1 MiB       | 64    |
+    #                                   | 8192      | 512 KiB     | 64    |
+    #                                   | 4096      | 256 KiB     | 64    |
+    #                                   | 2048      | 128 KiB     | 64    |
+    #                                   | 1024      | 64 KiB      | 64    |
+    #   8192      | 1 MiB       | 128   | 8192      | 1 MiB       | 128   |
+    #                                   | 4096      | 512 KiB     | 128   |
+    #                                   | 2048      | 256 KiB     | 128   |
+    #                                   | 1024      | 128 KiB     | 128   |
+    #   4096      | 1 MiB       | 256   | 4096      | 1 MiB       | 256   |
+    #                                   | 2048      | 512 KiB     | 256   |
+    #                                   | 1024      | 256 KiB     | 256   |
+    #
+
+    1048576 / system_page_size
+  end
+
+  # The size (in bytes) of an extent.
+  def extent_size
+    pages_per_extent * page_size
   end
 
   # The number of pages per FSP_HDR/XDES page. This is crudely mapped to the
