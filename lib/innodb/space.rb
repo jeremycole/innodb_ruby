@@ -157,7 +157,7 @@ class Innodb::Space
 
   # An array of all FSP/XDES page numbers for the space.
   def xdes_page_numbers
-    (0..(@pages / pages_per_xdes_page)).map { |n| n * pages_per_xdes_page }
+    (0...(@pages / pages_per_xdes_page)).map { |n| n * pages_per_xdes_page }
   end
 
   # The FSP_HDR/XDES page which will contain the XDES entry for a given page.
