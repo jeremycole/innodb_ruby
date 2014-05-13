@@ -155,9 +155,9 @@ describe Innodb::Space do
     end
   end
 
-  describe "#xdes_page_numbers" do
-    it "is an Array" do
-      @space.xdes_page_numbers.should be_an_instance_of Array
+  describe "#each_xdes_page_number" do
+    it "is an enumerator" do
+      is_enumerator?(@space.each_xdes_page_number).should be_true
     end
   end
 

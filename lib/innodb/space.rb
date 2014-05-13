@@ -155,11 +155,6 @@ class Innodb::Space
     page_size
   end
 
-  # An array of all FSP/XDES page numbers for the space.
-  def xdes_page_numbers
-    (0...(@pages / pages_per_xdes_page)).map { |n| n * pages_per_xdes_page }
-  end
-
   # The FSP_HDR/XDES page which will contain the XDES entry for a given page.
   def xdes_page_for_page(page_number)
     page_number - (page_number % pages_per_xdes_page)
@@ -369,6 +364,17 @@ class Innodb::Space
     end
   end
 
+  # An array of all FSP/XDES page numbers for the space.
+  def each_xdes_page_number
+    unless block_given?
+      return enum_for(:each_xdes_page_number)
+    end
+
+    0.step(pages - 1, pages_per_xdes_page).each do |n|
+      yield n
+    end
+  end
+
   # Iterate through all FSP_HDR/XDES pages, returning an Innodb::Page object
   # for each one.
   def each_xdes_page
@@ -376,7 +382,7 @@ class Innodb::Space
       return enum_for(:each_xdes_page)
     end
 
-    xdes_page_numbers.each do |page_number|
+    each_xdes_page_number do |page_number|
       current_page = page(page_number)
       yield current_page if current_page and [:FSP_HDR, :XDES].include?(current_page.type)
     end
