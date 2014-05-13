@@ -477,7 +477,9 @@ def space_extents_illustrate(space)
             if page.respond_to?(:index_id)
               identifier = page.index_id
               unless identifiers[identifier]
-                identifiers[identifier] = "Index #{page.index_id}"
+                identifiers[identifier] = page.index_id == 0xFFFFFFFF00000000 ?
+                  "Insert Buffer Index" :
+                  "Index #{page.index_id}"
                 if space.innodb_system
                   table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
                   if table && index
