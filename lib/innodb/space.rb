@@ -352,7 +352,7 @@ class Innodb::Space
 
     xdes_page_numbers.each do |page_number|
       current_page = page(page_number)
-      yield current_page if current_page
+      yield current_page if current_page and [:FSP_HDR, :XDES].include?(current_page.type)
     end
   end
 
