@@ -455,13 +455,14 @@ end
 # filled block colored based on the index the page is part of. Print a legend
 # for the colors used afterwards.
 def space_extents_illustrate(space)
+  width = space.pages_per_extent
   puts
-  puts "%12s ╭%-64s╮" % [ "Start Page", "─" * 64 ]
+  puts "%12s ╭%-#{width}s╮" % [ "Start Page", "─" * width ]
 
   identifiers = {}
 
   space.each_xdes do |entry|
-    puts "%12i │%-64s│" % [
+    puts "%12i │%-#{width}s│" % [
       entry.xdes[:start_page],
       entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
         if page_number < space.pages
@@ -498,7 +499,7 @@ def space_extents_illustrate(space)
     ]
   end
 
-  puts "%12s ╰%-64s╯" % [ "", "─" * 64 ]
+  puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
 
   puts
   puts "Legend:"
