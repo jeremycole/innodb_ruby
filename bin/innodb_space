@@ -460,6 +460,7 @@ def space_extents_illustrate(space)
   puts "%12s ╭%-#{width}s╮" % [ "Start Page", "─" * width ]
 
   identifiers = {}
+  count_by_identifier = Hash.new(0)
 
   space.each_xdes do |entry|
     puts "%12i │%-#{width}s│" % [
@@ -491,6 +492,11 @@ def space_extents_illustrate(space)
             end
           end
           bitmap += filled_block(used_fraction, identifier)
+          if used_fraction != 0.0
+            count_by_identifier[identifier] += 1
+          else
+            count_by_identifier[:free] += 1
+          end
         else
           bitmap += " "
         end
@@ -502,12 +508,30 @@ def space_extents_illustrate(space)
   puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
 
   puts
-  puts "Legend:"
-  puts "  %s %s" % [filled_block(1.0, nil), "System"]
+  puts "Legend (%s = 1 page):" % [filled_block(1.0, nil)]
+  puts "  %-62s %8s %8s" % [
+    "Page Type", "Pages", "Ratio"
+  ]
+  puts "  %s %-60s %8i %7.2f%%" % [
+    filled_block(1.0, nil),
+    "System",
+    count_by_identifier[nil],
+    100.0 * (count_by_identifier[nil].to_f / space.pages.to_f),
+  ]
   identifiers.sort.each do |identifier, description|
-    puts "  %s %s" % [filled_block(1.0, identifier), description]
+    puts "  %s %-60s %8i %7.2f%%" % [
+      filled_block(1.0, identifier),
+      description,
+      count_by_identifier[identifier],
+      100.0 * (count_by_identifier[identifier].to_f / space.pages.to_f),
+    ]
   end
-  puts "  %s %s" % [filled_block(0.0, nil), "Free space"]
+  puts "  %s %-60s %8i %7.2f%%" % [
+    filled_block(0.0, nil),
+    "Free space",
+    count_by_identifier[:free],
+    100.0 * (count_by_identifier[:free].to_f / space.pages.to_f),
+  ]
   puts
 end
 
@@ -579,7 +603,7 @@ def space_lsn_age_illustrate(space)
   end
 
   puts
-  puts "Legend:"
+  puts "Legend (%s = 1 page):" % [filled_block(1.0, nil)]
   puts "  %12s %s %-12s" % [
     "Min LSN",
     lsn_legend,
@@ -766,6 +790,7 @@ def page_illustrate(page)
   blocks = Array.new(page.size, " ")
   identifiers = {}
   identifier_sort = 0
+  count_by_identifier = Hash.new(0)
 
   page.each_region.sort { |a,b| a[:offset] <=> b[:offset]}.each do |region|
     region[:length].times do |n|
@@ -789,6 +814,7 @@ def page_illustrate(page)
         end
       end
       blocks[region[:offset] + n] = filled_block(fraction, identifier, BLOCK_CHARS_H)
+      count_by_identifier[identifier] += 1
     end
   end
 
@@ -802,14 +828,33 @@ def page_illustrate(page)
   puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
 
   puts
-  puts "Legend:"
+  puts "Legend (%s = 1 byte):" % [filled_block(1.0, nil)]
+  puts "  %-32s %8s %8s" % [
+    "Region Type",
+    "Bytes",
+    "Ratio",
+  ]
   identifiers.sort { |a,b| a[1] <=> b[1] }.each do |identifier, description|
-    puts "  %s %s" % [
+    puts "  %s %-30s %8i %7.2f%%" % [
       filled_block(1.0, identifier),
-      description.gsub(/^<\d+>/, "")
+      description.gsub(/^<\d+>/, ""),
+      count_by_identifier[identifier],
+      100.0 * (count_by_identifier[identifier].to_f / page.size.to_f),
     ]
   end
-  puts "  %s %s" % [filled_block(0.0, nil), "Garbage"]
+  puts "  %s %-30s %8i %7.2f%%" % [
+    filled_block(0.0, nil),
+    "Garbage",
+    count_by_identifier[nil],
+    100.0 * (count_by_identifier[nil].to_f / page.size.to_f),
+  ]
+  free_space = page.size - count_by_identifier.inject(0) { |sum,(k,v)| sum + v }
+  puts "  %s %-30s %8i %7.2f%%" % [
+    " ",
+    "Free",
+    free_space,
+    100.0 * (free_space.to_f / page.size.to_f),
+  ]
 
   puts
 end

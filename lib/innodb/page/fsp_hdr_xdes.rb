@@ -165,11 +165,12 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
     })
 
     each_xdes do |xdes|
+      state = xdes.state || "unused"
       yield({
         :offset => xdes.offset,
         :length => size_xdes_entry,
-        :name => :xdes,
-        :info => "Extent Descriptor",
+        :name => "xdes_#{state}".to_sym,
+        :info => "Extent Descriptor (#{state})",
       })
     end
 
