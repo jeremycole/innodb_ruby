@@ -2,6 +2,7 @@
 
 require "innodb/page/sys_rseg_header"
 require "innodb/page/sys_data_dictionary_header"
+require "innodb/page/sys_ibuf_header"
 
 # Another layer of indirection for pages of type SYS, as they have multiple
 # uses within InnoDB. We'll override the self.handle method and check the
@@ -9,6 +10,8 @@ require "innodb/page/sys_data_dictionary_header"
 class Innodb::Page::Sys < Innodb::Page
   def self.handle(page, space, buffer)
     case
+    when page.offset == 3
+      Innodb::Page::SysIbufHeader.new(space, buffer)
     when page.offset == 7
       Innodb::Page::SysDataDictionaryHeader.new(space, buffer)
     when space.rseg_page?(page.offset)

@@ -72,9 +72,9 @@ describe Innodb::Space do
   describe "#page" do
     it "reads and delegates pages correctly" do
       @space.page(0).should be_an_instance_of Innodb::Page::FspHdrXdes
-      @space.page(1).should be_an_instance_of Innodb::Page
+      @space.page(1).should be_an_instance_of Innodb::Page::IbufBitmap
       @space.page(2).should be_an_instance_of Innodb::Page::Inode
-      @space.page(3).should be_an_instance_of Innodb::Page
+      @space.page(3).should be_an_instance_of Innodb::Page::SysIbufHeader
       @space.page(4).should be_an_instance_of Innodb::Page::Index
       @space.page(5).should be_an_instance_of Innodb::Page::TrxSys
       @space.page(6).should be_an_instance_of Innodb::Page::SysRsegHeader

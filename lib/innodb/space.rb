@@ -149,15 +149,20 @@ class Innodb::Space
     pages_per_extent * page_size
   end
 
-  # The number of pages per FSP_HDR/XDES page. This is crudely mapped to the
-  # page size, and works for pages down to 1KiB.
-  def pages_per_xdes_page
+  # The number of pages per FSP_HDR/XDES/IBUF_BITMAP page. This is crudely
+  # mapped to the page size, and works for pages down to 1KiB.
+  def pages_per_bookkeeping_page
     page_size
   end
 
   # The FSP_HDR/XDES page which will contain the XDES entry for a given page.
   def xdes_page_for_page(page_number)
-    page_number - (page_number % pages_per_xdes_page)
+    page_number - (page_number % pages_per_bookkeeping_page)
+  end
+
+  # The IBUF_BITMAP page which will contain the bitmap entry for a given page.
+  def ibuf_bitmap_page_for_page(page_number)
+    page_number - (page_number % pages_per_bookkeeping_page) + 1
   end
 
   # The XDES entry offset for a given page within its FSP_HDR/XDES page's
@@ -370,7 +375,7 @@ class Innodb::Space
       return enum_for(:each_xdes_page_number)
     end
 
-    0.step(pages - 1, pages_per_xdes_page).each do |n|
+    0.step(pages - 1, pages_per_bookkeeping_page).each do |n|
       yield n
     end
   end
