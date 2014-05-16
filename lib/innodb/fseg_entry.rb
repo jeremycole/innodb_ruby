@@ -22,9 +22,15 @@ class Innodb::FsegEntry
   # Return an INODE entry which represents this file segment.
   def self.get_inode(space, cursor)
     address = cursor.name("address") { get_entry_address(cursor) }
-    page = space.page(address[:page_number])
-    if page.type == :INODE
-      page.inode_at(page.cursor(address[:offset]))
+    if address[:offset] == 0
+      return nil
     end
+
+    page = space.page(address[:page_number])
+    if page.type != :INODE
+      return nil
+    end
+
+    page.inode_at(page.cursor(address[:offset]))
   end
 end
