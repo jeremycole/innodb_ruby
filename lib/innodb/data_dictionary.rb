@@ -145,6 +145,7 @@ class Innodb::DataDictionary
     :UNIVERSAL => 4,
     :IBUF      => 8,
     :CORRUPT   => 16,
+    :FTS       => 32,
   }
 
   # A hash of INDEX_TYPE_FLAG keys by value.
