@@ -117,9 +117,9 @@ class Innodb::Xdes
     bitmap = xdes[:bitmap].enum_for(:each_byte)
 
     bitmap.each_with_index do |byte, byte_index|
-      (0..3).each_with_index do |page, page_index|
-        page_number = xdes[:start_page] + (byte_index * 4) + page_index
-        page_bits = ((byte >> (page * BITS_PER_PAGE)) & BITMAP_BV_ALL)
+      (0..3).each do |page_offset|
+        page_number = xdes[:start_page] + (byte_index * 4) + page_offset
+        page_bits = ((byte >> (page_offset * BITS_PER_PAGE)) & BITMAP_BV_ALL)
         page_status = {
           :free   => (page_bits & BITMAP_BV_FREE  != 0),
           :clean  => (page_bits & BITMAP_BV_CLEAN != 0),
