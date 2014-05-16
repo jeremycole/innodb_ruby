@@ -2,7 +2,7 @@
 
 class Innodb::Page::UndoLog < Innodb::Page
   def pos_undo_page_header
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   def size_undo_page_header

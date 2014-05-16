@@ -3,7 +3,7 @@
 class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
   # The position of the data dictionary header within the page.
   def pos_data_dictionary_header
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   # The size of the data dictionary header.

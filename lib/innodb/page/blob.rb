@@ -2,7 +2,7 @@
 
 class Innodb::Page::Blob < Innodb::Page
   def pos_blob_header
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   def size_blob_header

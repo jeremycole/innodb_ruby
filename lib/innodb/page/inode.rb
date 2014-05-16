@@ -9,7 +9,7 @@ class Innodb::Page::Inode < Innodb::Page
   # Return the byte offset of the list node, which immediately follows the
   # FIL header.
   def pos_list_entry
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   # Return the size of the list node.

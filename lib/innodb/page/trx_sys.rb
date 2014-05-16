@@ -12,7 +12,7 @@
 class Innodb::Page::TrxSys < Innodb::Page
   # The TRX_SYS header immediately follows the FIL header.
   def pos_trx_sys_header
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   def size_trx_sys_header

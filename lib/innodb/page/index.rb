@@ -73,7 +73,7 @@ class Innodb::Page::Index < Innodb::Page
   # Return the byte offset of the start of the "index" page header, which
   # immediately follows the "fil" header.
   def pos_index_header
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   # The size of the "index" header.

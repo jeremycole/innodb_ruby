@@ -60,7 +60,7 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
 
   # The FSP header immediately follows the FIL header.
   def pos_fsp_header
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   # The FSP header contains six 32-bit integers, one 64-bit integer, and 5

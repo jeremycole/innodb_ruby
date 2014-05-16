@@ -6,7 +6,7 @@ class Innodb::Page::SysRsegHeader < Innodb::Page
 
   # The position of the rollback segment header within the page.
   def pos_rseg_header
-    pos_fil_header + size_fil_header
+    pos_page_body
   end
 
   # The size of the rollback segment header.
