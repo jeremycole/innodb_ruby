@@ -1021,6 +1021,11 @@ The following options are supported:
   --help, -?
     Print this usage text.
 
+  --trace, -t
+    Enable tracing of all data read. Specify twice to enable even more
+    tracing (including reads during opening of the tablespace) which can
+    be quite noisy.
+
   --system-space-file, -s <file>
     Load the system tablespace file <file> (normally ibdata1).
 
@@ -1177,6 +1182,7 @@ Signal.trap("INT")  { exit }
 Signal.trap("PIPE") { exit }
 
 @options = OpenStruct.new
+@options.trace                  = 0
 @options.system_space_file      = nil
 @options.space_file             = nil
 @options.table_name             = nil
@@ -1207,7 +1213,7 @@ getopt.each do |opt, arg|
   when "--help"
     usage 0
   when "--trace"
-    BufferCursor.trace!
+    @options.trace += 1
   when "--system-space-file"
     @options.system_space_file = arg
   when "--space-file"
@@ -1235,6 +1241,10 @@ end
 
 if @options.system_space_file and @options.space_file
   usage 1, "Only one of system space or space file may be specified"
+end
+
+if @options.trace > 1
+  BufferCursor.trace!
 end
 
 innodb_system = nil
@@ -1301,6 +1311,10 @@ if [
   "index-level-summary",
 ].include?(mode) and !index.record_describer
   usage 1, "Record describer must be specified using -d/--describer"
+end
+
+if @options.trace > 0
+  BufferCursor.trace!
 end
 
 case mode
