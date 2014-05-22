@@ -229,6 +229,41 @@ class Innodb::DataDictionary
     system_space.data_dictionary_page.data_dictionary_header[:indexes]
   end
 
+  def data_dictionary_index_ids
+    if @data_dictionary_index_ids
+      return @data_dictionary_index_ids
+    end
+
+    @data_dictionary_index_ids = {}
+    data_dictionary_indexes.each do |table, indexes|
+      indexes.each do |index, root_page_number|
+        if root_page = system_space.page(root_page_number)
+          @data_dictionary_index_ids[root_page.index_id] = {
+            :table => table,
+            :index => index
+          }
+        end
+      end
+    end
+
+    @data_dictionary_index_ids
+  end
+
+  def data_dictionary_table?(table_name)
+    DATA_DICTIONARY_RECORD_DESCRIBERS.include?(table_name.to_sym)
+  end
+
+  def data_dictionary_index?(table_name, index_name)
+    return unless data_dictionary_table?(table_name)
+    DATA_DICTIONARY_RECORD_DESCRIBERS[table_name.to_sym].include?(index_name.to_sym)
+  end
+
+  def data_dictionary_index_describer(table_name, index_name)
+    return unless data_dictionary_index?(table_name, index_name)
+
+    DATA_DICTIONARY_RECORD_DESCRIBERS[table_name.to_sym][index_name.to_sym].new
+  end
+
   # Return an Innodb::Index object initialized to the
   # internal data dictionary index with an appropriate
   # record describer so that records can be recursed.
@@ -242,10 +277,9 @@ class Innodb::DataDictionary
     end
 
     # If we have a record describer for this index, load it.
-    record_describer = DATA_DICTIONARY_RECORD_DESCRIBERS[table_name] &&
-                       DATA_DICTIONARY_RECORD_DESCRIBERS[table_name][index_name]
+    record_describer = data_dictionary_index_describer(table_name, index_name)
 
-    system_space.index(index_root_page, record_describer.new)
+    system_space.index(index_root_page, record_describer)
   end
 
   # Iterate through all data dictionary indexes, yielding the
@@ -606,6 +640,10 @@ class Innodb::DataDictionary
   # Return an Innodb::RecordDescriber object describing records for a given
   # index by table name and index name.
   def record_describer_by_index_name(table_name, index_name)
+    if data_dictionary_index?(table_name, index_name)
+      return data_dictionary_index_describer(table_name, index_name)
+    end
+
     unless index = index_by_name(table_name, index_name)
       raise "Index #{index_name} for table #{table_name} not found"
     end
@@ -633,6 +671,10 @@ class Innodb::DataDictionary
   # Return an Innodb::RecordDescriber object describing the records
   # in a given index by index ID.
   def record_describer_by_index_id(index_id)
+    if dd_index = data_dictionary_index_ids[index_id]
+      return data_dictionary_index_describer(dd_index[:table], dd_index[:index])
+    end
+
     unless index = index_by_id(index_id)
       raise "Index #{index_id} not found"
     end

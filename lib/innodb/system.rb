@@ -177,7 +177,12 @@ class Innodb::System
 
   # Return an array of the table name and index name given an index ID.
   def table_and_index_name_by_id(index_id)
-    if index_record = data_dictionary.index_by_id(index_id)
+    if dd_index = data_dictionary.data_dictionary_index_ids[index_id]
+      # This is a data dictionary index, which won't be found in the data
+      # dictionary itself.
+      [dd_index[:table], dd_index[:index]]
+    elsif index_record = data_dictionary.index_by_id(index_id)
+      # This is a system or user index.
       [table_name_by_id(index_record["TABLE_ID"]), index_record["NAME"]]
     end
   end
