@@ -250,49 +250,49 @@ class BufferCursor
   def get_uint8(position=nil)
     seek(position)
     data = read_and_advance(1)
-    BinData::Uint8.read(data)
+    BinData::Uint8.read(data).to_i
   end
 
   # Read a big-endian unsigned 16-bit integer.
   def get_uint16(position=nil)
     seek(position)
     data = read_and_advance(2)
-    BinData::Uint16be.read(data)
+    BinData::Uint16be.read(data).to_i
   end
 
   # Read a big-endian signed 16-bit integer.
   def get_sint16(position=nil)
     seek(position)
     data = read_and_advance(2)
-    BinData::Int16be.read(data)
+    BinData::Int16be.read(data).to_i
   end
 
   # Read a big-endian unsigned 24-bit integer.
   def get_uint24(position=nil)
     seek(position)
     data = read_and_advance(3)
-    BinData::Uint24be.read(data)
+    BinData::Uint24be.read(data).to_i
   end
 
   # Read a big-endian unsigned 32-bit integer.
   def get_uint32(position=nil)
     seek(position)
     data = read_and_advance(4)
-    BinData::Uint32be.read(data)
+    BinData::Uint32be.read(data).to_i
   end
 
   # Read a big-endian unsigned 48-bit integer.
   def get_uint48(position=nil)
     seek(position)
     data = read_and_advance(6)
-    BinData::Uint48be.read(data)
+    BinData::Uint48be.read(data).to_i
   end
 
   # Read a big-endian unsigned 64-bit integer.
   def get_uint64(position=nil)
     seek(position)
     data = read_and_advance(8)
-    BinData::Uint64be.read(data)
+    BinData::Uint64be.read(data).to_i
   end
 
   # Read a big-endian unsigned integer given its size in bytes.
