@@ -4,7 +4,7 @@ require 'spec_helper'
 
 describe Innodb::DataDictionary do
   before :all do
-    @system = Innodb::System.new("spec/data/sakila/ibdata1")
+    @system = Innodb::System.new("spec/data/sakila/compact/ibdata1")
     @dict = @system.data_dictionary
   end
 

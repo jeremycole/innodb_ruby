@@ -4,7 +4,7 @@ require 'spec_helper'
 
 describe Innodb::System do
   before :all do
-    @system = Innodb::System.new("spec/data/sakila/ibdata1")
+    @system = Innodb::System.new("spec/data/sakila/compact/ibdata1")
   end
 
   describe "#system_space" do
@@ -19,8 +19,8 @@ describe Innodb::System do
 
   describe "#add_space" do
     it "adds a space to the system" do
-      sys = Innodb::System.new("spec/data/sakila/ibdata1")
-      space = Innodb::Space.new("spec/data/sakila/sakila/film.ibd")
+      sys = Innodb::System.new("spec/data/sakila/compact/ibdata1")
+      space = Innodb::Space.new("spec/data/sakila/compact/sakila/film.ibd")
       sys.add_space(space)
 
       sys.spaces.keys.include?(7).should be_true
@@ -29,8 +29,8 @@ describe Innodb::System do
 
   describe "#add_space_file" do
     it "adds a space to the system" do
-      sys = Innodb::System.new("spec/data/sakila/ibdata1")
-      sys.add_space_file("spec/data/sakila/sakila/film.ibd")
+      sys = Innodb::System.new("spec/data/sakila/compact/ibdata1")
+      sys.add_space_file("spec/data/sakila/compact/sakila/film.ibd")
 
       sys.spaces.keys.include?(7).should be_true
     end
@@ -38,7 +38,7 @@ describe Innodb::System do
 
   describe "#add_table" do
     it "adds a space to the system" do
-      sys = Innodb::System.new("spec/data/sakila/ibdata1")
+      sys = Innodb::System.new("spec/data/sakila/compact/ibdata1")
       sys.add_table("sakila/film")
 
       sys.spaces.keys.include?(7).should be_true
@@ -54,7 +54,7 @@ describe Innodb::System do
 
   describe "#space" do
     it "returns an Innodb::Space" do
-      sys = Innodb::System.new("spec/data/sakila/ibdata1")
+      sys = Innodb::System.new("spec/data/sakila/compact/ibdata1")
       sys.add_table("sakila/film")
       sys.space(7).should be_an_instance_of Innodb::Space
     end
@@ -62,7 +62,7 @@ describe Innodb::System do
 
   describe "#space_by_table_name" do
     it "returns an Innodb::Space" do
-      sys = Innodb::System.new("spec/data/sakila/ibdata1")
+      sys = Innodb::System.new("spec/data/sakila/compact/ibdata1")
       sys.add_table("sakila/film")
       sys.space_by_table_name("sakila/film").should be_an_instance_of Innodb::Space
     end

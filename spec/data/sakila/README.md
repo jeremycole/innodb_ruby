@@ -1,5 +1,13 @@
 This is the "sakila" database as retrieved from [the MySQL website](http://dev.mysql.com/doc/index-other.html) and executed against MySQL 5.5.35 using InnoDB "file per table" mode. All non-InnoDB data has been removed, but all InnoDB files are kept and should be internally consistent.
 
+# Versions #
+
+The following versions of the same database are present:
+
+ * compact: The "compact" index format, generated on MySQL 5.6.
+ * redundant: The "redundant" index format, generated on MySQL 5.6.
+ * 5.0: Fully generated on MySQL 5.0.
+
 # License #
 
 At the time of retrieval, within `sakila-schema.sql` the following copyright notice appeared:
