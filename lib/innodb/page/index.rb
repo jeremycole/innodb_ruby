@@ -287,7 +287,7 @@ class Innodb::Page::Index < Innodb::Page
         #   13 bits for heap_number
         bits1 = c.name("bits1") { c.get_uint16 }
         header[:type] = RECORD_TYPES[bits1 & 0x07]
-        header[:heap_number] = (bits1 & 0xf8) >> 3
+        header[:heap_number] = (bits1 & 0xfff8) >> 3
       when :redundant
         # The "next" pointer is an absolute offset within the page.
         header[:next] = c.name("next") { c.get_uint16 }
