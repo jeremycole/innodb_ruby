@@ -83,18 +83,24 @@ class Innodb::Space
   def raw_fsp_header_flags
     # A simple sanity check. The FIL header should be initialized in page 0,
     # to offset 0 and page type :FSP_HDR (8).
-    page_offset = BinData::Uint32be.read(read_at_offset(4, 4))
-    page_type   = BinData::Uint16be.read(read_at_offset(24, 2))
+    page_offset = BinData::Uint32be.read(read_at_offset(4, 4)).to_i
+    page_type   = BinData::Uint16be.read(read_at_offset(24, 2)).to_i
     unless page_offset == 0 && Innodb::Page::PAGE_TYPE_BY_VALUE[page_type] == :FSP_HDR
-      raise "Something is very wrong; Page 0 does not seem to be type FSP_HDR"
+      raise "Something is very wrong; Page 0 does not seem to be type FSP_HDR; got page type %i but expected %i" % [
+        page_type,
+        Innodb::Page::PAGE_TYPE[:FSP_HDR][:value],
+      ]
     end
 
     # Another sanity check. The Space ID should be the same in both the FIL
     # and FSP headers.
-    fil_space = BinData::Uint32be.read(read_at_offset(34, 4))
-    fsp_space = BinData::Uint32be.read(read_at_offset(38, 4))
+    fil_space = BinData::Uint32be.read(read_at_offset(34, 4)).to_i
+    fsp_space = BinData::Uint32be.read(read_at_offset(38, 4)).to_i
     unless fil_space == fsp_space
-      raise "Something is very wrong; FIL and FSP header Space IDs don't match"
+      raise "Something is very wrong; FIL and FSP header Space IDs don't match: FIL is %i but FSP is %i" % [
+        fil_space,
+        fsp_space,
+      ]
     end
 
     # Well, we're as sure as we can be. Read the flags field and decode it.
