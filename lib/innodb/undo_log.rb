@@ -20,8 +20,8 @@ class Innodb::UndoLog
     @header ||= page.cursor(@position).name("header") do |c|
       xid_flag = nil
       {
-        :trx_id => c.name("trx_id") { c.get_hex(8) },
-        :trx_no => c.name("trx_no") { c.get_hex(8) },
+        :trx_id => c.name("trx_id") { c.get_uint64 },
+        :trx_no => c.name("trx_no") { c.get_uint64 },
         :delete_mark_flag => c.name("delete_mark_flag") { (c.get_uint16 != 0) },
         :log_start_offset => c.name("log_start_offset") { c.get_uint16 },
         :xid_flag => c.name("xid_flag") { xid_flag = (c.get_uint8 != 0) },

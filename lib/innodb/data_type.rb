@@ -331,7 +331,7 @@ class Innodb::DataType
     end
 
     def read(c)
-      c.name("transaction_id") { c.get_hex(6) }
+      c.name("transaction_id") { c.get_uint48 }
     end
   end
 

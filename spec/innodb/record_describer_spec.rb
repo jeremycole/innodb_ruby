@@ -57,7 +57,7 @@ describe Innodb::RecordDescriber do
       end
 
       it "#transaction_id" do
-        @rec.transaction_id.should eql "000000000901"
+        @rec.transaction_id.should eql 2305
       end
 
       it "#roll_pointer" do
