@@ -756,7 +756,7 @@ def page_account(innodb_system, space, page_number)
   end
 end
 
-def page_directory_summary(page_number)
+def page_directory_summary(space, page_number)
   page = space.page(page_number)
   if page.type != :INDEX
     usage 1, "Page must be an index page"
@@ -1380,7 +1380,7 @@ when "page-dump"
 when "page-account"
   page_account(innodb_system, space, @options.page)
 when "page-directory-summary"
-  page_directory_summary(@options.page)
+  page_directory_summary(space, @options.page)
 when "page-illustrate"
   page_illustrate(space.page(@options.page))
 else
