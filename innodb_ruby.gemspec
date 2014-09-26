@@ -28,6 +28,7 @@ Gem::Specification.new do |s|
     'lib/innodb/history.rb',
     'lib/innodb/history_list.rb',
     'lib/innodb/ibuf_bitmap.rb',
+    'lib/innodb/ibuf_index.rb',
     'lib/innodb/index.rb',
     'lib/innodb/inode.rb',
     'lib/innodb/list.rb',
