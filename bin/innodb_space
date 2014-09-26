@@ -756,8 +756,7 @@ def page_account(innodb_system, space, page_number)
   end
 end
 
-def page_directory_summary(space, page_number)
-  page = space.page(page_number)
+def page_directory_summary(space, page)
   if page.type != :INDEX
     usage 1, "Page must be an index page"
   end
@@ -782,6 +781,16 @@ def page_directory_summary(space, page_number)
       record.header[:n_owned],
       key,
     ]
+  end
+end
+
+def page_records(space, page)
+  page.each_record do |record|
+    puts "Record %i: %s" % [
+      record.offset,
+      record.string,
+    ]
+    puts if record.header[:type] == :conventional
   end
 end
 
@@ -857,6 +866,38 @@ def page_illustrate(page)
   ]
 
   puts
+end
+
+def record_dump(page, record_offset)
+  unless record = page.record(record_offset)
+    raise "Record at offset #{record_offset} not found"
+  end
+
+  record.dump
+end
+
+def record_history(page, record_offset)
+  unless page.leaf?
+    raise "Record is not located on a leaf page; no history available"
+  end
+
+  unless record = page.record(record_offset)
+    raise "Record at offset #{record_offset} not found"
+  end
+
+  puts "%-14s%-20s%s" % [
+    "Transaction",
+    "Type",
+    "Undo record",
+  ]
+
+  record.each_undo_record do |undo|
+    puts "%-14s%-20s%s" % [
+      undo.trx_id || "(n/a)",
+      undo.header[:type],
+      undo.string,
+    ]
+  end
 end
 
 def index_fseg_lists(index, fseg_name)
@@ -1170,8 +1211,19 @@ The following modes are supported:
     Summarize the record contents of the page directory in a page. If a record
     describer is available, the key of each record will be printed.
 
+  page-records
+    Summarize all records within a page.
+
   page-illustrate
     Produce an illustration of the contents of a page.
+
+  record-dump
+    Dump a detailed description of a record and the data it contains. A record
+    offset must be provided with -R/--record.
+
+  record-history
+    Summarize the history (undo logs) for a record. A record offset must be
+    provided with -R/--record.
 
 END_OF_USAGE
 
@@ -1188,6 +1240,7 @@ Signal.trap("PIPE") { exit }
 @options.table_name             = nil
 @options.index_name             = nil
 @options.page                   = nil
+@options.record                 = nil
 @options.level                  = nil
 @options.list                   = nil
 @options.describer              = nil
@@ -1200,6 +1253,7 @@ getopt_options = [
   [ "--table-name",             "-T",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--index-name",             "-I",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--page",                   "-p",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--record",                 "-R",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--level",                  "-l",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--list",                   "-L",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--require",                "-r",     GetoptLong::REQUIRED_ARGUMENT ],
@@ -1224,6 +1278,8 @@ getopt.each do |opt, arg|
     @options.index_name = arg
   when "--page"
     @options.page = arg.to_i
+  when "--record"
+    @options.record = arg.to_i
   when "--level"
     @options.level = arg.to_i
   when "--list"
@@ -1247,16 +1303,23 @@ if @options.trace > 1
   BufferCursor.trace!
 end
 
+# A few globals that we'll try to populate from the command-line arguments.
 innodb_system = nil
+space = nil
+index = nil
+page = nil
+
 if @options.system_space_file
   innodb_system = Innodb::System.new(@options.system_space_file)
 end
 
-space = innodb_system ? innodb_system.system_space : nil
 if innodb_system and @options.table_name
-  space = innodb_system.space_by_table_name(@options.table_name)
+  table_tablespace = innodb_system.space_by_table_name(@options.table_name)
+  space = table_tablespace || innodb_system.system_space
 elsif @options.space_file
   space = Innodb::Space.new(@options.space_file)
+else
+  space = innodb_system.system_space
 end
 
 if @options.describer
@@ -1267,9 +1330,13 @@ if @options.describer
   space.record_describer = describer.new
 end
 
-index = nil
 if innodb_system and @options.table_name and @options.index_name
   index = innodb_system.index_by_name(@options.table_name, @options.index_name)
+  if @options.page
+    page = space.page(@options.page)
+  else
+    page = index.root
+  end
 elsif @options.page
   if page = space.page(@options.page) and page.type == :INDEX and page.root?
     index = space.index(@options.page)
@@ -1296,8 +1363,12 @@ if /^index-/.match(mode) and !index
   usage 1, "Index must be specified using a combination of either -f/--space-file and -p/--page or -s/--system-space-file, -T/--table-name, and -I/--index-name"
 end
 
-if /^page-/.match(mode) and !@options.page
+if /^page-/.match(mode) and !page
   usage 1, "Page number must be specified using -p/--page"
+end
+
+if /^record-/.match(mode) and !@options.record
+  usage 1, "Record offset must be specified using -R/--record"
 end
 
 if /-list-iterate$/.match(mode) and !@options.list
@@ -1376,13 +1447,19 @@ when "index-fseg-leaf-frag-pages"
 when "index-fseg-internal-frag-pages"
   index_fseg_frag_pages(index, :internal)
 when "page-dump"
-  space.page(@options.page).dump
+  page.dump
 when "page-account"
   page_account(innodb_system, space, @options.page)
 when "page-directory-summary"
-  page_directory_summary(space, @options.page)
+  page_directory_summary(space, page)
+when "page-records"
+  page_records(space, page)
 when "page-illustrate"
-  page_illustrate(space.page(@options.page))
+  page_illustrate(page)
+when "record-dump"
+  record_dump(page, @options.record)
+when "record-history"
+  record_history(page, @options.record)
 else
   usage 1, "Unknown mode: #{mode}"
 end

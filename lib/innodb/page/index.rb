@@ -253,6 +253,11 @@ class Innodb::Page::Index < Innodb::Page
     self.prev.nil? && self.next.nil?
   end
 
+  # A helper function to identify leaf index pages.
+  def leaf?
+    level == 0
+  end
+
   # A helper function to return the offset to the first free record.
   def garbage_offset
     page_header && page_header[:garbage_offset]
@@ -728,6 +733,12 @@ class Innodb::Page::Index < Innodb::Page
   # Return a RecordCursor starting at offset.
   def record_cursor(offset=:min, direction=:forward)
     RecordCursor.new(self, offset, direction)
+  end
+
+  def record_if_exists(offset)
+    each_record do |rec|
+      return rec if rec.offset == offset
+    end
   end
 
   # Return the minimum record on this page.

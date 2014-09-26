@@ -13,6 +13,30 @@ class Innodb::Record
     record[:header]
   end
 
+  def next
+    header[:next]
+  end
+
+  def type
+    header[:type]
+  end
+
+  def heap_number
+    header[:heap_number]
+  end
+
+  def n_owned
+    header[:n_owned]
+  end
+
+  def deleted?
+    header[:deleted]
+  end
+
+  def min_rec?
+    header[:min_rec]
+  end
+
   def offset
     record[:offset]
   end
@@ -50,6 +74,8 @@ class Innodb::Record
   end
 
   def undo
+    return nil unless roll_pointer
+
     if innodb_system = @page.space.innodb_system
       undo_space = innodb_system.system_space
       if undo_page = undo_space.page(roll_pointer[:undo_log][:page])
@@ -121,5 +147,54 @@ class Innodb::Record
     end
 
     return 0
+  end
+
+  def dump
+    puts "Record at offset %i" % offset
+    puts
+
+    puts "Header:"
+    puts "  %-20s: %i" % ["Next record offset", header[:next]]
+    puts "  %-20s: %i" % ["Heap number", header[:heap_number]]
+    puts "  %-20s: %s" % ["Type", header[:type]]
+    puts "  %-20s: %s" % ["Deleted", header[:deleted]]
+    puts "  %-20s: %s" % ["Length", header[:length]]
+    puts
+
+    if page.leaf?
+      puts "System fields:"
+      puts "  Transaction ID: %s" % transaction_id
+      puts "  Roll Pointer:"
+      puts "    Undo Log: page %i, offset %i" % [
+        roll_pointer[:undo_log][:page],
+        roll_pointer[:undo_log][:offset],
+      ]
+      puts "    Rollback Segment ID: %i" % roll_pointer[:rseg_id]
+      puts "    Insert: %s" % roll_pointer[:is_insert]
+      puts
+    end
+
+    puts "Key fields:"
+    key.each do |field|
+      puts "  %s: %s" % [
+        field[:name],
+        field[:value].inspect,
+      ]
+    end
+    puts
+
+    if page.leaf?
+      puts "Non-key fields:"
+      row.each do |field|
+        puts "  %s: %s" % [
+          field[:name],
+          field[:value].inspect,
+        ]
+      end
+      puts
+    else
+      puts "Child page number: %i" % child_page_number
+      puts
+    end
   end
 end
