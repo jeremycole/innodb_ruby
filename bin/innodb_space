@@ -1031,7 +1031,7 @@ def index_level_summary(index, level)
       page.record_space,
       page.free_space,
       page.records,
-      page.first_record.key_string,
+      page.min_record.key_string,
     ]
   end
 end
@@ -1373,6 +1373,10 @@ end
 
 if /-list-iterate$/.match(mode) and !@options.list
   usage 1, "List name must be specified using -L/--list"
+end
+
+if /-level-/.match(mode) and !@options.level
+  usage 1, "Level must be specified using -l/--level"
 end
 
 if [
