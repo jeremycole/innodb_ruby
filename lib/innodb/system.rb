@@ -175,6 +175,11 @@ class Innodb::System
     end
   end
 
+  # Return the clustered index name given a table name.
+  def clustered_index_by_table_name(table_name)
+    data_dictionary.clustered_index_name_by_table_name(table_name)
+  end
+
   # Return an array of the table name and index name given an index ID.
   def table_and_index_name_by_id(index_id)
     if dd_index = data_dictionary.data_dictionary_index_ids[index_id]
@@ -196,6 +201,13 @@ class Innodb::System
     index = index_space.index(index_record["PAGE_NO"], describer)
 
     index
+  end
+
+  # Return the clustered index given a table ID.
+  def clustered_index_by_table_id(table_id)
+    if table_name = table_name_by_id(table_id)
+      index_by_name(table_name, clustered_index_by_table_name(table_name))
+    end
   end
 
   def history

@@ -205,6 +205,14 @@ class Innodb::UndoRecord
     undo_record[:key]
   end
 
+  def page
+    undo_record[:page]
+  end
+
+  def offset
+    undo_record[:offset]
+  end
+
   def key_string
     key && key.map { |r| "%s=%s" % [r[:name], r[:value].inspect] }.join(", ")
   end
@@ -254,6 +262,46 @@ class Innodb::UndoRecord
     end
 
     older_undo_record
+  end
+
+  def dump
+    puts "Undo record at offset %i" % offset
+    puts
+
+    puts "Header:"
+    puts "  %-25s: %i" % ["Previous record offset", header[:prev]]
+    puts "  %-25s: %i" % ["Next record offset", header[:next]]
+    puts "  %-25s: %s" % ["Type", header[:type]]
+    puts
+
+    puts "System fields:"
+    puts "  Transaction ID: %s" % trx_id
+    puts "  Roll Pointer:"
+    puts "    Undo Log: page %i, offset %i" % [
+      roll_ptr[:undo_log][:page],
+      roll_ptr[:undo_log][:offset],
+    ]
+    puts "    Rollback Segment ID: %i" % roll_ptr[:rseg_id]
+    puts
+
+    puts "Key fields:"
+    key.each do |field|
+      puts "  %s: %s" % [
+        field[:name],
+        field[:value].inspect,
+      ]
+    end
+    puts
+
+    puts "Non-key fields:"
+    row.each do |field|
+      next if !field
+      puts "  %s: %s" % [
+        field[:name],
+        field[:value].inspect,
+      ]
+    end
+    puts
   end
 
 end

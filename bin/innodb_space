@@ -1036,6 +1036,39 @@ def index_level_summary(index, level)
   end
 end
 
+def undo_history_summary(innodb_system)
+  history = innodb_system.history.each_history_list
+  history_list = history.select { |history| history.list.length > 0 }
+
+  puts "%-8s%-8s%-14s%-20s%s" % [
+    "Page",
+    "Offset",
+    "Transaction",
+    "Type",
+    "Table",
+  ]
+
+  history_list.each do |history|
+    history.each_undo_record do |undo|
+      table_name = innodb_system.table_name_by_id(undo.table_id)
+      puts "%-8s%-8s%-14s%-20s%s" % [
+        undo.page,
+        undo.offset,
+        undo.trx_id,
+        undo.type,
+        table_name,
+      ]
+    end
+  end
+end
+
+def undo_record_dump(innodb_system, page, record_offset)
+  undo_record = Innodb::UndoRecord.new(page, record_offset)
+  index = innodb_system.clustered_index_by_table_id(undo_record.table_id)
+  undo_record.index_page = index.root
+  undo_record.new_subordinate(page, record_offset).dump
+end
+
 def usage(exit_code, message = nil)
   if message
     puts "Error: #{message}; see --help for usage information\n\n"
@@ -1224,6 +1257,13 @@ The following modes are supported:
   record-history
     Summarize the history (undo logs) for a record. A record offset must be
     provided with -R/--record.
+
+  undo-history-summary
+    Summarize all records in the history list (undo logs).
+
+  undo-record-dump
+    Dump a detailed description of an undo record and the data it contains.
+    A record offset must be provided with -R/--record.
 
 END_OF_USAGE
 
@@ -1464,6 +1504,10 @@ when "record-dump"
   record_dump(page, @options.record)
 when "record-history"
   record_history(page, @options.record)
+when "undo-history-summary"
+  undo_history_summary(innodb_system)
+when "undo-record-dump"
+  undo_record_dump(innodb_system, page, @options.record)
 else
   usage 1, "Unknown mode: #{mode}"
 end
