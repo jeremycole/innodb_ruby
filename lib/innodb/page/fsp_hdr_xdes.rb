@@ -52,7 +52,7 @@ class Innodb::Page::FspHdrXdes < Innodb::Page
       :compressed => compressed_page_size ? false : true,
       :page_size => compressed_page_size || system_page_size,
       :post_antelope => read_bits_at_offset(flags, 1, 0) == 1,
-      :atomic_blogs => read_bits_at_offset(flags, 1, 5) == 1,
+      :atomic_blobs => read_bits_at_offset(flags, 1, 5) == 1,
       :data_directory => read_bits_at_offset(flags, 1, 10) == 1,
       :value => flags,
     }
