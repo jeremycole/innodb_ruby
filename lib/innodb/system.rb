@@ -18,14 +18,28 @@ class Innodb::System
   # The space ID of the system space, always 0.
   SYSTEM_SPACE_ID = 0
 
-  def initialize(system_space_file)
+  def initialize(arg)
+    if arg.is_a?(Array) && arg.size > 1
+      data_filenames = arg
+    else
+      arg = arg.first if arg.is_a?(Array)
+      if File.directory?(arg)
+        data_filenames = Dir.glob(arg + "/ibdata?").sort
+        if data_filenames.empty?
+          raise "Couldn't find any ibdata files in #{arg}"
+        end
+      else
+        data_filenames = [arg]
+      end
+    end
+
     @spaces = {}
     @orphans = []
     @config = {
-      :datadir => File.dirname(system_space_file),
+      :datadir => File.dirname(data_filenames.first),
     }
 
-    add_space_file(system_space_file)
+    add_space_file(data_filenames)
 
     @data_dictionary = Innodb::DataDictionary.new(system_space)
   end
@@ -45,8 +59,8 @@ class Innodb::System
   end
 
   # Add a space by filename.
-  def add_space_file(space_file)
-    space = Innodb::Space.new(space_file)
+  def add_space_file(space_filenames)
+    space = Innodb::Space.new(space_filenames)
     space.innodb_system = self
     add_space(space)
   end

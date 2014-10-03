@@ -1309,9 +1309,9 @@ getopt.each do |opt, arg|
   when "--trace"
     @options.trace += 1
   when "--system-space-file"
-    @options.system_space_file = arg
+    @options.system_space_file = arg.split(",")
   when "--space-file"
-    @options.space_file = arg
+    @options.space_file = arg.split(",")
   when "--table-name"
     @options.table_name = arg
   when "--index-name"

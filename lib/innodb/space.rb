@@ -20,11 +20,39 @@ class Innodb::Space
     7 => :SYS,
   }
 
+  class DataFile
+    attr_reader :file
+    attr_reader :size
+    attr_reader :offset
+
+    def initialize(filename, offset)
+      @file = File.open(filename)
+      @size = @file.stat.size
+      @offset = offset
+    end
+
+    def name
+      prefix = ""
+      if File.extname(file.path) == ".ibd"
+        prefix = File.basename(File.dirname(file.path)) + "/"
+      end
+
+      prefix + File.basename(file.path)
+    end
+  end
+
   # Open a space file, optionally providing the page size to use. Pages
   # that aren't 16 KiB may not be supported well.
-  def initialize(file)
-    @file = File.open(file)
-    @size = @file.stat.size
+  def initialize(filenames)
+    filenames = [filenames] unless filenames.is_a?(Array)
+
+    @data_files = []
+    @size = 0
+    filenames.each do |filename|
+      file = DataFile.new(filename, @size)
+      @size += file.size
+      @data_files << file
+    end
 
     @system_page_size = fsp_flags[:system_page_size]
     @page_size        = fsp_flags[:page_size]
@@ -58,14 +86,7 @@ class Innodb::Space
   # to do anything which could instantiate a BufferCursor so that we can use
   # this method in cursor initialization.
   def name
-    return @name if @name
-
-    prefix = ""
-    if File.extname(@file.path) == ".ibd"
-      prefix = File.basename(File.dirname(@file.path)) + "/"
-    end
-
-    @name = prefix + File.basename(@file.path)
+    @name ||= @data_files.map { |f| f.name }.join(",")
   end
 
   def inspect
@@ -184,18 +205,25 @@ class Innodb::Space
     xdes_array[xdes_entry_for_page(page_number)]
   end
 
+  def data_file_for_offset(offset)
+    @data_files.each do |file|
+      return file if offset < file.size
+      offset -= file.size
+    end
+    nil
+  end
+
   # Get the raw byte buffer of size bytes at offset in the file.
   def read_at_offset(offset, size)
-    @file.seek(offset)
-    @file.read(size)
+    return nil unless offset < @size && (offset + size) <= @size
+    data_file = data_file_for_offset(offset)
+    data_file.file.seek(offset - data_file.offset)
+    data_file.file.read(size)
   end
 
   # Get the raw byte buffer for a specific page by page number.
   def page_data(page_number)
-    offset = page_number.to_i * page_size
-    return nil unless offset < @size
-    return nil unless (offset + page_size) <= @size
-    read_at_offset(offset, page_size)
+    read_at_offset(page_number * page_size, page_size)
   end
 
   # Get an Innodb::Page object for a specific page by page number.
