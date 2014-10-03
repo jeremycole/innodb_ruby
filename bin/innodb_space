@@ -1100,8 +1100,12 @@ The following options are supported:
     tracing (including reads during opening of the tablespace) which can
     be quite noisy.
 
-  --system-space-file, -s <file>
-    Load the system tablespace file <file> (normally ibdata1).
+  --system-space-file, -s <arg>
+    Load the system tablespace file or files <arg>: Either a single file e.g.
+    "ibdata1", a comma-delimited list of files e.g. "ibdata1,ibdata1", or a
+    directory name. If a directory name is provided, it will be scanned for all
+    files named "ibdata?" which will then be sorted alphabetically and used to
+    load the system tablespace.
 
   --table-name, -T <name>
     Use the table name <name>.
