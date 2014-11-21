@@ -504,6 +504,7 @@ def space_extents_illustrate(space)
       },
     ]
   end
+  total_pages = identifiers.values.reduce(:+)
 
   puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
 
@@ -516,21 +517,21 @@ def space_extents_illustrate(space)
     filled_block(1.0, nil),
     "System",
     count_by_identifier[nil],
-    100.0 * (count_by_identifier[nil].to_f / space.pages.to_f),
+    100.0 * (count_by_identifier[nil].to_f / total_pages.to_f),
   ]
   identifiers.sort.each do |identifier, description|
     puts "  %s %-60s %8i %7.2f%%" % [
       filled_block(1.0, identifier),
       description,
       count_by_identifier[identifier],
-      100.0 * (count_by_identifier[identifier].to_f / space.pages.to_f),
+      100.0 * (count_by_identifier[identifier].to_f / total_pages.to_f),
     ]
   end
   puts "  %s %-60s %8i %7.2f%%" % [
     filled_block(0.0, nil),
     "Free space",
     count_by_identifier[:free],
-    100.0 * (count_by_identifier[:free].to_f / space.pages.to_f),
+    100.0 * (count_by_identifier[:free].to_f / total_pages.to_f),
   ]
   puts
 end
