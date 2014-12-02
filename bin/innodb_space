@@ -504,7 +504,7 @@ def space_extents_illustrate(space)
       },
     ]
   end
-  total_pages = identifiers.values.reduce(:+)
+  total_pages = count_by_identifier.values.reduce(:+)
 
   puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
 
