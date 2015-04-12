@@ -43,6 +43,7 @@ Gem::Specification.new do |s|
     'lib/innodb/page/fsp_hdr_xdes.rb',
     'lib/innodb/page/ibuf_bitmap.rb',
     'lib/innodb/page/index.rb',
+    'lib/innodb/page/index_uncompressed.rb',
     'lib/innodb/page/index_compressed.rb',
     'lib/innodb/page/inode.rb',
     'lib/innodb/page/sys.rb',

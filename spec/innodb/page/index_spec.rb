@@ -16,7 +16,7 @@ describe Innodb::Page::Index do
 
   describe "#new" do
     it "returns an Innodb::Page::Index" do
-      @page.should be_an_instance_of Innodb::Page::Index
+      @page.should be_an_instance_of Innodb::Page::Index::Uncompressed
     end
 
     it "is an Innodb::Page" do
@@ -124,7 +124,7 @@ describe Innodb::Page::Index do
 
   describe "#record_cursor" do
     it "returns an Innodb::Page::Index::RecordCursor" do
-      @page.record_cursor.should be_an_instance_of Innodb::Page::Index::RecordCursor
+      @page.record_cursor.should be_an_instance_of Innodb::Page::Index::Uncompressed::RecordCursor
     end
   end
 end

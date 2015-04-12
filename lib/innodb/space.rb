@@ -76,6 +76,8 @@ class Innodb::Space
   # The size (in bytes) of each page in the space.
   attr_reader :page_size
 
+  attr_reader :compressed
+
   # The size (in bytes) of the space
   attr_reader :size
 
