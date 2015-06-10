@@ -492,15 +492,15 @@ end
 # filled block colored based on the index the page is part of. Print a legend
 # for the colors used afterwards.
 def space_extents_illustrate(space)
-  width = space.pages_per_extent
+  line_width = space.pages_per_extent
   puts
-  puts "%12s ╭%-#{width}s╮" % [ "Start Page", "─" * width ]
+  puts "%12s ╭%-#{line_width}s╮" % [ "Start Page", "─" * line_width ]
 
   identifiers = {}
   count_by_identifier = Hash.new(0)
 
   space.each_xdes do |entry|
-    puts "%12i │%-#{width}s│" % [
+    puts "%12i │%-#{line_width}s│" % [
       entry.xdes[:start_page],
       entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
         if page_number < space.pages
@@ -543,7 +543,7 @@ def space_extents_illustrate(space)
   end
   total_pages = count_by_identifier.values.reduce(:+)
 
-  puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
+  puts "%12s ╰%-#{line_width}s╯" % [ "", "─" * line_width ]
 
   puts
   puts "Legend (%s = 1 page):" % [filled_block(1.0, nil)]
@@ -614,7 +614,8 @@ end
 # filled block colored based on the index the page is part of. Print a legend
 # for the colors used afterwards.
 def space_extents_illustrate_svg(space)
-  width = space.pages_per_extent
+  line_width = space.pages_per_extent
+  block_size = @options.illustration_block_size
 
   puts "<?xml version=\"1.0\"?>"
   puts "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"
@@ -622,7 +623,6 @@ def space_extents_illustrate_svg(space)
   identifiers = {}
   count_by_identifier = Hash.new(0)
 
-  block_size = 16
   graphic_x = 48
   graphic_y = 16
 
@@ -760,6 +760,7 @@ end
 
 def space_lsn_age_illustrate(space)
   colors = ANSI_COLORS_HEATMAP
+  line_width = @options.illustration_line_width
 
   # Calculate the minimum and maximum LSN in the space. This is pretty
   # inefficient as we end up scanning all pages twice.
@@ -776,11 +777,11 @@ def space_lsn_age_illustrate(space)
   lsn_delta = lsn_max - lsn_min
 
   puts
-  puts "%12s ╭%-64s╮" % [ "Start Page", "─" * 64 ]
+  puts "%12s ╭%-#{line_width}s╮" % [ "Start Page", "─" * line_width ]
 
   start_page = 0
-  page_lsn.each_slice(64) do |slice|
-    puts "%12i │%-64s│" % [
+  page_lsn.each_slice(line_width) do |slice|
+    puts "%12i │%-#{line_width}s│" % [
       start_page,
       slice.inject("") { |line, lsn|
         if lsn
@@ -793,10 +794,10 @@ def space_lsn_age_illustrate(space)
         line
       },
     ]
-    start_page += 64
+    start_page += line_width
   end
 
-  puts "%12s ╰%-64s╯" % [ "", "─" * 64 ]
+  puts "%12s ╰%-#{line_width}s╯" % [ "", "─" * line_width ]
 
   lsn_legend = "<" + ("─" * (colors.size - 2)) + ">"
 
@@ -840,6 +841,8 @@ end
 
 def space_lsn_age_illustrate_svg(space)
   colors = RGBHEX_COLORS_HEATMAP
+  line_width = @options.illustration_line_width
+  block_size = @options.illustration_block_size
 
   puts "<?xml version=\"1.0\"?>"
   puts "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"
@@ -858,7 +861,6 @@ def space_lsn_age_illustrate_svg(space)
   end
   lsn_delta = lsn_max - lsn_min
 
-  block_size = 16
   graphic_x = 48
   graphic_y = 16
 
@@ -875,7 +877,7 @@ def space_lsn_age_illustrate_svg(space)
   }, "Page")
 
   start_page = 0
-  page_lsn.each_slice(64) do |slice|
+  page_lsn.each_slice(line_width) do |slice|
     block_x = 0
     slice.each do |lsn|
       rgbhex = ""
@@ -900,7 +902,7 @@ def space_lsn_age_illustrate_svg(space)
       "text-anchor" => "end",
     }, start_page)
     block_y += block_size
-    start_page += 64
+    start_page += line_width
   end
 
   puts svg("path", {
@@ -910,7 +912,7 @@ def space_lsn_age_illustrate_svg(space)
     "d" => svg_path_rounded_rect(
       graphic_x,
       graphic_y,
-      block_x,
+      line_width * block_size,
       block_y,
       4
     ),
@@ -1630,30 +1632,34 @@ Signal.trap("INT")  { exit }
 Signal.trap("PIPE") { exit }
 
 @options = OpenStruct.new
-@options.trace                  = 0
-@options.system_space_file      = nil
-@options.space_file             = nil
-@options.table_name             = nil
-@options.index_name             = nil
-@options.page                   = nil
-@options.record                 = nil
-@options.level                  = nil
-@options.list                   = nil
-@options.describer              = nil
+@options.trace                    = 0
+@options.system_space_file        = nil
+@options.space_file               = nil
+@options.table_name               = nil
+@options.index_name               = nil
+@options.page                     = nil
+@options.record                   = nil
+@options.level                    = nil
+@options.list                     = nil
+@options.describer                = nil
+@options.illustration_line_width  = 64
+@options.illustration_block_size  = 8
 
 getopt_options = [
-  [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
-  [ "--trace",                  "-t",     GetoptLong::NO_ARGUMENT ],
-  [ "--system-space-file",      "-s",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--space-file",             "-f",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--table-name",             "-T",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--index-name",             "-I",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--page",                   "-p",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--record",                 "-R",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--level",                  "-l",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--list",                   "-L",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--require",                "-r",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--describer",              "-d",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--help",                     "-?",     GetoptLong::NO_ARGUMENT ],
+  [ "--trace",                    "-t",     GetoptLong::NO_ARGUMENT ],
+  [ "--system-space-file",        "-s",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--space-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--table-name",               "-T",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--index-name",               "-I",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--page",                     "-p",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--record",                   "-R",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--level",                    "-l",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--list",                     "-L",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--require",                  "-r",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--describer",                "-d",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--illustration-line-width",            GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--illustration-block-size",            GetoptLong::REQUIRED_ARGUMENT ],
 ]
 
 getopt = GetoptLong.new(*getopt_options)
@@ -1684,6 +1690,10 @@ getopt.each do |opt, arg|
     require File.expand_path(arg)
   when "--describer"
     @options.describer = arg
+  when "--illustration-line-width"
+    @options.illustration_line_width = arg.to_i
+  when "--illustration-block-size"
+    @options.illustration_block_size = arg.to_i
   end
 end
 
