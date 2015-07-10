@@ -716,7 +716,7 @@ def space_extents_illustrate_svg(space)
   puts svg_extent_legend(
     graphic_x + block_x,
     graphic_y + block_y,
-    block_size,
+    block_size
   )
   block_y += block_size + 2
 
