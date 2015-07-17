@@ -74,7 +74,7 @@ def usage(exit_code, message = nil)
 
   print <<'END_OF_USAGE'
 
-Usage: innodb_log [-d] [-s] -f <log file> <mode>
+Usage: innodb_log [-d] [-l <lsn>] -f <log file> <mode>
 
   --help, -?
     Print this usage text.
