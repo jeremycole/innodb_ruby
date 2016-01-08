@@ -80,6 +80,10 @@ describe Innodb::Space do
       @space.page(6).should be_an_instance_of Innodb::Page::SysRsegHeader
       @space.page(7).should be_an_instance_of Innodb::Page::SysDataDictionaryHeader
     end
+
+    it "should return nil for a page that does not exist" do
+      @space.page(2000).should eql nil
+    end
   end
 
   describe "#fsp" do

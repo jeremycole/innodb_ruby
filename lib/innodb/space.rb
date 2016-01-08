@@ -228,7 +228,12 @@ class Innodb::Space
 
   # Get an Innodb::Page object for a specific page by page number.
   def page(page_number)
-    Innodb::Page.parse(self, page_data(page_number))
+    data = page_data(page_number)
+    if data
+      Innodb::Page.parse(self, data)
+    else
+      nil
+    end
   end
 
   # Determine whether this space looks like a system space. If the initial

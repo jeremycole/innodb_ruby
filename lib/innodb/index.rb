@@ -28,7 +28,8 @@ class Innodb::Index
   end
 
   def page(page_number)
-    page = @space.page(page_number)
+    page = @space.page(page_number) or
+      raise "Page #{page_number} couldn't be read"
     page.record_describer = @record_describer
     page
   end
