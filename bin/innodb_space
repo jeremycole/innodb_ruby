@@ -1814,8 +1814,8 @@ when "space-summary"
 when "space-index-pages-summary"
   space_index_pages_summary(space, @options.page || 0)
 when "space-index-pages-free-plot"
-  name = File.basename(@options.space_file).sub(".ibd", "")
-  space_index_pages_free_plot(space, name, @options.page || 0)
+  file_name = space.name.sub(".ibd", "").sub(/[^a-zA-Z0-9_]/, "_")
+  space_index_pages_free_plot(space, file_name, @options.page || 0)
 when "space-page-type-regions"
   space_page_type_regions(space, @options.page || 0)
 when "space-page-type-summary"
