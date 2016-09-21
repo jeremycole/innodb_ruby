@@ -1015,6 +1015,38 @@ def page_account(innodb_system, space, page_number)
     page_type[:usage],
   ]
 
+  if page.corrupt?
+    puts "  Page appears to be corrupt."
+    puts "    Stored checksum is %d." % [page.checksum]
+    puts "    Calculated checksums:"
+    puts "      innodb %d" % [page.calculate_checksum]
+  end
+
+  if page.torn?
+    puts "  Page appears to be torn."
+    puts "    Full LSN from header is %d." % [page.lsn]
+    puts "    Low 32 bits of LSN from header is %d, trailer is %d." % [
+      page.lsn_low32_header,
+      page.lsn_low32_trailer,
+    ]
+  end
+
+  if page.misplaced?
+    puts "  Page appears to be misplaced."
+    if page.misplaced_offset?
+      puts "    Requested page %d but offset stored in page is %d." % [
+        page_number,
+        page.offset,
+      ]
+    end
+    if page.misplaced_space?
+      puts "    Space's ID %d does not match page's stored space ID %d." % [
+        page.space.space_id,
+        page.space_id,
+      ]
+    end
+  end
+
   xdes = space.xdes_for_page(page_number)
   puts "  Extent descriptor for pages %d-%d is at page %d, offset %d." % [
     xdes.start_page,

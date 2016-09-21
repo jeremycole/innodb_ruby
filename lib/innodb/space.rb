@@ -230,7 +230,7 @@ class Innodb::Space
   def page(page_number)
     data = page_data(page_number)
     if data
-      Innodb::Page.parse(self, data)
+      Innodb::Page.parse(self, data, page_number)
     else
       nil
     end
@@ -377,6 +377,28 @@ class Innodb::Space
         end
       end
     end
+  end
+
+  # Iterate through the page numbers in the doublewrite buffer.
+  def each_doublewrite_page_number
+    return nil unless system_space?
+
+    unless block_given?
+      return enum_for(:each_doublewrite_page_number)
+    end
+
+    trx_sys.doublewrite[:page_info][0][:page_number].each do |start_page|
+      (start_page...(start_page+pages_per_extent)).each do |page_number|
+        yield page_number
+      end
+    end
+  end
+
+  # Return true if a page is in the doublewrite buffer.
+  def doublewrite_page?(page_number)
+    return false unless system_space?
+    @doublewrite_pages ||= each_doublewrite_page_number.to_a
+    @doublewrite_pages.include?(page_number)
   end
 
   # Iterate through all pages in a space, returning the page number and an

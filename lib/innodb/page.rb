@@ -19,27 +19,27 @@ class Innodb::Page
   # extract the page type in order to avoid throwing away a generic
   # Innodb::Page object when parsing every specialized page, but this is
   # a bit cleaner, and we're not particularly performance sensitive.
-  def self.parse(space, buffer)
+  def self.parse(space, buffer, page_number=nil)
     # Create a page object as a generic page.
-    page = Innodb::Page.new(space, buffer)
+    page = Innodb::Page.new(space, buffer, page_number)
 
     # If there is a specialized class available for this page type, re-create
     # the page object using that specialized class.
     if specialized_class = SPECIALIZED_CLASSES[page.type]
-      page = specialized_class.handle(page, space, buffer)
+      page = specialized_class.handle(page, space, buffer, page_number)
     end
 
     page
   end
 
   # Allow the specialized class to do something that isn't 'new' with this page.
-  def self.handle(page, space, buffer)
-    self.new(space, buffer)
+  def self.handle(page, space, buffer, page_number=nil)
+    self.new(space, buffer, page_number)
   end
 
   # Initialize a page by passing in a buffer containing the raw page contents.
   # The buffer size should match the space's page size.
-  def initialize(space, buffer)
+  def initialize(space, buffer, page_number=nil)
     unless space && buffer
       raise "Page can't be initialized from nil space or buffer (space: #{space}, buffer: #{buffer})"
     end
@@ -50,6 +50,7 @@ class Innodb::Page
 
     @space  = space
     @buffer = buffer
+    @page_number = page_number
   end
 
   attr_reader :space
@@ -196,7 +197,7 @@ class Innodb::Page
 
   # Return the "fil" header from the page, which is common for all page types.
   def fil_header
-    @fil_header ||= cursor(pos_fil_header).name("fil") do |c|
+    @fil_header ||= cursor(pos_fil_header).name("fil_header") do |c|
       {
         :checksum   => c.name("checksum") { c.get_uint32 },
         :offset     => c.name("offset") { c.get_uint32 },
@@ -214,10 +215,26 @@ class Innodb::Page
     end
   end
 
+  # Return the "fil" trailer from the page, which is common for all page types.
+  def fil_trailer
+    @fil_trailer ||= cursor(pos_fil_trailer).name("fil_trailer") do |c|
+      {
+        :checksum  => c.name("checksum") { c.get_uint32 },
+        :lsn_low32 => c.name("lsn_low32") { c.get_uint32 },
+      }
+    end
+  end
+
   # A helper function to return the checksum from the "fil" header, for easier
   # access.
   def checksum
     fil_header[:checksum]
+  end
+
+  # A helper function to return the checksum from the "fil" trailer, for easier
+  # access.
+  def checksum_trailer
+    fil_trailer[:checksum]
   end
 
   # A helper function to return the page offset from the "fil" header, for
@@ -240,15 +257,33 @@ class Innodb::Page
     fil_header[:next]
   end
 
-  # A helper function to return the LSN, for easier access.
+  # A helper function to return the LSN from the page header, for easier access.
   def lsn
     fil_header[:lsn]
+  end
+
+  # A helper function to return the low 32 bits of the LSN from the page header
+  # for use in comparing to the low 32 bits stored in the trailer.
+  def lsn_low32_header
+    fil_header[:lsn] & 0xffffffff
+  end
+
+  # A helper function to return the low 32 bits of the LSN as stored in the page
+  # trailer.
+  def lsn_low32_trailer
+    fil_trailer[:lsn_low32]
   end
 
   # A helper function to return the page type from the "fil" header, for easier
   # access.
   def type
     fil_header[:type]
+  end
+
+  # A helper function to return the space ID from the "fil" header, for easier
+  # access.
+  def space_id
+    fil_header[:space_id]
   end
 
   # Calculate the checksum of the page using InnoDB's algorithm. Two sections
@@ -283,10 +318,44 @@ class Innodb::Page
     (c_partial_header + c_page_body) & Innodb::Checksum::MAX
   end
 
-  # Is the page corrupt? Calculate the checksum of the page and compare to
-  # the stored checksum; return true or false.
-  def corrupt?
+  # Is the page checksum incorrect? Calculate the checksum of the page and
+  # compare to the stored checksum; return true or false.
+  def checksum_mismatch?
     checksum != calculate_checksum
+  end
+
+  # Is the LSN stored in the header different from the one stored in the
+  # trailer?
+  def torn?
+    lsn_low32_header != lsn_low32_trailer
+  end
+
+  # Is the page in the doublewrite buffer?
+  def in_doublewrite_buffer?
+    space && space.system_space? && space.doublewrite_page?(offset)
+  end
+
+  # Is the space ID stored in the header different from that of the space
+  # provided when initializing this page?
+  def misplaced_space?
+    space && (space_id != space.space_id)
+  end
+
+  # Is the page number stored in the header different from the page number
+  # which was supposed to be read?
+  def misplaced_offset?
+    offset != @page_number
+  end
+
+  # Is the page misplaced in the wrong file or by offset in the file?
+  def misplaced?
+    !in_doublewrite_buffer? && (misplaced_space? || misplaced_offset?)
+  end
+
+  # Is the page corrupt, either due to data corruption, tearing, or in the
+  # wrong place?
+  def corrupt?
+    checksum_mismatch? || torn? || misplaced?
   end
 
   def each_region
@@ -315,7 +384,7 @@ class Innodb::Page
   # the page buffer, since it's very large and mostly not interesting.
   def inspect
     if fil_header
-      "#<%s: size=%i, space_id=%i, offset=%i, type=%s, prev=%s, next=%s>" % [
+      "#<%s: size=%i, space_id=%i, offset=%i, type=%s, prev=%s, next=%s, checksum_mismatch?=%s torn?=%s misplaced?=%s>" % [
         self.class,
         size,
         fil_header[:space_id],
@@ -323,6 +392,9 @@ class Innodb::Page
         fil_header[:type],
         fil_header[:prev] || "nil",
         fil_header[:next] || "nil",
+        checksum_mismatch?,
+        torn?,
+        misplaced?,
       ]
     else
       "#<#{self.class}>"
@@ -336,6 +408,10 @@ class Innodb::Page
 
     puts "fil header:"
     pp fil_header
+    puts
+
+    puts "fil trailer:"
+    pp fil_trailer
     puts
   end
 end
