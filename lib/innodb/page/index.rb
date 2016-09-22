@@ -644,6 +644,26 @@ class Innodb::Page::Index < Innodb::Page
     return record_is_directory_slot?(supremum)
   end
 
+  def each_directory_offset
+    unless block_given?
+      return enum_for(:each_directory_offset)
+    end
+
+    directory.each do |offset|
+      yield offset unless [pos_infimum, pos_supremum].include?(offset)
+    end
+  end
+
+  def each_directory_record
+    unless block_given?
+      return enum_for(:each_directory_record)
+    end
+
+    each_directory_offset do |offset|
+      yield record(offset)
+    end
+  end
+
   # A class for cursoring through records starting from an arbitrary point.
   class RecordCursor
     def initialize(page, offset, direction)

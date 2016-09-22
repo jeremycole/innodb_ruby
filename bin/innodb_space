@@ -1015,41 +1015,6 @@ def page_account(innodb_system, space, page_number)
     page_type[:usage],
   ]
 
-  if page.corrupt?
-    puts "  Page appears to be corrupt."
-    puts "    Stored checksum is %d, type %s." % [
-      page.checksum,
-      page.checksum_type ? page.checksum_type : "unknown",
-    ]
-    puts "    Calculated checksums:"
-    puts "      crc32  %d" % [page.checksum_crc32]
-    puts "      innodb %d" % [page.checksum_innodb]
-  end
-
-  if page.torn?
-    puts "  Page appears to be torn."
-    puts "    Full LSN from header is %d." % [page.lsn]
-    puts "    Low 32 bits of LSN from header is %d, trailer is %d." % [
-      page.lsn_low32_header,
-      page.lsn_low32_trailer,
-    ]
-  end
-
-  if page.misplaced?
-    puts "  Page appears to be misplaced."
-    if page.misplaced_offset?
-      puts "    Requested page %d but offset stored in page is %d." % [
-        page_number,
-        page.offset,
-      ]
-    end
-    if page.misplaced_space?
-      puts "    Space's ID %d does not match page's stored space ID %d." % [
-        page.space.space_id,
-        page.space_id,
-      ]
-    end
-  end
 
   xdes = space.xdes_for_page(page_number)
   puts "  Extent descriptor for pages %d-%d is at page %d, offset %d." % [
@@ -1134,6 +1099,175 @@ def page_account(innodb_system, space, page_number)
       end
     end
   end
+end
+
+def page_validate_index(page)
+  page_is_valid = true
+
+  print "Parsing all records in page... "
+  records = page.each_record.to_a
+  puts "done."
+
+  directory_offsets = page.each_directory_offset.to_a
+  record_offsets = records.map { |rec| rec.offset }
+
+  invalid_directory_entries =
+    directory_offsets.select { |n| ! record_offsets.include?(n) }
+
+  unless invalid_directory_entries.empty?
+    page_is_valid = false
+    puts "Invalid page directory entries (offsets not to valid records):"
+    invalid_directory_entries.each do |offset|
+      puts "  slot %d, offset %d" % [
+        page.offset_is_directory_slot?(offset),
+        offset,
+      ]
+    end
+  end
+
+  # Read all records corresponding to valid directory entries.
+  directory_records = directory_offsets.
+    select { |o| !invalid_directory_entries.include?(o) }.
+    map { |o| page.record(o) }
+
+  misordered_directory_entries = []
+  prev = nil
+  directory_records.each do |rec|
+    unless prev
+      prev = rec
+      next
+    end
+    if rec.compare_key(prev.key.map { |v| v[:value]}) == 1
+      page_is_valid = false
+      misordered_directory_entries << {
+        :slot => page.offset_is_directory_slot?(rec.offset),
+        :offset => rec.offset,
+        :key => rec.key_string,
+        :prev_key => prev.key_string,
+      }
+    end
+    prev = rec
+  end
+  unless misordered_directory_entries.empty?
+    puts "Misordered page directory entries (key < prev key):"
+    misordered_directory_entries.each do |entry|
+      puts "  slot %d, offset %d, key %s, prev key %s" % [
+        entry[:slot],
+        entry[:offset],
+        entry[:key],
+        entry[:prev_key],
+      ]
+    end
+  end
+
+  misordered_records = []
+  prev = nil
+  page.each_record do |rec|
+    unless prev
+      prev = rec
+      next
+    end
+    if rec.compare_key(prev.key.map { |v| v[:value]}) == 1
+      page_is_valid = false
+      misordered_records << {
+        :offset => rec.offset,
+        :key => rec.key_string,
+        :prev_key => prev.key_string,
+      }
+    end
+    prev = rec
+  end
+  unless misordered_records.empty?
+    puts "Misordered records in record list (key < prev key):"
+    misordered_records.each do |entry|
+      puts "  offset %d, key %s, prev key %s" % [
+        entry[:offset],
+        entry[:key],
+        entry[:prev_key],
+      ]
+    end
+  end
+
+  page_is_valid
+end
+
+
+def page_validate(innodb_system, space, page_number)
+  page_is_valid = true
+  puts "Validating page %d..." % [page_number]
+
+  print "Parsing page... "
+  page = space.page(page_number)
+  puts "done."
+
+  if page.corrupt?
+    page_is_valid = false
+    puts "Page appears to be corrupt:"
+    puts "  Stored checksums:"
+    puts "    header  %10d (0x%08x), type %s" % [
+      page.checksum,
+      page.checksum,
+      page.checksum_type ? page.checksum_type : "unknown",
+    ]
+    puts "    trailer %10d (0x%08x)" % [
+      page.checksum_trailer,
+      page.checksum_trailer,
+    ]
+    puts "  Calculated checksums:"
+    puts "    crc32  %10d (0x%08x)" % [
+      page.checksum_crc32,
+      page.checksum_crc32,
+    ]
+    puts "    innodb %10d (0x%08x)" % [
+      page.checksum_innodb,
+      page.checksum_innodb,
+    ]
+  end
+
+  if page.torn?
+    page_is_valid = false
+    puts "Page appears to be torn:"
+    puts "  Full LSN:"
+    puts "    header  %d (0x%016x)" % [
+      page.lsn,
+      page.lsn,
+    ]
+    puts "  Low 32 bits of LSN:"
+    puts "    header  %10d (0x%08x)" % [
+      page.lsn_low32_header,
+      page.lsn_low32_header,
+    ]
+    puts "    trailer %10d (0x%08x)" % [
+      page.lsn_low32_trailer,
+      page.lsn_low32_trailer,
+    ]
+  end
+
+  if page.misplaced?
+    page_is_valid = false
+    puts "Page appears to be misplaced:"
+    if page.misplaced_offset?
+      puts "  Requested page %d but offset stored in page is %d." % [
+        page_number,
+        page.offset,
+      ]
+    end
+    if page.misplaced_space?
+      puts "  Space's ID %d does not match page's stored space ID %d." % [
+        page.space.space_id,
+        page.space_id,
+      ]
+    end
+  end
+
+  if page.type == :INDEX && !page_validate_index(page)
+    page_is_valid = false
+  end
+
+  puts "Page %d appears to be %s!" % [
+    page_number,
+    page_is_valid ? "valid" : "corrupted",
+  ]
 end
 
 def page_directory_summary(space, page)
@@ -1634,6 +1768,9 @@ The following modes are supported:
   page-account
     Account for a page's usage in FSEGs.
 
+  page-validate
+    Validate the contents of a page.
+
   page-directory-summary
     Summarize the record contents of the page directory in a page. If a record
     describer is available, the key of each record will be printed.
@@ -1900,6 +2037,8 @@ when "page-dump"
   page.dump
 when "page-account"
   page_account(innodb_system, space, @options.page)
+when "page-validate"
+  page_validate(innodb_system, space, @options.page)
 when "page-directory-summary"
   page_directory_summary(space, page)
 when "page-records"
