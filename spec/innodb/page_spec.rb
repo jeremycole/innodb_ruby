@@ -139,9 +139,9 @@ describe Innodb::Page do
     end
   end
 
-  describe "#calculate_checksum" do
+  describe "#checksum_innodb" do
     it "calculates the right checksum" do
-      @page.calculate_checksum.should eql 2067631406
+      @page.checksum_innodb.should eql 2067631406
       @page.corrupt?.should eql false
     end
   end

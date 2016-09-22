@@ -101,6 +101,20 @@ class Innodb::Page
     4 + 4 + 4 + 4 + 8 + 2 + 8 + 4
   end
 
+  # The start of the checksummed portion of the file header.
+  def pos_partial_page_header
+    pos_fil_header + 4
+  end
+
+  # The size of the portion of the fil header that is included in the
+  # checksum. Exclude the following:
+  #   :checksum   (offset 4, size 4)
+  #   :flush_lsn  (offset 26, size 8)
+  #   :space_id   (offset 34, size 4)
+  def size_partial_page_header
+    size_fil_header - 4 - 8 - 4
+  end
+
   # Return the byte offset of the start of the "fil" trailer, which is at
   # the end of the page.
   def pos_fil_trailer
@@ -116,6 +130,11 @@ class Innodb::Page
   # header.
   def pos_page_body
     pos_fil_header + size_fil_header
+  end
+
+  # Return the size of the page body, excluding the header and trailer.
+  def size_page_body
+    size - size_fil_trailer - size_fil_header
   end
 
   # InnoDB Page Type constants from include/fil0fil.h.
@@ -286,42 +305,98 @@ class Innodb::Page
     fil_header[:space_id]
   end
 
-  # Calculate the checksum of the page using InnoDB's algorithm. Two sections
-  # of the page are checksummed separately, and then added together to produce
-  # the final checksum.
-  def calculate_checksum
+  # Iterate each byte of the FIL header.
+  def each_page_header_byte_as_uint8
+    unless block_given?
+      return enum_for(:each_page_header_byte_as_uint8)
+    end
+
+    cursor(pos_partial_page_header).
+      each_byte_as_uint8(size_partial_page_header) do |byte|
+      yield byte
+    end
+  end
+
+  # Iterate each byte of the page body, except for the FIL header and
+  # the FIL trailer.
+  def each_page_body_byte_as_uint8
+    unless block_given?
+      return enum_for(:each_page_body_byte_as_uint8)
+    end
+
+    cursor(pos_page_body).
+      each_byte_as_uint8(size_page_body) do |byte|
+      yield byte
+    end
+  end
+
+  # Calculate the checksum of the page using InnoDB's algorithm.
+  def checksum_innodb
     unless size == 16384
       raise "Checksum calculation is only supported for 16 KiB pages"
     end
 
-    # Calculate the checksum of the FIL header, except for the following:
-    #   :checksum   (offset 4, size 4)
-    #   :flush_lsn  (offset 26, size 8)
-    #   :space_id   (offset 34, size 4)
-    c_partial_header =
-      Innodb::Checksum.fold_enumerator(
-        cursor(pos_fil_header + 4).each_byte_as_uint8(
-          size_fil_header - 4 - 8 - 4
-        )
-      )
+    @checksum_innodb ||= begin
+      # Calculate the InnoDB checksum of the page header.
+      c_partial_header = Innodb::Checksum.fold_enumerator(each_page_header_byte_as_uint8)
 
-    # Calculate the checksum of the page body, except for the FIL header and
-    # the FIL trailer.
-    c_page_body =
-      Innodb::Checksum.fold_enumerator(
-        cursor(pos_page_body).each_byte_as_uint8(
-          size - size_fil_trailer - size_fil_header
-        )
-      )
+      # Calculate the InnoDB checksum of the page body.
+      c_page_body = Innodb::Checksum.fold_enumerator(each_page_body_byte_as_uint8)
 
-    # Add the two checksums together, and mask the result back to 32 bits.
-    (c_partial_header + c_page_body) & Innodb::Checksum::MAX
+      # Add the two checksums together, and mask the result back to 32 bits.
+      (c_partial_header + c_page_body) & Innodb::Checksum::MAX
+    end
   end
 
-  # Is the page checksum incorrect? Calculate the checksum of the page and
-  # compare to the stored checksum; return true or false.
-  def checksum_mismatch?
-    checksum != calculate_checksum
+  def checksum_innodb?
+    checksum == checksum_innodb
+  end
+
+  # Calculate the checksum of the page using the CRC32c algorithm.
+  def checksum_crc32
+    unless size == 16384
+      raise "Checksum calculation is only supported for 16 KiB pages"
+    end
+
+    @checksum_crc32 ||= begin
+      # Calculate the CRC32c of the page header.
+      crc_partial_header = Digest::CRC32c.new
+      each_page_header_byte_as_uint8 do |byte|
+        crc_partial_header << byte.chr
+      end
+
+      # Calculate the CRC32c of the page body.
+      crc_page_body = Digest::CRC32c.new
+      each_page_body_byte_as_uint8 do |byte|
+        crc_page_body << byte.chr
+      end
+
+      # Bitwise XOR the two checksums together.
+      crc_partial_header.checksum ^ crc_page_body.checksum
+    end
+  end
+
+  def checksum_crc32?
+    checksum == checksum_crc32
+  end
+
+  # Is the page checksum correct?
+  def checksum_valid?
+    checksum_crc32? || checksum_innodb?
+  end
+
+  # Is the page checksum incorrect?
+  def checksum_invalid?
+    !checksum_valid?
+  end
+
+  def checksum_type
+    case
+    when checksum_crc32?
+      :crc32
+    when checksum_innodb?
+      :innodb
+    end
   end
 
   # Is the LSN stored in the header different from the one stored in the
@@ -355,7 +430,7 @@ class Innodb::Page
   # Is the page corrupt, either due to data corruption, tearing, or in the
   # wrong place?
   def corrupt?
-    checksum_mismatch? || torn? || misplaced?
+    checksum_invalid? || torn? || misplaced?
   end
 
   def each_region
@@ -384,7 +459,7 @@ class Innodb::Page
   # the page buffer, since it's very large and mostly not interesting.
   def inspect
     if fil_header
-      "#<%s: size=%i, space_id=%i, offset=%i, type=%s, prev=%s, next=%s, checksum_mismatch?=%s torn?=%s misplaced?=%s>" % [
+      "#<%s: size=%i, space_id=%i, offset=%i, type=%s, prev=%s, next=%s, checksum_valid?=%s (%s), torn?=%s, misplaced?=%s>" % [
         self.class,
         size,
         fil_header[:space_id],
@@ -392,7 +467,8 @@ class Innodb::Page
         fil_header[:type],
         fil_header[:prev] || "nil",
         fil_header[:next] || "nil",
-        checksum_mismatch?,
+        checksum_valid?,
+        checksum_type ? checksum_type : "unknown",
         torn?,
         misplaced?,
       ]

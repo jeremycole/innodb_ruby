@@ -16,6 +16,7 @@ end
 
 require "pp"
 require "enumerator"
+require "digest/crc32c"
 require "innodb/util/buffer_cursor"
 require "innodb/util/read_bits_at_offset"
 

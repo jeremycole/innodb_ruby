@@ -1017,9 +1017,13 @@ def page_account(innodb_system, space, page_number)
 
   if page.corrupt?
     puts "  Page appears to be corrupt."
-    puts "    Stored checksum is %d." % [page.checksum]
+    puts "    Stored checksum is %d, type %s." % [
+      page.checksum,
+      page.checksum_type ? page.checksum_type : "unknown",
+    ]
     puts "    Calculated checksums:"
-    puts "      innodb %d" % [page.calculate_checksum]
+    puts "      crc32  %d" % [page.checksum_crc32]
+    puts "      innodb %d" % [page.checksum_innodb]
   end
 
   if page.torn?
