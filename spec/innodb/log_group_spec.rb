@@ -18,7 +18,7 @@ describe Innodb::LogGroup do
     subject { @log_group.each_log }
 
     it "is an enumerator" do
-      is_enumerator?(subject).should be_true
+      is_enumerator?(subject).should be_truthy
     end
 
     it "returns an Innodb::Log" do
@@ -31,7 +31,7 @@ describe Innodb::LogGroup do
     subject { @log_group.each_block }
 
     it "is an enumerator" do
-      is_enumerator?(subject).should be_true
+      is_enumerator?(subject).should be_truthy
     end
 
     it "returns an Innodb::LogBlock" do

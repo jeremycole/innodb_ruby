@@ -23,7 +23,7 @@ describe Innodb::System do
       space = Innodb::Space.new("spec/data/sakila/compact/sakila/film.ibd")
       sys.add_space(space)
 
-      sys.spaces.keys.include?(7).should be_true
+      sys.spaces.keys.include?(7).should be_truthy
     end
   end
 
@@ -32,7 +32,7 @@ describe Innodb::System do
       sys = Innodb::System.new("spec/data/sakila/compact/ibdata1")
       sys.add_space_file("spec/data/sakila/compact/sakila/film.ibd")
 
-      sys.spaces.keys.include?(7).should be_true
+      sys.spaces.keys.include?(7).should be_truthy
     end
   end
 
@@ -41,7 +41,7 @@ describe Innodb::System do
       sys = Innodb::System.new("spec/data/sakila/compact/ibdata1")
       sys.add_table("sakila/film")
 
-      sys.spaces.keys.include?(7).should be_true
+      sys.spaces.keys.include?(7).should be_truthy
     end
   end
 
@@ -70,7 +70,7 @@ describe Innodb::System do
 
   describe "#each_table_name" do
     it "is an enumerator" do
-      is_enumerator?(@system.each_table_name).should be_true
+      is_enumerator?(@system.each_table_name).should be_truthy
     end
 
     it "iterates all tables in the system" do
@@ -102,7 +102,7 @@ describe Innodb::System do
 
   describe "#each_column_name_by_table_name" do
     it "is an enumerator" do
-      is_enumerator?(@system.each_column_name_by_table_name("sakila/film")).should be_true
+      is_enumerator?(@system.each_column_name_by_table_name("sakila/film")).should be_truthy
     end
 
     it "iterates all columns in the table" do
@@ -130,7 +130,7 @@ describe Innodb::System do
 
   describe "#each_index_name_by_table_name" do
     it "is an enumerator" do
-      is_enumerator?(@system.each_index_name_by_table_name("sakila/film")).should be_true
+      is_enumerator?(@system.each_index_name_by_table_name("sakila/film")).should be_truthy
     end
 
     it "iterates all indexes in the table" do
@@ -184,7 +184,7 @@ describe Innodb::System do
     end
 
     it "is an enumerator" do
-      is_enumerator?(@system.each_orphan).should be_true
+      is_enumerator?(@system.each_orphan).should be_truthy
     end
 
     it "returns the orphan space" do

@@ -65,7 +65,7 @@ describe Innodb::Page::Inode do
 
     it "yields only allocated inodes" do
       @page.each_allocated_inode do |inode|
-        inode.allocated?.should be_true
+        inode.allocated?.should be_truthy
       end
     end
   end

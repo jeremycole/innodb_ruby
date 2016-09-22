@@ -74,7 +74,7 @@ describe Innodb::Index do
       rec = @index.binary_search([5000])
       binary_compares = Innodb::Stats.get(:compare_key)
 
-      ((linear_compares.to_f / binary_compares.to_f) > 10).should be_true
+      ((linear_compares.to_f / binary_compares.to_f) > 10).should be_truthy
     end
 
     it "can find 200 random rows" do
@@ -137,7 +137,7 @@ describe Innodb::Index do
         previous = cursor.record
         100.times do
           current = cursor.record
-          (current.key[0][:value].to_i > previous.key[0][:value].to_i).should be_true
+          (current.key[0][:value].to_i > previous.key[0][:value].to_i).should be_truthy
           previous = current
         end
       end
@@ -148,7 +148,7 @@ describe Innodb::Index do
         previous = cursor.record
         100.times do
           current = cursor.record
-          (current.key[0][:value].to_i < previous.key[0][:value].to_i).should be_true
+          (current.key[0][:value].to_i < previous.key[0][:value].to_i).should be_truthy
           previous = current
         end
       end
@@ -197,7 +197,7 @@ describe Innodb::Index do
 
     describe "#each_record" do
       it "is an enumerator" do
-        is_enumerator?(@index.cursor.each_record).should be_true
+        is_enumerator?(@index.cursor.each_record).should be_truthy
       end
     end
   end

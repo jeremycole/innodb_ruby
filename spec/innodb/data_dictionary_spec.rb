@@ -43,43 +43,43 @@ describe Innodb::DataDictionary do
 
   describe "#each_data_dictionary_index_root_page_number" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_data_dictionary_index_root_page_number).should be_true
+      is_enumerator?(@dict.each_data_dictionary_index_root_page_number).should be_truthy
     end
   end
 
   describe "#each_data_dictionary_index" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_data_dictionary_index).should be_true
+      is_enumerator?(@dict.each_data_dictionary_index).should be_truthy
     end
   end
 
   describe "#each_record_from_data_dictionary_index" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_record_from_data_dictionary_index(:SYS_TABLES, :PRIMARY)).should be_true
+      is_enumerator?(@dict.each_record_from_data_dictionary_index(:SYS_TABLES, :PRIMARY)).should be_truthy
     end
   end
 
   describe "#each_table" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_table).should be_true
+      is_enumerator?(@dict.each_table).should be_truthy
     end
   end
 
   describe "#each_column" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_column).should be_true
+      is_enumerator?(@dict.each_column).should be_truthy
     end
   end
 
   describe "#each_index" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_index).should be_true
+      is_enumerator?(@dict.each_index).should be_truthy
     end
   end
 
   describe "#each_field" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_field).should be_true
+      is_enumerator?(@dict.each_field).should be_truthy
     end
   end
 
@@ -133,55 +133,55 @@ describe Innodb::DataDictionary do
 
   describe "#each_index_by_space_id" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_index_by_space_id(7)).should be_true
+      is_enumerator?(@dict.each_index_by_space_id(7)).should be_truthy
     end
   end
 
   describe "#each_index_by_table_id" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_index_by_table_id(19)).should be_true
+      is_enumerator?(@dict.each_index_by_table_id(19)).should be_truthy
     end
   end
 
   describe "#each_index_by_table_name" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_index_by_table_name("sakila/film")).should be_true
+      is_enumerator?(@dict.each_index_by_table_name("sakila/film")).should be_truthy
     end
   end
 
   describe "#each_field_by_index_id" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_field_by_index_id(27)).should be_true
+      is_enumerator?(@dict.each_field_by_index_id(27)).should be_truthy
     end
   end
 
   describe "#each_field_by_index_name" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_field_by_index_name("sakila/film", "PRIMARY")).should be_true
+      is_enumerator?(@dict.each_field_by_index_name("sakila/film", "PRIMARY")).should be_truthy
     end
   end
 
   describe "#each_column_by_table_id" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_column_by_table_id(19)).should be_true
+      is_enumerator?(@dict.each_column_by_table_id(19)).should be_truthy
     end
   end
 
   describe "#each_column_by_table_name" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_column_by_table_name("sakila/film")).should be_true
+      is_enumerator?(@dict.each_column_by_table_name("sakila/film")).should be_truthy
     end
   end
 
   describe "#each_column_in_index_by_name" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_column_in_index_by_name("sakila/film", "PRIMARY")).should be_true
+      is_enumerator?(@dict.each_column_in_index_by_name("sakila/film", "PRIMARY")).should be_truthy
     end
   end
 
   describe "#each_column_not_in_index_by_name" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_column_not_in_index_by_name("sakila/film", "PRIMARY")).should be_true
+      is_enumerator?(@dict.each_column_not_in_index_by_name("sakila/film", "PRIMARY")).should be_truthy
     end
   end
 
@@ -190,7 +190,7 @@ describe Innodb::DataDictionary do
 
   describe "#each_column_description_by_index_name" do
     it "is an enumerator" do
-      is_enumerator?(@dict.each_column_description_by_index_name("sakila/film", "PRIMARY")).should be_true
+      is_enumerator?(@dict.each_column_description_by_index_name("sakila/film", "PRIMARY")).should be_truthy
     end
   end
 
