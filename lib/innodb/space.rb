@@ -379,6 +379,12 @@ class Innodb::Space
     end
   end
 
+  # Return an Inode by fseg_id. Iterates through the inode list, but it
+  # normally is fairly small, so should be relatively efficient.
+  def inode(fseg_id)
+    each_inode.select { |inode| inode.fseg_id == fseg_id }.first
+  end
+
   # Iterate through the page numbers in the doublewrite buffer.
   def each_doublewrite_page_number
     return nil unless system_space?

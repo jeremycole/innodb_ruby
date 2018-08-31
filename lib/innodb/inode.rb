@@ -127,9 +127,52 @@ class Innodb::Inode
 
   # Iterate through all lists, yielding the list name and the list itself.
   def each_list
+    unless block_given?
+      return enum_for(:each_list)
+    end
+
     lists.each do |name|
       yield name, list(name)
     end
+
+    nil
+  end
+
+  # Iterate through the fragment array followed by all lists, yielding the
+  # page number. This allows a convenient way to identify all pages that are
+  # part of this inode.
+  def each_page_number
+    unless block_given?
+      return enum_for(:each_page_number)
+    end
+
+    frag_array_pages.each do |page_number|
+      yield page_number
+    end
+
+    each_list do |fseg_name, fseg_list|
+      fseg_list.each do |xdes|
+        xdes.each_page_status do |page_number|
+          yield page_number
+        end
+      end
+    end
+
+    nil
+  end
+
+  # Iterate through the page as associated with this inode using the
+  # each_page_number method, and yield the page number and page.
+  def each_page
+    unless block_given?
+      return enum_for(:each_page)
+    end
+
+    each_page_number do |page_number|
+      yield page_number, space.page(page_number)
+    end
+
+    nil
   end
 
   # Compare one Innodb::Inode to another.

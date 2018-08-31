@@ -339,6 +339,10 @@ def space_index_pages_summary(space, start_page)
   print_index_page_summary(space.each_page(start_page))
 end
 
+def space_index_fseg_pages_summary(space, fseg_id)
+  print_index_page_summary(space.inode(fseg_id).each_page)
+end
+
 def space_page_type_regions(space, start_page)
   puts "%-12s%-12s%-12s%-20s" % [
     "start",
@@ -413,11 +417,12 @@ def space_list_iterate(space, list_name)
 end
 
 def space_indexes(innodb_system, space)
-  puts "%-12s%-32s%-12s%-12s%-12s%-12s%-12s" % [
+  puts "%-12s%-32s%-12s%-12s%-12s%-12s%-12s%-12s" % [
     "id",
     "name",
     "root",
     "fseg",
+    "fseg_id",
     "used",
     "allocated",
     "fill_factor",
@@ -425,11 +430,12 @@ def space_indexes(innodb_system, space)
 
   space.each_index do |index|
     index.each_fseg do |fseg_name, fseg|
-      puts "%-12i%-32s%-12i%-12s%-12i%-12i%-12s" % [
+      puts "%-12i%-32s%-12i%-12s%-12i%-12i%-12i%-12s" % [
         index.id,
         innodb_system ? innodb_system.index_name_by_id(index.id) : "",
         index.root.offset,
         fseg_name,
+        fseg.fseg_id,
         fseg.used_pages,
         fseg.total_pages,
         "%.2f%%" % fseg.fill_factor,
@@ -985,6 +991,12 @@ def print_inode_detail(inode)
     inode.free.length,
     inode.free.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(", "),
   ]
+end
+
+def space_inodes_fseg_id(space)
+  space.each_inode do |inode|
+    puts inode.fseg_id
+  end
 end
 
 def space_inodes_summary(space)
@@ -1639,6 +1651,9 @@ The following options are supported:
   --list, -L <list>
     Operate on the list <list>.
 
+  --fseg-id, -F <fseg_id>
+      Operate on the file segment (fseg) <fseg_id>.
+
   --require, -r <file>
     Use Ruby's "require" to load the file <file>. This is useful for loading
     classes with record describers.
@@ -1672,6 +1687,10 @@ The following modes are supported:
     page fill rates and record counts per page. In addition to "INDEX" pages,
     "ALLOCATED" pages are also printed and assumed to be completely empty.
     A starting page number can be provided with the --page/-p argument.
+
+  space-index-fseg-pages-summary
+    The same as space-index-pages-summary but only iterate one fseg, provided
+    with the --fseg-id/-F argument.
 
   space-index-pages-free-plot
     Use Ruby's gnuplot module to produce a scatterplot of page free space for
@@ -1720,6 +1739,9 @@ The following modes are supported:
     Iterate through all pages, producing a heat map colored by the page LSN
     producing SVG format output, allowing the user to get an overview of page
     modification recency.
+
+  space-inodes-fseg-id
+    Iterate through all inodes, printing only the FSEG ID.
 
   space-inodes-summary
     Iterate through all inodes, printing a short summary of each FSEG.
@@ -1814,6 +1836,7 @@ Signal.trap("PIPE") { exit }
 @options.record                   = nil
 @options.level                    = nil
 @options.list                     = nil
+@options.fseg_id                  = nil
 @options.describer                = nil
 @options.illustration_line_width  = 64
 @options.illustration_block_size  = 8
@@ -1829,6 +1852,7 @@ getopt_options = [
   [ "--record",                   "-R",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--level",                    "-l",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--list",                     "-L",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--fseg-id",                  "-F",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--require",                  "-r",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--describer",                "-d",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--illustration-line-width",            GetoptLong::REQUIRED_ARGUMENT ],
@@ -1859,6 +1883,8 @@ getopt.each do |opt, arg|
     @options.level = arg.to_i
   when "--list"
     @options.list = arg.to_sym
+  when "--fseg-id"
+    @options.fseg_id = arg.to_i
   when "--require"
     require File.expand_path(arg)
   when "--describer"
@@ -1967,6 +1993,10 @@ if [
   usage 1, "Record describer must be specified using -d/--describer"
 end
 
+if ["space-index-fseg-pages-summary"].include?(mode) and !@options.fseg_id
+  usage 1, "File segment id must be specified using -F/--fseg-id"
+end
+
 if @options.trace > 0
   BufferCursor.trace!
 end
@@ -1986,6 +2016,8 @@ when "space-summary"
   space_summary(space, @options.page || 0)
 when "space-index-pages-summary"
   space_index_pages_summary(space, @options.page || 0)
+when "space-index-fseg-pages-summary"
+  space_index_fseg_pages_summary(space, @options.fseg_id)
 when "space-index-pages-free-plot"
   file_name = space.name.sub(".ibd", "").sub(/[^a-zA-Z0-9_]/, "_")
   space_index_pages_free_plot(space, file_name, @options.page || 0)
@@ -2009,6 +2041,8 @@ when "space-lsn-age-illustrate"
   space_lsn_age_illustrate(space)
 when "space-lsn-age-illustrate-svg"
   space_lsn_age_illustrate_svg(space)
+when "space-inodes-fseg-id"
+  space_inodes_fseg_id(space)
 when "space-inodes-summary"
   space_inodes_summary(space)
 when "space-inodes-detail"
