@@ -16,9 +16,9 @@ describe Innodb::Xdes do
       Innodb::Xdes::STATES.should be_an_instance_of Hash
     end
 
-    it "has only Fixnum keys" do
+    it "has only Integer keys" do
       classes = Innodb::Xdes::STATES.keys.map { |k| k.class }.uniq
-      classes.should eql [Fixnum]
+      classes.should eql [Integer]
     end
 
     it "has only Symbol values" do

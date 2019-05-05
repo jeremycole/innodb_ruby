@@ -129,11 +129,12 @@ class Innodb::DataType
       end
 
       frac << get_digits(stream, mask, @comp_fractional)
+      frac = "0" if frac.empty?
 
       # Convert to something resembling a string representation.
       str = mask.to_s.chop + intg + '.' + frac
 
-      BigDecimal.new(str).to_s('F')
+      BigDecimal(str).to_s('F')
     end
 
     private

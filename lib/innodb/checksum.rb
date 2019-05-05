@@ -7,14 +7,14 @@ class Innodb::Checksum
 
   # This is derived from ut_fold_ulint_pair in include/ut0rnd.ic in the
   # InnoDB source code. Since Ruby's Bignum class is *much* slower than its
-  # Fixnum class, we mask back to 32 bits to keep things from overflowing
+  # Integer class, we mask back to 32 bits to keep things from overflowing
   # and being promoted to Bignum.
   def self.fold_pair(n1, n2)
     (((((((n1 ^ n2 ^ MASK2) << 8) & MAX) + n1) & MAX) ^ MASK1) + n2) & MAX
   end
 
   # Iterate through the provided enumerator, which is expected to return a
-  # Fixnum (or something coercible to it), and "fold" them together to produce
+  # Integer (or something coercible to it), and "fold" them together to produce
   # a single value.
   def self.fold_enumerator(enumerator)
     fold = 0

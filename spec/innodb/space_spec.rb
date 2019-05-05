@@ -9,8 +9,8 @@ describe Innodb::Space do
   end
 
   describe "DEFAULT_PAGE_SIZE" do
-    it "is a Fixnum" do
-      Innodb::Space::DEFAULT_PAGE_SIZE.should be_an_instance_of Fixnum
+    it "is a Integer" do
+      Innodb::Space::DEFAULT_PAGE_SIZE.should be_an_instance_of Integer
     end
   end
 
@@ -166,8 +166,8 @@ describe Innodb::Space do
   end
 
   describe "#xdes_page_for_page" do
-    it "is a Fixnum" do
-      @space.xdes_page_for_page(0).should be_an_instance_of Fixnum
+    it "is a Integer" do
+      @space.xdes_page_for_page(0).should be_an_instance_of Integer
     end
 
     it "calculates the correct page number" do
@@ -183,8 +183,8 @@ describe Innodb::Space do
   end
 
   describe "#xdes_entry_for_page" do
-    it "is a Fixnum" do
-      @space.xdes_entry_for_page(0).should be_an_instance_of Fixnum
+    it "is a Integer" do
+      @space.xdes_entry_for_page(0).should be_an_instance_of Integer
     end
 
     it "calculates the correct entry number" do

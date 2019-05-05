@@ -4,8 +4,8 @@ require "spec_helper"
 
 describe Innodb::Checksum do
   describe "#fold_pair" do
-    it "returns a Fixnum" do
-      Innodb::Checksum.fold_pair(0x00, 0x00).should be_an_instance_of Fixnum
+    it "returns a Integer" do
+      Innodb::Checksum.fold_pair(0x00, 0x00).should be_an_instance_of Integer
     end
 
     it "calculates correct values" do
@@ -17,8 +17,8 @@ describe Innodb::Checksum do
   end
 
   describe "#fold_enumerator" do
-    it "returns a Fixnum" do
-      Innodb::Checksum.fold_enumerator(0..255).should be_an_instance_of Fixnum
+    it "returns a Integer" do
+      Innodb::Checksum.fold_enumerator(0..255).should be_an_instance_of Integer
     end
 
     it "calculates correct values" do
@@ -27,8 +27,8 @@ describe Innodb::Checksum do
   end
 
   describe "#fold_string" do
-    it "returns a Fixnum" do
-      Innodb::Checksum.fold_string("hello world").should be_an_instance_of Fixnum
+    it "returns a Integer" do
+      Innodb::Checksum.fold_string("hello world").should be_an_instance_of Integer
     end
 
     it "calculates correct values" do
