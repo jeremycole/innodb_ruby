@@ -13,10 +13,6 @@ class Innodb::Record
     record[:header]
   end
 
-  def next
-    header[:next]
-  end
-
   def type
     header[:type]
   end
