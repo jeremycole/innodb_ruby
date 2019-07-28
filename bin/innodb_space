@@ -1322,7 +1322,8 @@ end
 
 def page_illustrate(page)
   width = 64
-  blocks = Array.new(page.size, " ")
+  unknown_page_content = page.type == :INDEX && page.record_describer.nil?
+  blocks = Array.new(page.size, unknown_page_content ? "▞" : " ")
   identifiers = {}
   identifier_sort = 0
   count_by_identifier = Hash.new(0)
@@ -1385,11 +1386,18 @@ def page_illustrate(page)
   ]
   free_space = page.size - count_by_identifier.inject(0) { |sum,(k,v)| sum + v }
   puts "  %s %-30s %8i %7.2f%%" % [
-    " ",
-    "Free",
+    unknown_page_content ? "▞" : " ",
+    unknown_page_content ? "Unknown (no data dictionary)" : "Free",
     free_space,
     100.0 * (free_space.to_f / page.size.to_f),
   ]
+
+  if unknown_page_content
+    puts
+    puts "Note:"
+    puts "  Records could not be parsed because no data dictionary or record describer"
+    puts "  was available. Use -s instead of -f, or provide a record describer class."
+  end
 
   puts
 end
