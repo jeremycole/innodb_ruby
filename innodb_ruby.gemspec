@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.version     = Innodb::VERSION
   s.date        = Time.now.strftime("%Y-%m-%d")
   s.summary     = 'InnoDB data file parser'
-  s.license     = 'New BSD (3-clause)'
+  s.license     = 'BSD-3-Clause'
   s.description = 'Library for parsing InnoDB data files in Ruby'
   s.authors     = [
     'Jeremy Cole',
