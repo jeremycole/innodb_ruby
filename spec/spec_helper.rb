@@ -4,9 +4,9 @@ require File.join(File.dirname(__FILE__), '..', 'lib', 'innodb')
 
 RSpec.configure do |config|
   # Enable the below to allow easier fixing of deprecated RSpec syntax.
-  #config.raise_errors_for_deprecations!
+  # config.raise_errors_for_deprecations!
   config.expect_with :rspec do |c|
-    c.syntax = [:should, :expect]
+    c.syntax = %i[should expect]
   end
 end
 
