@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 class Innodb::Page::UndoLog < Innodb::Page
   def pos_undo_page_header

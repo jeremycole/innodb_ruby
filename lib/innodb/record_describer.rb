@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 #
 # A class to describe record layouts for InnoDB indexes. Designed to be usable

@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 class Innodb::Page::SysDataDictionaryHeader < Innodb::Page
   # The position of the data dictionary header within the page.

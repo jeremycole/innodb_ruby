@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 require "spec_helper"
 require "stringio"
@@ -52,7 +52,7 @@ describe Innodb::DataType do
     before :all do
       @data = {
         :offset => {},
-        :buffer => "",
+        :buffer => ''.dup,
       }
 
       # Bytes 0x00 through 0x0f at offset 0.

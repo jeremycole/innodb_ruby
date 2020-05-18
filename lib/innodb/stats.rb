@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # Collect stats globally within innodb_ruby for comparison purposes and for
 # correctness checking.

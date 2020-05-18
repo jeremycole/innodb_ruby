@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 require "innodb/page/sys_rseg_header"
 require "innodb/page/sys_data_dictionary_header"

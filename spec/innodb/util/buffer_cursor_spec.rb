@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 require "spec_helper"
 
@@ -6,7 +6,7 @@ describe BufferCursor do
   before :all do
     @data = {
       :offset => {},
-      :buffer => "",
+      :buffer => ''.dup,
     }
 
     # Bytes 0x00 through 0x0f at offset 0.
@@ -460,7 +460,7 @@ describe BufferCursor do
     it "enables tracing globally" do
       BufferCursor.trace!
 
-      trace_string = ""
+      trace_string = ''.dup
       trace_output = StringIO.new(trace_string, "w")
 
       c1 = BufferCursor.new(@buffer, 0)
@@ -481,7 +481,7 @@ describe BufferCursor do
 
   describe "#trace" do
     it "enables tracing per instance" do
-      trace_string = ""
+      trace_string = ''.dup
       trace_output = StringIO.new(trace_string, "w")
 
       c1 = BufferCursor.new(@buffer, 0)
