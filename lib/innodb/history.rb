@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # The global history of record versions implemented through undo logs.
 class Innodb::History

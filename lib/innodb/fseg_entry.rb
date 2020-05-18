@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # An InnoDB file segment entry, which appears in a few places, such as the
 # FSEG header of INDEX pages, and in the TRX_SYS pages.

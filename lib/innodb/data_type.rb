@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 require "stringio"
 require "bigdecimal"
@@ -113,7 +113,7 @@ class Innodb::DataType
 
     def value(data)
       # Strings representing the integral and fractional parts.
-      intg, frac = "", ""
+      intg, frac = ''.dup, ''.dup
 
       stream = StringIO.new(data)
       mask = sign_mask(stream)
@@ -402,7 +402,7 @@ class Innodb::DataType
   }
 
   def self.make_name(base_type, modifiers, properties)
-    name = base_type.to_s
+    name = base_type.to_s.dup
     name << '(' + modifiers.join(',') + ')' if not modifiers.empty?
     name << " "
     name << properties.join(' ')

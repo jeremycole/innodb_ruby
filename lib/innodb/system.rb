@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # A class representing an entire InnoDB system, having a system tablespace
 # and any number of attached single-table tablespaces.

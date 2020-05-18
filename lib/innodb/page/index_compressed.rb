@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # This is horribly incomplete and broken. InnoDB compression does not
 # currently work in innodb_ruby. Patches are welcome!

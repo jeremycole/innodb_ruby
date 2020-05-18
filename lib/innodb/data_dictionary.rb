@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # A class representing InnoDB's data dictionary, which contains metadata about
 # tables, columns, and indexes.

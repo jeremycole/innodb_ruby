@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 class Innodb::Page::SysIbufHeader < Innodb::Page
   def pos_ibuf_header

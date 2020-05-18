@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # Group of InnoDB logs files that make up the redo log.
 class Innodb::LogGroup

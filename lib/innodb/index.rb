@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # An InnoDB index B-tree, given an Innodb::Space and a root page number.
 class Innodb::Index

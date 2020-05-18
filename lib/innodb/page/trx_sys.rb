@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # A specialized class for TRX_SYS pages, which contain various information
 # about the transaction system within InnoDB. Only one TRX_SYS page exists in

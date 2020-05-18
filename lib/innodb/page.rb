@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # A generic class for any type of page, which handles reading the common
 # FIL header and trailer, and can handle (via #parse) dispatching to a more

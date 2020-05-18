@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
 
 # An InnoDB "extent descriptor entry" or "+XDES+". These structures are used
 # in the +XDES+ entry array contained in +FSP_HDR+ and +XDES+ pages.
