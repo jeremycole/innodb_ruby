@@ -7,7 +7,18 @@ require 'innodb/data_type'
 # of the fixed-width and variable-width portion of the field.
 module Innodb
   class Field
-    attr_reader :position, :name, :data_type, :nullable
+    ExternReference = Struct.new(
+      :space_id,
+      :page_number,
+      :offset,
+      :length,
+      keyword_init: true
+    )
+
+    attr_reader :position
+    attr_reader :name
+    attr_reader :data_type
+    attr_reader :nullable
 
     # Size of a reference to data stored externally to the page.
     EXTERN_FIELD_SIZE = 20
@@ -15,7 +26,7 @@ module Innodb
     def initialize(position, name, type_definition, *properties)
       @position = position
       @name = name
-      @nullable = properties.delete(:NOT_NULL) ? false : true
+      @nullable = !properties.delete(:NOT_NULL)
       base_type, modifiers = parse_type_definition(type_definition.to_s)
       @data_type = Innodb::DataType.new(base_type, modifiers, properties)
     end
@@ -27,12 +38,12 @@ module Innodb
 
     # Return whether this field is NULL.
     def null?(record)
-      nullable? && record[:header][:nulls].include?(@name)
+      nullable? && record.header.nulls.include?(@name)
     end
 
     # Return whether a part of this field is stored externally (off-page).
     def extern?(record)
-      record[:header][:externs].include?(@name)
+      record.header.externs.include?(@name)
     end
 
     def variable?
@@ -49,8 +60,8 @@ module Innodb
 
     # Return the actual length of this variable-length field.
     def length(record)
-      if record[:header][:lengths].include?(@name)
-        len = record[:header][:lengths][@name]
+      if record.header.lengths.include?(@name)
+        len = record.header.lengths[@name]
         raise 'Fixed-length mismatch' unless variable? || len == @data_type.width
       else
         len = @data_type.width
@@ -91,19 +102,15 @@ module Innodb
 
     # Return an external reference field. An extern field contains the page
     # address and the length of the externally stored part of the record data.
-    def get_extern_reference(cursor)
-      # rubocop:disable Layout/HashAlignment
-      {
-        space_id:     cursor.name('space_id')    { cursor.get_uint32 },
-        page_number:  cursor.name('page_number') { cursor.get_uint32 },
-        offset:       cursor.name('offset')      { cursor.get_uint32 },
-        length:       cursor.name('length')      { cursor.get_uint64 & 0x3fffffff },
-      }
-      # rubocop:enable Layout/HashAlignment
-    end
-
     def read_extern(cursor)
-      cursor.name('extern') { get_extern_reference(cursor) }
+      cursor.name('extern') do |c|
+        ExternReference.new(
+          space_id: c.name('space_id') { c.get_uint32 },
+          page_number: c.name('page_number') { c.get_uint32 },
+          offset: c.name('offset') { c.get_uint32 },
+          length: c.name('length') { c.get_uint64 & 0x3fffffff }
+        )
+      end
     end
 
     # Parse a data type definition and extract the base type and any modifiers.
