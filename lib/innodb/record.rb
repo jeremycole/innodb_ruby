@@ -32,21 +32,21 @@ module Innodb
     def_delegator :header, :min_rec?
 
     def key_string
-      key&.map { |r| '%s=%s' % [r[:name], r[:value].inspect] }&.join(', ')
+      key&.map { |r| '%s=%s' % [r.name, r.value.inspect] }&.join(', ')
     end
 
     def row_string
-      row&.map { |r| '%s=%s' % [r[:name], r[:value].inspect] }&.join(', ')
+      row&.map { |r| '%s=%s' % [r.name, r.value.inspect] }&.join(', ')
     end
 
     def undo
       return nil unless roll_pointer
       return unless (innodb_system = @page.space.innodb_system)
 
-      undo_page = innodb_system.system_space.page(roll_pointer[:undo_log][:page])
+      undo_page = innodb_system.system_space.page(roll_pointer.undo_log.page)
       return unless undo_page
 
-      new_undo_record = Innodb::UndoRecord.new(undo_page, roll_pointer[:undo_log][:offset])
+      new_undo_record = Innodb::UndoRecord.new(undo_page, roll_pointer.undo_log.offset)
       new_undo_record.index_page = page
       new_undo_record
     end
@@ -75,7 +75,7 @@ module Innodb
       fields_hash = {}
       %i[key row].each do |group|
         record[group]&.each do |column|
-          fields_hash[column[:name]] = column[:value]
+          fields_hash[column.name] = column.value
         end
       end
       fields_hash
@@ -99,8 +99,8 @@ module Innodb
 
       key.each_index do |i|
         Innodb::Stats.increment :compare_key_field_comparison
-        return -1 if other_key[i] < key[i][:value]
-        return +1 if other_key[i] > key[i][:value]
+        return -1 if other_key[i] < key[i].value
+        return +1 if other_key[i] > key[i].value
       end
 
       0
@@ -111,11 +111,11 @@ module Innodb
       puts
 
       puts 'Header:'
-      puts '  %-20s: %i' % ['Next record offset', header[:next]]
-      puts '  %-20s: %i' % ['Heap number', header[:heap_number]]
-      puts '  %-20s: %s' % ['Type', header[:type]]
-      puts '  %-20s: %s' % ['Deleted', header[:deleted]]
-      puts '  %-20s: %s' % ['Length', header[:length]]
+      puts '  %-20s: %i' % ['Next record offset', header.next]
+      puts '  %-20s: %i' % ['Heap number', header.heap_number]
+      puts '  %-20s: %s' % ['Type', header.type]
+      puts '  %-20s: %s' % ['Deleted', header.deleted?]
+      puts '  %-20s: %s' % ['Length', header.length]
       puts
 
       if page.leaf?
@@ -123,19 +123,19 @@ module Innodb
         puts '  Transaction ID: %s' % transaction_id
         puts '  Roll Pointer:'
         puts '    Undo Log: page %i, offset %i' % [
-          roll_pointer[:undo_log][:page],
-          roll_pointer[:undo_log][:offset],
+          roll_pointer.undo_log.page,
+          roll_pointer.undo_log.offset,
         ]
-        puts '    Rollback Segment ID: %i' % roll_pointer[:rseg_id]
-        puts '    Insert: %s' % roll_pointer[:is_insert]
+        puts '    Rollback Segment ID: %i' % roll_pointer.rseg_id
+        puts '    Insert: %s' % roll_pointer.is_insert
         puts
       end
 
       puts 'Key fields:'
       key.each do |field|
         puts '  %s: %s' % [
-          field[:name],
-          field[:value].inspect,
+          field.name,
+          field.value.inspect,
         ]
       end
       puts
@@ -144,8 +144,8 @@ module Innodb
         puts 'Non-key fields:'
         row.each do |field|
           puts '  %s: %s' % [
-            field[:name],
-            field[:value].inspect,
+            field.name,
+            field.value.inspect,
           ]
         end
       else
