@@ -22,12 +22,11 @@ describe Innodb::LogRecord do
       @rec.lsn.should eql [8_204, 8_207]
     end
     it 'has the correct preamble' do
-      @rec.preamble.should eql(
-        type: :INIT_FILE_PAGE,
-        page_number: 1,
-        space: 0,
-        single_record: false
-      )
+      p = @rec.preamble
+      p.type.should eql :INIT_FILE_PAGE
+      p.page_number.should eql 1
+      p.space.should eql 0
+      p.single_record.should eql false
     end
     it 'has an empty payload' do
       @rec.payload.should eql({})
@@ -45,12 +44,11 @@ describe Innodb::LogRecord do
       @rec.lsn.should eql [8_207, 8_210]
     end
     it 'has the correct preamble' do
-      @rec.preamble.should eql(
-        type: :IBUF_BITMAP_INIT,
-        page_number: 1,
-        space: 0,
-        single_record: false
-      )
+      p = @rec.preamble
+      p.type.should eql :IBUF_BITMAP_INIT
+      p.page_number.should eql 1
+      p.space.should eql 0
+      p.single_record.should eql false
     end
     it 'has an empty payload' do
       @rec.payload.should eql({})
@@ -68,12 +66,11 @@ describe Innodb::LogRecord do
       @rec.lsn.should eql [1_589_112, 1_589_148]
     end
     it 'has the correct preamble' do
-      @rec.preamble.should eql(
-        type: :REC_INSERT,
-        page_number: 9,
-        space: 0,
-        single_record: false
-      )
+      p = @rec.preamble
+      p.type.should eql :REC_INSERT
+      p.page_number.should eql 9
+      p.space.should eql 0
+      p.single_record.should eql false
     end
     it 'has the correct payload' do
       @rec.payload.values.first.should include(

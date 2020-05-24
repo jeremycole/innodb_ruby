@@ -1,0 +1,30 @@
+Lint/AmbiguousOperator:
+  Enabled: false
+Layout/LineLength:
+  Max: 120
+Metrics/BlockLength:
+  Max: 400
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: consistent_comma
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: consistent_comma
+Style/FormatString:
+  Enabled: false
+Style/FormatStringToken:
+  Enabled: false
+Style/Documentation:
+  Enabled: false
+Metrics/ClassLength:
+  Enabled: false
+Metrics/MethodLength:
+  Enabled: false
+Metrics/AbcSize:
+  Enabled: false
+Metrics/CyclomaticComplexity:
+  Enabled: false
+Metrics/PerceivedComplexity:
+  Enabled: false
+Style/SymbolArray:
+  MinSize: 1
+Style/EmptyCaseCondition:
+  Enabled: false

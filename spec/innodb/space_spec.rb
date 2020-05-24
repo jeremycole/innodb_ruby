@@ -87,8 +87,8 @@ describe Innodb::Space do
   end
 
   describe '#fsp' do
-    it 'is a Hash' do
-      @space.fsp.should be_an_instance_of Hash
+    it 'is a Innodb::Page::FspHdrXdes::Header' do
+      @space.fsp.should be_an_instance_of Innodb::Page::FspHdrXdes::Header
     end
   end
 

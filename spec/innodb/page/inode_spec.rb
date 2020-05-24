@@ -25,8 +25,8 @@ describe Innodb::Page::Inode do
   end
 
   describe '#list_entry' do
-    it 'is a Hash' do
-      @page.list_entry.should be_an_instance_of Hash
+    it 'is a Innodb::List::Node' do
+      @page.list_entry.should be_an_instance_of Innodb::List::Node
     end
 
     it 'has the right keys and values' do
@@ -46,7 +46,7 @@ describe Innodb::Page::Inode do
       @page.each_inode.to_a.map(&:class).uniq.should eql [Innodb::Inode]
     end
 
-    it 'yields Hashes with the right keys and values' do
+    it 'yields objects with the right keys and values' do
       inode = @page.each_inode.to_a.first
       inode.fseg_id.should eql 1
       inode.not_full_n_used.should eql 0

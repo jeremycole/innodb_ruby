@@ -18,15 +18,12 @@ describe Innodb::LogBlock do
     end
 
     it 'returns a valid header' do
-      @block.header.should eql(
-        {
-          flush: true,
-          block_number: 17,
-          data_length: 512,
-          first_rec_group: 12,
-          checkpoint_no: 5,
-        }
-      )
+      h = @block.header
+      h.flush.should eql true
+      h.block_number.should eql 17
+      h.data_length.should eql 512
+      h.first_rec_group.should eql 12
+      h.checkpoint_no.should eql 5
     end
   end
 end
