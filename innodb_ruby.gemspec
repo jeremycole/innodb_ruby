@@ -20,6 +20,8 @@ Gem::Specification.new do |s|
   s.files = Dir.glob('{bin,lib}/**/*') + %w[LICENSE AUTHORS.md README.md]
   s.executables = %w[innodb_log innodb_space]
 
+  s.required_ruby_version = '>= 2.6'
+
   s.add_runtime_dependency('bindata', '~> 1.4', '>= 1.4.5')
   s.add_runtime_dependency('digest-crc', '~> 0.4', '>= 0.4.1')
 
