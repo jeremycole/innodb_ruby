@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    innodb_ruby (0.9.16)
+    innodb_ruby (0.10.1)
       bindata (~> 1.4, >= 1.4.5)
       digest-crc (~> 0.4, >= 0.4.1)
 
@@ -30,13 +30,16 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.9.0)
     rspec-support (3.9.3)
-    rubocop (0.83.0)
+    rubocop (0.84.0)
       parallel (~> 1.10)
       parser (>= 2.7.0.1)
       rainbow (>= 2.2.2, < 4.0)
       rexml
+      rubocop-ast (>= 0.0.3)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 1.4.0, < 2.0)
+    rubocop-ast (0.0.3)
+      parser (>= 2.7.0.1)
     ruby-progressbar (1.10.1)
     unicode-display_width (1.7.0)
 
