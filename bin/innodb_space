@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "getoptlong"
-require "ostruct"
-require "innodb"
+require 'getoptlong'
+require 'ostruct'
+require 'innodb'
 
 # Convert a floating point RGB array into an ANSI color number approximating it.
 def rgb_to_ansi(rgb)
@@ -12,16 +12,16 @@ def rgb_to_ansi(rgb)
 end
 
 def rgb_to_rgbhex(rgb)
-  rgb.map { |c| "%02x" % [(c * 255.0).round] }.join
+  rgb.map { |c| '%02x' % [(c * 255.0).round] }.join
 end
 
 # Interpolate intermediate float-arrays between two float-arrays. Do not
 # include the points a and b in the result.
-def interpolate(a, b, count)
-  deltas = a.each_index.map { |i| b[i] - a[i] }
-  steps = a.each_index.map { |i| deltas[i].to_f / (count.to_f + 1) }
+def interpolate(ary_a, ary_b, count)
+  deltas = ary_a.each_index.map { |i| ary_b[i] - ary_a[i] }
+  steps = ary_a.each_index.map { |i| deltas[i].to_f / (count.to_f + 1) }
 
-  count.times.to_a.map { |i| a.each_index.map { |j| a[j] + ((i+1).to_f * steps[j]) } }
+  count.times.to_a.map { |i| ary_a.each_index.map { |j| ary_a[j] + ((i + 1).to_f * steps[j]) } }
 end
 
 # Interpolate intermediate float-arrays between each step in a sequence of
@@ -29,7 +29,7 @@ end
 def interpolate_sequence(sequence, count)
   result = []
   result << sequence.first
-  (sequence.size-1).times.map { |n| [sequence[n], sequence[n+1]] }.each do |from, to|
+  (sequence.size - 1).times.map { |n| [sequence[n], sequence[n + 1]] }.each do |from, to|
     interpolate(from, to, count).each do |step|
       result << step
     end
@@ -48,14 +48,16 @@ HEATMAP_PROGRESSION = [
   [1.0, 1.0, 0.0], # Yellow
   [1.0, 0.0, 0.0], # Red
   [1.0, 0.0, 1.0], # Purple
-]
+].freeze
 
 # Typical heatmap color progression.
 ANSI_COLORS_HEATMAP = interpolate_sequence(HEATMAP_PROGRESSION, 6).map { |rgb| rgb_to_ansi(rgb) }
 
 RGBHEX_COLORS_HEATMAP = interpolate_sequence(HEATMAP_PROGRESSION, 41).map { |rgb| rgb_to_rgbhex(rgb) }
 
-RGBHEX_COLORS_RANDOM = 100.times.inject([]) { |a, x| a << rgb_to_rgbhex([rand * 0.7 + 0.25, rand * 0.7 + 0.25, rand * 0.7 + 0.25]) }
+RGBHEX_COLORS_RANDOM = 100.times.inject([]) do |a, _|
+  a << rgb_to_rgbhex([rand * 0.7 + 0.25, rand * 0.7 + 0.25, rand * 0.7 + 0.25])
+end
 
 # The 24-step grayscale progression.
 ANSI_COLORS_GRAYSCALE = (0xe8..0xff).to_a
@@ -66,25 +68,25 @@ def ansi_color(color, text)
 end
 
 # Zero and 1/8 through 8/8 illustrations.
-BLOCK_CHARS_V = ["░", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
-BLOCK_CHARS_H = ["░", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"]
+BLOCK_CHARS_V = '░▁▂▃▄▅▆▇█'.split('').freeze
+BLOCK_CHARS_H = '░▏▎▍▌▋▊▉█'.split('').freeze
 
 # A reasonably large prime number to multiply identifiers by in order to
 # space out the colors used for similar identifiers.
-COLOR_SPACING_PRIME = 999983
+COLOR_SPACING_PRIME = 999_983
 
 # Return a string with a possibly colored filled block for use in printing
 # to an ANSI-capable Unicode-enabled terminal.
-def filled_block(fraction, identifier=nil, block_chars=BLOCK_CHARS_V)
+def filled_block(fraction, identifier = nil, block_chars = BLOCK_CHARS_V)
   if fraction == 0.0
     block = block_chars[0]
   else
-    parts = (fraction.to_f * (block_chars.size.to_f-1)).floor
-    block = block_chars[[block_chars.size-1, parts+1].min]
+    parts = (fraction.to_f * (block_chars.size.to_f - 1)).floor
+    block = block_chars[[block_chars.size - 1, parts + 1].min]
   end
   if identifier
     # ANSI 256-color mode, color palette starts at 10 and contains 216 colors.
-    color = 16 + ((identifier * COLOR_SPACING_PRIME)  % 216)
+    color = 16 + ((identifier * COLOR_SPACING_PRIME) % 216)
     ansi_color(color, block)
   else
     block
@@ -92,47 +94,49 @@ def filled_block(fraction, identifier=nil, block_chars=BLOCK_CHARS_V)
 end
 
 def svg_join_args(args)
-  args.map { |arg| "%s=\"%s\"" % [ arg[0], arg[1], ] }.join(" ")
+  args.map { |arg| "%s=\'%s\'" % [arg[0], arg[1]] }.join(' ')
 end
 
-def svg(elem, args, content=nil)
+def svg(elem, args, content = nil)
   if content
-    "<" + elem.to_s + " " + svg_join_args(args) + ">" +
+    '<' + elem.to_s + ' ' + svg_join_args(args) + '>' +
       content.to_s +
-      "</" + elem.to_s + ">"
+      '</' + elem.to_s + '>'
   else
-    "<" + elem.to_s + " " + svg_join_args(args) + " />"
+    '<' + elem.to_s + ' ' + svg_join_args(args) + ' />'
   end
 end
 
+# rubocop:disable Naming/MethodParameterName
 def svg_path_rounded_rect(x, y, w, h, r)
   [
-    "M%i,%i" % [ x + r, y - r ],
-    "L%i,%i" % [ x + w - r, y - r ],
-    "S%i,%i %i,%i" % [ x + w + r, y - r, x + w + r, y + r ],
-    "L%i,%i" % [ x + w + r, y + h - r ],
-    "S%i,%i %i,%i" % [ x + w + r, y + h + r, x + w - r, y + h + r ],
-    "L%i,%i" % [ x + r, y + h + r ],
-    "S%i,%i %i,%i" % [ x - r, y + h + r, x - r, y + h - r ],
-    "L%i,%i" % [ x - r, y + r ],
-    "S%i,%i %i,%i" % [ x - r, y - r, x + r, y - r ],
-    "Z",
-  ].join(" ")
+    'M%i,%i' % [x + r, y - r],
+    'L%i,%i' % [x + w - r, y - r],
+    'S%i,%i %i,%i' % [x + w + r, y - r, x + w + r, y + r],
+    'L%i,%i' % [x + w + r, y + h - r],
+    'S%i,%i %i,%i' % [x + w + r, y + h + r, x + w - r, y + h + r],
+    'L%i,%i' % [x + r, y + h + r],
+    'S%i,%i %i,%i' % [x - r, y + h + r, x - r, y + h - r],
+    'L%i,%i' % [x - r, y + r],
+    'S%i,%i %i,%i' % [x - r, y - r, x + r, y - r],
+    'Z',
+  ].join(' ')
 end
+# rubocop:enable Naming/MethodParameterName
 
 # Print metadata about each list in an array of InnoDB::List objects.
 def print_lists(lists)
-  puts "%-20s%-12s%-12s%-12s%-12s%-12s" % [
-    "name",
-    "length",
-    "f_page",
-    "f_offset",
-    "l_page",
-    "l_offset",
+  puts '%-20s%-12s%-12s%-12s%-12s%-12s' % %w[
+    name
+    length
+    f_page
+    f_offset
+    l_page
+    l_offset
   ]
 
   lists.each do |name, list|
-    puts "%-20s%-12i%-12i%-12i%-12i%-12i" % [
+    puts '%-20s%-12i%-12i%-12i%-12i%-12i' % [
       name,
       list.base[:length],
       list.base[:first] && list.base[:first][:page]   || 0,
@@ -146,39 +150,37 @@ end
 # Print a page usage bitmap for each extent descriptor in an array of
 # Innodb::XdesEntry objects.
 def print_xdes_list(space, list)
-  puts "%-12s%-64s" % [
-    "start_page",
-    "page_used_bitmap"
+  puts '%-12s%-64s' % %w[
+    start_page
+    page_used_bitmap
   ]
 
   list.each do |entry|
-    puts "%-12i%-64s" % [
-      entry.xdes[:start_page],
-      entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
-        if page_number < space.pages
-          bitmap += page_status[:free] ? "." : "#"
-        end
-        bitmap
-      },
-    ]
+    display = entry.each_page_status.inject('') do |bitmap, (page_number, page_status)|
+      if page_number < space.pages
+        bitmap += page_status[:free] ? '.' : '#'
+      end
+      bitmap
+    end
+    puts '%-12i%-64s' % [entry.xdes[:start_page], display]
   end
 end
 
 # Print a summary of page usage for all pages in an index.
 def print_index_page_summary(pages)
-  puts "%-12s%-8s%-8s%-8s%-8s%-8s" % [
-    "page",
-    "index",
-    "level",
-    "data",
-    "free",
-    "records",
+  puts '%-12s%-8s%-8s%-8s%-8s%-8s' % %w[
+    page
+    index
+    level
+    data
+    free
+    records
   ]
 
   pages.each do |page_number, page|
     case page.type
     when :INDEX
-      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [
+      puts '%-12i%-8i%-8i%-8i%-8i%-8i' % [
         page_number,
         page.page_header[:index_id],
         page.level,
@@ -187,145 +189,146 @@ def print_index_page_summary(pages)
         page.records,
       ]
     when :ALLOCATED
-      puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [ page_number, 0, 0, 0, page.size, 0 ]
+      puts '%-12i%-8i%-8i%-8i%-8i%-8i' % [page_number, 0, 0, 0, page.size, 0]
     end
   end
 end
 
 # Print a summary of all spaces in the InnoDB system.
 def system_spaces(innodb_system)
-  puts "%-32s%-12s%-12s" % [
-    "name",
-    "pages",
-    "indexes",
+  puts '%-32s%-12s%-12s' % %w[
+    name
+    pages
+    indexes
   ]
 
   print_space_information = lambda do |name, space|
-    puts "%-32s%-12i%-12i" % [
+    puts '%-32s%-12i%-12i' % [
       name,
       space.pages,
       space.each_index.to_a.size,
     ]
   end
 
-  print_space_information.call("(system)", innodb_system.system_space)
+  print_space_information.call('(system)', innodb_system.system_space)
 
   innodb_system.each_table_name do |table_name|
     space = innodb_system.space_by_table_name(table_name)
     next unless space
+
     print_space_information.call(table_name, space)
   end
 
   innodb_system.each_orphan do |table_name|
-    puts "%-43s (orphan/tmp)" % table_name
+    puts '%-43s (orphan/tmp)' % table_name
   end
 end
 
 # Print the contents of the SYS_TABLES data dictionary table.
 def data_dictionary_tables(innodb_system)
-  puts "%-32s%-12s%-12s%-12s%-12s%-12s%-15s%-12s" % [
-    "name",
-    "id",
-    "n_cols",
-    "type",
-    "mix_id",
-    "mix_len",
-    "cluster_name",
-    "space",
+  puts '%-32s%-12s%-12s%-12s%-12s%-12s%-15s%-12s' % %w[
+    name
+    id
+    n_cols
+    type
+    mix_id
+    mix_len
+    cluster_name
+    space
   ]
 
   innodb_system.data_dictionary.each_table do |record|
-    puts "%-32s%-12i%-12i%-12i%-12i%-12i%-15s%-12i" % [
-      record["NAME"],
-      record["ID"],
-      record["N_COLS"],
-      record["TYPE"],
-      record["MIX_ID"],
-      record["MIX_LEN"],
-      record["CLUSTER_NAME"],
-      record["SPACE"],
+    puts '%-32s%-12i%-12i%-12i%-12i%-12i%-15s%-12i' % [
+      record['NAME'],
+      record['ID'],
+      record['N_COLS'],
+      record['TYPE'],
+      record['MIX_ID'],
+      record['MIX_LEN'],
+      record['CLUSTER_NAME'],
+      record['SPACE'],
     ]
   end
 end
 
 # Print the contents of the SYS_COLUMNS data dictionary table.
 def data_dictionary_columns(innodb_system)
-  puts "%-12s%-6s%-32s%-12s%-12s%-6s%-6s" % [
-    "table_id",
-    "pos",
-    "name",
-    "mtype",
-    "prtype",
-    "len",
-    "prec",
+  puts '%-12s%-6s%-32s%-12s%-12s%-6s%-6s' % %w[
+    table_id
+    pos
+    name
+    mtype
+    prtype
+    len
+    prec
   ]
 
   innodb_system.data_dictionary.each_column do |record|
-    puts "%-12i%-6i%-32s%-12i%-12i%-6i%-6i" % [
-      record["TABLE_ID"],
-      record["POS"],
-      record["NAME"],
-      record["MTYPE"],
-      record["PRTYPE"],
-      record["LEN"],
-      record["PREC"],
+    puts '%-12i%-6i%-32s%-12i%-12i%-6i%-6i' % [
+      record['TABLE_ID'],
+      record['POS'],
+      record['NAME'],
+      record['MTYPE'],
+      record['PRTYPE'],
+      record['LEN'],
+      record['PREC'],
     ]
   end
 end
 
 # Print the contents of the SYS_INDEXES data dictionary table.
 def data_dictionary_indexes(innodb_system)
-  puts "%-12s%-12s%-32s%-10s%-6s%-12s%-12s" % [
-    "table_id",
-    "id",
-    "name",
-    "n_fields",
-    "type",
-    "space",
-    "page_no",
+  puts '%-12s%-12s%-32s%-10s%-6s%-12s%-12s' % %w[
+    table_id
+    id
+    name
+    n_fields
+    type
+    space
+    page_no
   ]
 
   innodb_system.data_dictionary.each_index do |record|
-    puts "%-12i%-12i%-32s%-10i%-6i%-12i%-12i" % [
-      record["TABLE_ID"],
-      record["ID"],
-      record["NAME"],
-      record["N_FIELDS"],
-      record["TYPE"],
-      record["SPACE"],
-      record["PAGE_NO"],
+    puts '%-12i%-12i%-32s%-10i%-6i%-12i%-12i' % [
+      record['TABLE_ID'],
+      record['ID'],
+      record['NAME'],
+      record['N_FIELDS'],
+      record['TYPE'],
+      record['SPACE'],
+      record['PAGE_NO'],
     ]
   end
 end
 
 # Print the contents of the SYS_FIELDS data dictionary table.
 def data_dictionary_fields(innodb_system)
-  puts "%-12s%-12s%-32s" % [
-    "index_id",
-    "pos",
-    "col_name",
+  puts '%-12s%-12s%-32s' % %w[
+    index_id
+    pos
+    col_name
   ]
 
   innodb_system.data_dictionary.each_field do |record|
-    puts "%-12i%-12i%-32s" % [
-      record["INDEX_ID"],
-      record["POS"],
-      record["COL_NAME"],
+    puts '%-12i%-12i%-32s' % [
+      record['INDEX_ID'],
+      record['POS'],
+      record['COL_NAME'],
     ]
   end
 end
 
 def space_summary(space, start_page)
-  puts "%-12s%-20s%-12s%-12s%-20s" % [
-    "page",
-    "type",
-    "prev",
-    "next",
-    "lsn",
+  puts '%-12s%-20s%-12s%-12s%-20s' % %w[
+    page
+    type
+    prev
+    next
+    lsn
   ]
 
   space.each_page(start_page) do |page_number, page|
-    puts "%-12i%-20s%-12i%-12i%-20i" % [
+    puts '%-12i%-20s%-12i%-12i%-20i' % [
       page_number,
       page.type,
       page.prev || 0,
@@ -344,15 +347,15 @@ def space_index_fseg_pages_summary(space, fseg_id)
 end
 
 def space_page_type_regions(space, start_page)
-  puts "%-12s%-12s%-12s%-20s" % [
-    "start",
-    "end",
-    "count",
-    "type",
+  puts '%-12s%-12s%-12s%-20s' % %w[
+    start
+    end
+    count
+    type
   ]
 
   space.each_page_type_region(start_page) do |region|
-    puts "%-12i%-12i%-12i%-20s" % [
+    puts '%-12i%-12i%-12i%-20s' % [
       region[:start],
       region[:end],
       region[:count],
@@ -367,24 +370,24 @@ def space_page_type_summary(space, start_page)
   page_count = 0
   # A Hash of page type => count.
   page_type = Hash.new(0)
-  space.each_page(start_page) do |page_number, page|
+  space.each_page(start_page) do |_page_number, page|
     page_count += 1
     page_type[page.type] += 1
   end
 
-  puts "%-20s%-12s%-12s%-20s" % [
-    "type",
-    "count",
-    "percent",
-    "description",
+  puts '%-20s%-12s%-12s%-20s' % %w[
+    type
+    count
+    percent
+    description
   ]
 
   # Sort the page type Hash by count, descending.
   page_type.sort { |a, b| b[1] <=> a[1] }.each do |type, type_count|
-    puts "%-20s%-12i%-12.2f%-20s" % [
+    puts '%-20s%-12i%-12.2f%-20s' % [
       type,
       type_count,
-      100.0 * (type_count.to_f / page_count.to_f),
+      100.0 * (type_count.to_f / page_count),
       Innodb::Page::PAGE_TYPE[type][:description],
     ]
   end
@@ -397,19 +400,17 @@ end
 def space_list_iterate(space, list_name)
   fsp = space.page(0).fsp_header
 
-  unless fsp[list_name] && fsp[list_name].is_a?(Innodb::List)
-    raise "List '#{list_name}' doesn't exist"
-  end
+  raise "List '#{list_name}' doesn't exist" unless fsp[list_name]&.is_a?(Innodb::List)
 
   case fsp[list_name]
   when Innodb::List::Xdes
     print_xdes_list(space, fsp[list_name])
   when Innodb::List::Inode
-    puts "%-12s" % [
-      "page",
+    puts '%-12s' % %w[
+      page
     ]
     fsp[list_name].each do |page|
-      puts "%-12i" % [
+      puts '%-12i' % [
         page.offset,
       ]
     end
@@ -417,44 +418,42 @@ def space_list_iterate(space, list_name)
 end
 
 def space_indexes(innodb_system, space)
-  puts "%-12s%-32s%-12s%-12s%-12s%-12s%-12s%-12s" % [
-    "id",
-    "name",
-    "root",
-    "fseg",
-    "fseg_id",
-    "used",
-    "allocated",
-    "fill_factor",
+  puts '%-12s%-32s%-12s%-12s%-12s%-12s%-12s%-12s' % %w[
+    id
+    name
+    root
+    fseg
+    fseg_id
+    used
+    allocated
+    fill_factor
   ]
 
   space.each_index do |index|
     index.each_fseg do |fseg_name, fseg|
-      puts "%-12i%-32s%-12i%-12s%-12i%-12i%-12i%-12s" % [
+      puts '%-12i%-32s%-12i%-12s%-12i%-12i%-12i%-12s' % [
         index.id,
-        innodb_system ? innodb_system.index_name_by_id(index.id) : "",
+        innodb_system ? innodb_system.index_name_by_id(index.id) : '',
         index.root.offset,
         fseg_name,
         fseg.fseg_id,
         fseg.used_pages,
         fseg.total_pages,
-        "%.2f%%" % fseg.fill_factor,
+        '%.2f%%' % fseg.fill_factor,
       ]
     end
   end
 end
 
 def space_index_pages_free_plot(space, image, start_page)
-  unless require "gnuplot"
-    raise "Couldn't load gnuplot. Is it installed?"
-  end
+  raise 'Could not load gnuplot. Is it installed?' unless require 'gnuplot'
 
-  index_data = {0 => {:x => [], :y => []}}
+  index_data = { 0 => { x: [], y: [] } }
 
   space.each_page(start_page) do |page_number, page|
     case page.type
     when :INDEX
-      data = (index_data[page.page_header[:index_id]] ||= {:x => [], :y => []})
+      data = (index_data[page.page_header[:index_id]] ||= { x: [], y: [] })
       data[:x] << page_number
       data[:y] << page.free_space
     when :ALLOCATED
@@ -463,25 +462,25 @@ def space_index_pages_free_plot(space, image, start_page)
     end
   end
 
-  image_file = image + "_free.png"
+  image_file = image + '_free.png'
   # Aim for one horizontal pixel per extent, but min 1k and max 10k width.
-  image_width = [10000, [1000, space.pages / space.pages_per_extent].max].min
+  image_width = [10_000, [1_000, space.pages / space.pages_per_extent].max].min
 
   Gnuplot.open do |gp|
     Gnuplot::Plot.new(gp) do |plot|
       plot.terminal "png size #{image_width}, 800"
       plot.output image_file
       plot.title image
-      plot.key "reverse left top box horizontal Left textcolor variable"
-      plot.ylabel "free space per page"
-      plot.xlabel "page number"
-      plot.yrange "[-100:18000]"
-      plot.xtics "border"
+      plot.key 'reverse left top box horizontal Left textcolor variable'
+      plot.ylabel 'free space per page'
+      plot.xlabel 'page number'
+      plot.yrange '[-100:18000]'
+      plot.xtics 'border'
 
       index_data.sort.each do |id, data|
         plot.data << Gnuplot::DataSet.new([data[:x], data[:y]]) do |ds|
-          ds.with = "dots"
-          ds.title = id == 0 ? "Unallocated" : "Index #{id}"
+          ds.with = 'dots'
+          ds.title = id.zero? ? 'Unallocated' : "Index #{id}"
         end
       end
 
@@ -500,7 +499,7 @@ end
 def space_extents_illustrate(space)
   line_width = space.pages_per_extent
   puts
-  puts "%12s ╭%-#{line_width}s╮" % [ "Start Page", "─" * line_width ]
+  puts "%12s ╭%-#{line_width}s╮" % ['Start Page', '─' * line_width]
 
   identifiers = {}
   count_by_identifier = Hash.new(0)
@@ -508,7 +507,7 @@ def space_extents_illustrate(space)
   space.each_xdes do |entry|
     puts "%12i │%-#{line_width}s│" % [
       entry.xdes[:start_page],
-      entry.each_page_status.inject("") { |bitmap, (page_number, page_status)|
+      entry.each_page_status.inject('') do |bitmap, (page_number, page_status)|
         if page_number < space.pages
           used_fraction = 1.0
           identifier = nil
@@ -516,20 +515,16 @@ def space_extents_illustrate(space)
             used_fraction = 0.0
           else
             page = space.page(page_number)
-            if page.respond_to?(:used_space)
-              used_fraction = page.used_space.to_f / page.size.to_f
-            end
+            used_fraction = page.used_space.to_f / page.size if page.respond_to?(:used_space)
             if page.respond_to?(:index_id)
               identifier = page.index_id
               unless identifiers[identifier]
-                identifiers[identifier] = (page.index_id == Innodb::IbufIndex::INDEX_ID) ?
-                  "Insert Buffer Index" :
+                identifiers[identifier] = page.index_id == Innodb::IbufIndex::INDEX_ID ?
+                  'Insert Buffer Index' :
                   "Index #{page.index_id}"
                 if space.innodb_system
                   table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
-                  if table && index
-                    identifiers[identifier] += " (%s.%s)" % [table, index]
-                  end
+                  identifiers[identifier] += ' (%s.%s)' % [table, index] if table && index
                 end
               end
             end
@@ -541,90 +536,106 @@ def space_extents_illustrate(space)
             count_by_identifier[:free] += 1
           end
         else
-          bitmap += " "
+          bitmap += ' '
         end
         bitmap
-      },
+      end,
     ]
   end
   total_pages = count_by_identifier.values.reduce(:+)
 
-  puts "%12s ╰%-#{line_width}s╯" % [ "", "─" * line_width ]
+  puts "%12s ╰%-#{line_width}s╯" % ['', '─' * line_width]
 
   puts
-  puts "Legend (%s = 1 page):" % [filled_block(1.0, nil)]
-  puts "  %-62s %8s %8s" % [
-    "Page Type", "Pages", "Ratio"
+  puts 'Legend (%s = 1 page):' % [filled_block(1.0, nil)]
+  puts '  %-62s %8s %8s' % [
+    'Page Type',
+    'Pages',
+    'Ratio',
   ]
-  puts "  %s %-60s %8i %7.2f%%" % [
+  puts '  %s %-60s %8i %7.2f%%' % [
     filled_block(1.0, nil),
-    "System",
+    'System',
     count_by_identifier[nil],
-    100.0 * (count_by_identifier[nil].to_f / total_pages.to_f),
+    100.0 * (count_by_identifier[nil].to_f / total_pages),
   ]
   identifiers.sort.each do |identifier, description|
-    puts "  %s %-60s %8i %7.2f%%" % [
+    puts '  %s %-60s %8i %7.2f%%' % [
       filled_block(1.0, identifier),
       description,
       count_by_identifier[identifier],
-      100.0 * (count_by_identifier[identifier].to_f / total_pages.to_f),
+      100.0 * (count_by_identifier[identifier].to_f / total_pages),
     ]
   end
-  puts "  %s %-60s %8i %7.2f%%" % [
+  puts '  %s %-60s %8i %7.2f%%' % [
     filled_block(0.0, nil),
-    "Free space",
+    'Free space',
     count_by_identifier[:free],
-    100.0 * (count_by_identifier[:free].to_f / total_pages.to_f),
+    100.0 * (count_by_identifier[:free].to_f / total_pages),
   ]
   puts
 end
 
-def svg_extent_legend(x, y, block_size, color=nil, description=nil, pages=nil, ratio=nil)
+def svg_extent_legend(x, y, block_size, color = nil, description = nil, pages = nil, ratio = nil)
   [
-    svg("rect", {
-      "y" => y,
-      "x" => x,
-      "width" => block_size,
-      "height" => block_size,
-      "fill" => color ? color : "white",
-      "stroke" => description ? "black" : "none",
-    }),
-    svg("text", {
-      "y" => y + block_size - 4,
-      "x" => x + (description ? block_size + 5 : 0),
-      "font-family" => "monospace",
-      "font-size" => block_size,
-      "font-weight" => description ? "normal" : "bold",
-      "text-anchor" => "start",
-    }, description ? description : "Page Type"),
-    svg("text", {
-      "y" => y + block_size - 4,
-      "x" => x + block_size + 5 + (40 * block_size),
-      "font-family" => "monospace",
-      "font-size" => block_size,
-      "font-weight" => description ? "normal" : "bold",
-      "text-anchor" => "end",
-    }, pages ? pages : "Pages"),
-    svg("text", {
-      "y" => y + block_size - 4,
-      "x" => x + block_size + 5 + (40 * block_size) + (10 * block_size),
-      "font-family" => "monospace",
-      "font-size" => block_size,
-      "font-weight" => description ? "normal" : "bold",
-      "text-anchor" => "end",
-    }, ratio ? ("%7.2f%%" % [ratio]) : "Ratio"),
-  ].join("\n")
+    svg(
+      'rect',
+      {
+        'y' => y,
+        'x' => x,
+        'width' => block_size,
+        'height' => block_size,
+        'fill' => color || 'white',
+        'stroke' => description ? 'black' : 'none',
+      }
+    ),
+    svg(
+      'text',
+      {
+        'y' => y + block_size - 4,
+        'x' => x + (description ? block_size + 5 : 0),
+        'font-family' => 'monospace',
+        'font-size' => block_size,
+        'font-weight' => description ? 'normal' : 'bold',
+        'text-anchor' => 'start',
+      },
+      description || 'Page Type'
+    ),
+    svg(
+      'text',
+      {
+        'y' => y + block_size - 4,
+        'x' => x + block_size + 5 + (40 * block_size),
+        'font-family' => 'monospace',
+        'font-size' => block_size,
+        'font-weight' => description ? 'normal' : 'bold',
+        'text-anchor' => 'end',
+      },
+      pages ? pages : 'Pages'
+    ),
+    svg(
+      'text',
+      {
+        'y' => y + block_size - 4,
+        'x' => x + block_size + 5 + (40 * block_size) + (10 * block_size),
+        'font-family' => 'monospace',
+        'font-size' => block_size,
+        'font-weight' => description ? 'normal' : 'bold',
+        'text-anchor' => 'end',
+      },
+      ratio ? ('%7.2f%%' % [ratio]) : 'Ratio'
+    ),
+  ].join('\n')
 end
 
 # Illustrate the space by printing each extent and for each page, printing a
 # filled block colored based on the index the page is part of. Print a legend
 # for the colors used afterwards.
 def space_extents_illustrate_svg(space)
-  line_width = space.pages_per_extent
   block_size = @options.illustration_block_size
 
-  puts "<?xml version=\"1.0\"?>"
-  puts "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"
+  puts '<?xml version=\'1.0\'?>'
+  puts '<svg xmlns=\'http://www.w3.org/2000/svg\' version=\'1.1\'>'
 
   identifiers = {}
   count_by_identifier = Hash.new(0)
@@ -632,27 +643,35 @@ def space_extents_illustrate_svg(space)
   graphic_x = 48
   graphic_y = 16
 
-  puts svg("text", {
-    "y" => graphic_y - 3,
-    "x" => graphic_x - 7,
-    "font-family" => "monospace",
-    "font-size" => block_size,
-    "font-weight" => "bold",
-    "text-anchor" => "end",
-  }, "Page")
+  puts svg(
+    'text',
+    {
+      'y' => graphic_y - 3,
+      'x' => graphic_x - 7,
+      'font-family' => 'monospace',
+      'font-size' => block_size,
+      'font-weight' => 'bold',
+      'text-anchor' => 'end',
+    },
+    'Page'
+  )
 
   block_x = 0
   block_y = 0
   space.each_xdes do |entry|
     block_x = 0
 
-    puts svg("text", {
-      "y" => graphic_y + block_y + block_size,
-      "x" => graphic_x - 7,
-      "font-family" => "monospace",
-      "font-size" => block_size,
-      "text-anchor" => "end",
-    }, entry.xdes[:start_page])
+    puts svg(
+      'text',
+      {
+        'y' => graphic_y + block_y + block_size,
+        'x' => graphic_x - 7,
+        'font-family' => 'monospace',
+        'font-size' => block_size,
+        'text-anchor' => 'end',
+      },
+      entry.xdes[:start_page]
+    )
 
     entry.each_page_status do |page_number, page_status|
       if page_number < space.pages
@@ -662,20 +681,16 @@ def space_extents_illustrate_svg(space)
           used_fraction = 0.0
         else
           page = space.page(page_number)
-          if page.respond_to?(:used_space)
-            used_fraction = page.used_space.to_f / page.size.to_f
-          end
+          used_fraction = page.used_space.to_f / page.size if page.respond_to?(:used_space)
           if page.respond_to?(:index_id)
             identifier = page.index_id
             unless identifiers[identifier]
-              identifiers[identifier] = (page.index_id == Innodb::IbufIndex::INDEX_ID) ?
-                "Insert Buffer Index" :
+              identifiers[identifier] = page.index_id == Innodb::IbufIndex::INDEX_ID ?
+                'Insert Buffer Index' :
                 "Index #{page.index_id}"
               if space.innodb_system
                 table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
-                if table && index
-                  identifiers[identifier] += " (%s.%s)" % [table, index]
-                end
+                identifiers[identifier] += ' (%s.%s)' % [table, index] if table && index
               end
             end
           end
@@ -687,35 +702,39 @@ def space_extents_illustrate_svg(space)
         end
 
         block_height = block_size * used_fraction
-        color = "black"
-        if identifier
-          color = "#" + RGBHEX_COLORS_RANDOM[(identifier * COLOR_SPACING_PRIME) % RGBHEX_COLORS_RANDOM.size]
-        end
-        puts svg("rect", {
-          "x" => graphic_x + block_x,
-          "y" => graphic_y + block_y + (block_size - block_height),
-          "width" => block_size,
-          "height" => block_height,
-          "fill" => color,
-        })
+        color = 'black'
+        color = '#' + RGBHEX_COLORS_RANDOM[(identifier * COLOR_SPACING_PRIME) % RGBHEX_COLORS_RANDOM.size] if identifier
+        puts svg(
+          'rect',
+          {
+            'x' => graphic_x + block_x,
+            'y' => graphic_y + block_y + (block_size - block_height),
+            'width' => block_size,
+            'height' => block_height,
+            'fill' => color,
+          }
+        )
       end
       block_x += block_size
     end
     block_y += block_size
   end
 
-  puts svg("path", {
-    "stroke" => "black",
-    "stroke-width" => 1,
-    "fill" => "none",
-    "d" => svg_path_rounded_rect(
-      graphic_x,
-      graphic_y,
-      block_x,
-      block_y,
-      4
-    ),
-  })
+  puts svg(
+    'path',
+    {
+      'stroke' => 'black',
+      'stroke-width' => 1,
+      'fill' => 'none',
+      'd' => svg_path_rounded_rect(
+        graphic_x,
+        graphic_y,
+        block_x,
+        block_y,
+        4
+      ),
+    }
+  )
 
   block_x = 0
   block_y += 10
@@ -730,10 +749,10 @@ def space_extents_illustrate_svg(space)
     graphic_x + block_x,
     graphic_y + block_y,
     block_size,
-    "black",
-    "System",
+    'black',
+    'System',
     count_by_identifier[nil],
-    100.0 * (count_by_identifier[nil].to_f / space.pages.to_f)
+    100.0 * (count_by_identifier[nil].to_f / space.pages)
   )
   block_y += block_size + 2
 
@@ -742,10 +761,10 @@ def space_extents_illustrate_svg(space)
       graphic_x + block_x,
       graphic_y + block_y,
       block_size,
-      "#" + RGBHEX_COLORS_RANDOM[(identifier * COLOR_SPACING_PRIME) % RGBHEX_COLORS_RANDOM.size],
+      '#' + RGBHEX_COLORS_RANDOM[(identifier * COLOR_SPACING_PRIME) % RGBHEX_COLORS_RANDOM.size],
       description,
       count_by_identifier[identifier],
-      100.0 * (count_by_identifier[identifier].to_f / space.pages.to_f)
+      100.0 * (count_by_identifier[identifier].to_f / space.pages)
     )
     block_y += block_size + 2
   end
@@ -754,15 +773,14 @@ def space_extents_illustrate_svg(space)
     graphic_x + block_x,
     graphic_y + block_y,
     block_size,
-    "white",
-    "Free space",
+    'white',
+    'Free space',
     count_by_identifier[:free],
-    100.0 * (count_by_identifier[:free].to_f / space.pages.to_f)
+    100.0 * (count_by_identifier[:free].to_f / space.pages)
   )
 
-  puts "</svg>"
+  puts '</svg>'
 end
-
 
 def space_lsn_age_illustrate(space)
   colors = ANSI_COLORS_HEATMAP
@@ -774,38 +792,38 @@ def space_lsn_age_illustrate(space)
 
   lsn_min = lsn_max = space.page(0).lsn
   space.each_page do |page_number, page|
-    if page.lsn != 0
-      page_lsn[page_number] = page.lsn
-      lsn_min = page.lsn < lsn_min ? page.lsn : lsn_min
-      lsn_max = page.lsn > lsn_max ? page.lsn : lsn_max
-    end
+    next if page.lsn.zero?
+
+    page_lsn[page_number] = page.lsn
+    lsn_min = page.lsn < lsn_min ? page.lsn : lsn_min
+    lsn_max = page.lsn > lsn_max ? page.lsn : lsn_max
   end
   lsn_delta = lsn_max - lsn_min
 
   puts
-  puts "%12s ╭%-#{line_width}s╮" % [ "Start Page", "─" * line_width ]
+  puts "%12s ╭%-#{line_width}s╮" % ['Start Page', '─' * line_width]
 
   start_page = 0
   page_lsn.each_slice(line_width) do |slice|
     puts "%12i │%-#{line_width}s│" % [
       start_page,
-      slice.inject("") { |line, lsn|
+      slice.inject('') do |line, lsn|
         if lsn
-          age_ratio = (lsn - lsn_min).to_f / lsn_delta.to_f
+          age_ratio = (lsn - lsn_min).to_f / lsn_delta
           color = colors[(age_ratio * colors.size.to_f).floor]
           line += ansi_color(color, filled_block(1.0, nil))
         else
-          line += " "
+          line += ' '
         end
         line
-      },
+      end,
     ]
     start_page += line_width
   end
 
-  puts "%12s ╰%-#{line_width}s╯" % [ "", "─" * line_width ]
+  puts "%12s ╰%-#{line_width}s╯" % ['', '─' * line_width]
 
-  lsn_legend = "<" + ("─" * (colors.size - 2)) + ">"
+  lsn_legend = '<' + ('─' * (colors.size - 2)) + '>'
 
   begin
     # Try to optionally replace the boring lsn_legend with a histogram of
@@ -813,32 +831,27 @@ def space_lsn_age_illustrate(space)
 
     require 'histogram/array'
 
-    lsn_bins, lsn_freq = page_lsn.select { |lsn| !lsn.nil? }.
-      histogram(colors.size, :min => lsn_min, :max => lsn_max)
+    lsn_bins, lsn_freq = page_lsn.reject(&:nil?).histogram(colors.size, min: lsn_min, max: lsn_max)
 
     lsn_freq_delta = lsn_freq.max - lsn_freq.min
 
-    lsn_legend = ""
+    lsn_legend = ''
     lsn_freq.each do |freq|
       freq_norm = freq / lsn_freq_delta
-      if freq_norm > 0.0
-        lsn_legend << filled_block(freq_norm)
-      else
-        # Avoid the "empty" block used for 0.0.
-        lsn_legend << " "
-      end
+      lsn_legend << freq_norm > 0.0 ? filled_block(freq_norm) : ' '
     end
   rescue LoadError
     # That's okay! Leave the legend boring.
   end
 
   puts
-  puts "Legend (%s = 1 page):" % [filled_block(1.0, nil)]
-  puts "  %12s %s %-12s" % [
-    "Min LSN",
+  puts 'Legend (%s = 1 page):' % [filled_block(1.0, nil)]
+  puts '  %12s %s %-12s' % [
+    'Min LSN',
     lsn_legend,
-    "Max LSN" ]
-  puts "  %12i %s %-12i" % [
+    'Max LSN',
+  ]
+  puts '  %12i %s %-12i' % [
     lsn_min,
     colors.map { |c| ansi_color(c, filled_block(1.0, nil)) }.join,
     lsn_max,
@@ -850,8 +863,8 @@ def space_lsn_age_illustrate_svg(space)
   line_width = @options.illustration_line_width
   block_size = @options.illustration_block_size
 
-  puts "<?xml version=\"1.0\"?>"
-  puts "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"
+  puts '<?xml version=\'1.0\'?>'
+  puts '<svg xmlns=\'http://www.w3.org/2000/svg\' version=\'1.1\'>'
 
   # Calculate the minimum and maximum LSN in the space. This is pretty
   # inefficient as we end up scanning all pages twice.
@@ -859,11 +872,11 @@ def space_lsn_age_illustrate_svg(space)
 
   lsn_min = lsn_max = space.page(0).lsn
   space.each_page do |page_number, page|
-    if page.lsn != 0
-      page_lsn[page_number] = page.lsn
-      lsn_min = page.lsn < lsn_min ? page.lsn : lsn_min
-      lsn_max = page.lsn > lsn_max ? page.lsn : lsn_max
-    end
+    next if page.lsn.zero?
+
+    page_lsn[page_number] = page.lsn
+    lsn_min = page.lsn < lsn_min ? page.lsn : lsn_min
+    lsn_max = page.lsn > lsn_max ? page.lsn : lsn_max
   end
   lsn_delta = lsn_max - lsn_min
 
@@ -873,100 +886,128 @@ def space_lsn_age_illustrate_svg(space)
   block_x = 0
   block_y = 0
 
-  puts svg("text", {
-    "y" => graphic_y - 3,
-    "x" => graphic_x - 7,
-    "font-family" => "monospace",
-    "font-size" => block_size,
-    "font-weight" => "bold",
-    "text-anchor" => "end",
-  }, "Page")
+  puts svg(
+    'text',
+    {
+      'y' => graphic_y - 3,
+      'x' => graphic_x - 7,
+      'font-family' => 'monospace',
+      'font-size' => block_size,
+      'font-weight' => 'bold',
+      'text-anchor' => 'end',
+    },
+    'Page'
+  )
 
   start_page = 0
   page_lsn.each_slice(line_width) do |slice|
     block_x = 0
     slice.each do |lsn|
-      rgbhex = ""
       if lsn
-        age_ratio = (lsn - lsn_min).to_f / lsn_delta.to_f
+        age_ratio = (lsn - lsn_min).to_f / lsn_delta
         color = colors[(age_ratio * colors.size.to_f).floor]
       end
-      puts svg("rect", {
-        "y" => graphic_y + block_y,
-        "x" => graphic_x + block_x,
-        "width" => block_size,
-        "height" => block_size,
-        "fill" => color ? "#" + color : "black",
-      })
+      puts svg(
+        'rect',
+        {
+          'y' => graphic_y + block_y,
+          'x' => graphic_x + block_x,
+          'width' => block_size,
+          'height' => block_size,
+          'fill' => color ? '#' + color : 'black',
+        }
+      )
       block_x += block_size
     end
-    puts svg("text", {
-      "y" => graphic_y + block_y + block_size,
-      "x" => graphic_x - 7,
-      "font-family" => "monospace",
-      "font-size" => block_size,
-      "text-anchor" => "end",
-    }, start_page)
+    puts svg(
+      'text',
+      {
+        'y' => graphic_y + block_y + block_size,
+        'x' => graphic_x - 7,
+        'font-family' => 'monospace',
+        'font-size' => block_size,
+        'text-anchor' => 'end',
+      },
+      start_page
+    )
     block_y += block_size
     start_page += line_width
   end
 
-  puts svg("path", {
-    "stroke" => "black",
-    "stroke-width" => 1,
-    "fill" => "none",
-    "d" => svg_path_rounded_rect(
-      graphic_x,
-      graphic_y,
-      line_width * block_size,
-      block_y,
-      4
-    ),
-  })
+  puts svg(
+    'path',
+    {
+      'stroke' => 'black',
+      'stroke-width' => 1,
+      'fill' => 'none',
+      'd' => svg_path_rounded_rect(
+        graphic_x,
+        graphic_y,
+        line_width * block_size,
+        block_y,
+        4
+      ),
+    }
+  )
 
   block_x = 0
   block_y += 16
-  puts svg("text", {
-    "y" => graphic_y + block_y + block_size - 4,
-    "x" => graphic_x + block_x,
-    "font-family" => "monospace",
-    "font-size" => block_size,
-    "text-anchor" => "start",
-  }, lsn_min)
+  puts svg(
+    'text',
+    {
+      'y' => graphic_y + block_y + block_size - 4,
+      'x' => graphic_x + block_x,
+      'font-family' => 'monospace',
+      'font-size' => block_size,
+      'text-anchor' => 'start',
+    },
+    lsn_min
+  )
   color_width = ((64.0 * block_size.to_f) / colors.size.to_f).round
   colors.each do |color|
-    puts svg("rect", {
-      "y" => graphic_y + block_y + block_size,
-      "x" => graphic_x + block_x,
-      "width" => color_width,
-      "height" => block_size,
-      "fill" => "#" + color,
-    })
+    puts svg(
+      'rect',
+      {
+        'y' => graphic_y + block_y + block_size,
+        'x' => graphic_x + block_x,
+        'width' => color_width,
+        'height' => block_size,
+        'fill' => '#' + color,
+      }
+    )
     block_x += color_width
   end
-  puts svg("text", {
-    "y" => graphic_y + block_y + block_size - 4,
-    "x" => graphic_x + block_x,
-    "font-family" => "monospace",
-    "font-size" => block_size,
-    "text-anchor" => "end",
-  }, lsn_max)
 
-  puts svg("text", {
-    "y" => graphic_y + block_y + block_size - 4,
-    "x" => graphic_x + (block_x / 2),
-    "font-family" => "monospace",
-    "font-weight" => "bold",
-    "font-size" => block_size,
-    "text-anchor" => "middle",
-  }, "LSN Age")
+  puts svg(
+    'text',
+    {
+      'y' => graphic_y + block_y + block_size - 4,
+      'x' => graphic_x + block_x,
+      'font-family' => 'monospace',
+      'font-size' => block_size,
+      'text-anchor' => 'end',
+    },
+    lsn_max
+  )
 
+  puts svg(
+    'text',
+    {
+      'y' => graphic_y + block_y + block_size - 4,
+      'x' => graphic_x + (block_x / 2),
+      'font-family' => 'monospace',
+      'font-weight' => 'bold',
+      'font-size' => block_size,
+      'text-anchor' => 'middle',
+    },
+    'LSN Age'
+  )
 
-  puts "</svg>\n"
+  puts '</svg>\n'
 end
 
 def print_inode_summary(inode)
-  puts "INODE fseg_id=%d, pages=%d, frag=%d, full=%d, not_full=%d, free=%d" % [
+  puts 'INODE fseg_id=%d, pages=%d, frag=%d, full=%d, not_full=%d, free=%d' % [
     inode.fseg_id,
     inode.total_pages,
     inode.frag_array_n_used,
@@ -977,19 +1018,20 @@ def print_inode_summary(inode)
 end
 
 def print_inode_detail(inode)
-  puts "INODE fseg_id=%d, pages=%d, frag=%d pages (%s), full=%d extents (%s), not_full=%d extents (%s) (%d/%d pages used), free=%d extents (%s)" % [
+  puts 'INODE fseg_id=%d, pages=%d, frag=%d pages (%s), full=%d extents (%s),' \
+    ' not_full=%d extents (%s) (%d/%d pages used), free=%d extents (%s)' % [
     inode.fseg_id,
     inode.total_pages,
     inode.frag_array_n_used,
-    inode.frag_array_pages.join(", "),
+    inode.frag_array_pages.join(', '),
     inode.full.length,
-    inode.full.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(", "),
+    inode.full.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(', '),
     inode.not_full.length,
-    inode.not_full.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(", "),
+    inode.not_full.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(', '),
     inode.not_full_n_used,
     inode.not_full.length * inode.space.pages_per_extent,
     inode.free.length,
-    inode.free.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(", "),
+    inode.free.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(', '),
   ]
 end
 
@@ -1015,21 +1057,20 @@ def page_account(innodb_system, space, page_number)
   puts "Accounting for page #{page_number}:"
 
   if page_number > space.pages
-    puts "  Page does not exist."
+    puts '  Page does not exist.'
     return
   end
 
   page = space.page(page_number)
   page_type = Innodb::Page::PAGE_TYPE[page.type]
-  puts "  Page type is %s (%s, %s)." % [
+  puts '  Page type is %s (%s, %s).' % [
     page.type,
     page_type[:description],
     page_type[:usage],
   ]
 
-
   xdes = space.xdes_for_page(page_number)
-  puts "  Extent descriptor for pages %d-%d is at page %d, offset %d." % [
+  puts '  Extent descriptor for pages %d-%d is at page %d, offset %d.' % [
     xdes.start_page,
     xdes.end_page,
     xdes.this[:page],
@@ -1039,32 +1080,30 @@ def page_account(innodb_system, space, page_number)
   if xdes.allocated_to_fseg?
     puts "  Extent is fully allocated to fseg #{xdes.fseg_id}."
   else
-    puts "  Extent is not fully allocated to an fseg; may be a fragment extent."
+    puts '  Extent is not fully allocated to an fseg; may be a fragment extent.'
   end
 
   xdes_status = xdes.page_status(page_number)
-  puts "  Page is marked as %s in extent descriptor." % [
-    xdes_status[:free] ? 'free' : 'used'
+  puts '  Page is marked as %s in extent descriptor.' % [
+    xdes_status[:free] ? 'free' : 'used',
   ]
 
   space.each_xdes_list do |name, list|
-    if list.include? xdes
-      puts "  Extent is in #{name} list of space."
-    end
+    puts "  Extent is in #{name} list of space." if list.include?(xdes)
   end
 
   page_inode = nil
   space.each_inode do |inode|
     inode.each_list do |name, list|
-      if list.include? xdes
+      if list.include?(xdes)
         page_inode = inode
         puts "  Extent is in #{name} list of fseg #{inode.fseg_id}."
       end
     end
 
-    if inode.frag_array.include? page_number
+    if inode.frag_array.include?(page_number)
       page_inode = inode
-      puts "  Page is in fragment array of fseg %d." % [
+      puts '  Page is in fragment array of fseg %d.' % [
         inode.fseg_id,
       ]
     end
@@ -1072,42 +1111,30 @@ def page_account(innodb_system, space, page_number)
 
   space.each_index do |index|
     index.each_fseg do |fseg_name, fseg|
-      if page_inode == fseg
-        puts "  Fseg is in #{fseg_name} fseg of index #{index.id}."
-        puts "  Index root is page #{index.root.offset}."
-        if innodb_system
-          table_name, index_name = innodb_system.table_and_index_name_by_id(index.id)
-          if table_name and index_name
-            puts "  Index is #{table_name}.#{index_name}."
-          end
-        end
+      next unless page_inode == fseg
+
+      puts "  Fseg is in #{fseg_name} fseg of index #{index.id}."
+      puts "  Index root is page #{index.root.offset}."
+      if innodb_system
+        table_name, index_name = innodb_system.table_and_index_name_by_id(index.id)
+        puts "  Index is #{table_name}.#{index_name}." if table_name && index_name
       end
     end
   end
 
   if space.system_space?
-    if page_inode == space.trx_sys.fseg
-      puts "  Fseg is trx_sys."
-    end
+    puts '  Fseg is trx_sys.' if page_inode == space.trx_sys.fseg
+    puts '  Fseg is doublewrite buffer.' if page_inode == space.trx_sys.doublewrite[:fseg]
 
-    if page_inode == space.trx_sys.doublewrite[:fseg]
-      puts "  Fseg is doublewrite buffer."
-    end
-
-    if innodb_system
-      innodb_system.data_dictionary.each_data_dictionary_index do |table_name, index_name, index|
-        index.each_fseg do |fseg_name, fseg|
-          if page_inode == fseg
-            puts "  Index is #{table_name}.#{index_name} of data dictionary."
-          end
-        end
+    innodb_system.data_dictionary&.each_data_dictionary_index do |table_name, index_name, index|
+      index.each_fseg do |_fseg_name, fseg|
+        puts "  Index is #{table_name}.#{index_name} of data dictionary." if page_inode == fseg
       end
     end
 
     space.trx_sys.rsegs.each_with_index do |rseg_slot, index|
-      if page.fil_header[:space_id] == rseg_slot[:space_id] &&
-        page.fil_header[:offset] == rseg_slot[:page_number]
-          puts "  Page is a rollback segment in slot #{index}."
+      if page.fil_header.space_id == rseg_slot.space_id && page.fil_header.offset == rseg_slot.page_number
+        puts "  Page is a rollback segment in slot #{index}."
       end
     end
   end
@@ -1116,21 +1143,20 @@ end
 def page_validate_index(page)
   page_is_valid = true
 
-  print "Parsing all records in page... "
+  print 'Parsing all records in page... '
   records = page.each_record.to_a
-  puts "done."
+  puts 'done.'
 
   directory_offsets = page.each_directory_offset.to_a
-  record_offsets = records.map { |rec| rec.offset }
+  record_offsets = records.map(&:offset)
 
-  invalid_directory_entries =
-    directory_offsets.select { |n| ! record_offsets.include?(n) }
+  invalid_directory_entries = directory_offsets.reject { |n| record_offsets.include?(n) }
 
   unless invalid_directory_entries.empty?
     page_is_valid = false
-    puts "Invalid page directory entries (offsets not to valid records):"
+    puts 'Invalid page directory entries (offsets not to valid records):'
     invalid_directory_entries.each do |offset|
-      puts "  slot %d, offset %d" % [
+      puts '  slot %d, offset %d' % [
         page.offset_is_directory_slot?(offset),
         offset,
       ]
@@ -1138,9 +1164,7 @@ def page_validate_index(page)
   end
 
   # Read all records corresponding to valid directory entries.
-  directory_records = directory_offsets.
-    select { |o| !invalid_directory_entries.include?(o) }.
-    map { |o| page.record(o) }
+  directory_records = directory_offsets.reject { |o| invalid_directory_entries.include?(o) }.map { |o| page.record(o) }
 
   misordered_directory_entries = []
   prev = nil
@@ -1149,21 +1173,21 @@ def page_validate_index(page)
       prev = rec
       next
     end
-    if rec.compare_key(prev.key.map { |v| v[:value]}) == 1
+    if rec.compare_key(prev.key.map { |v| v[:value] }) == 1
       page_is_valid = false
       misordered_directory_entries << {
-        :slot => page.offset_is_directory_slot?(rec.offset),
-        :offset => rec.offset,
-        :key => rec.key_string,
-        :prev_key => prev.key_string,
+        slot: page.offset_is_directory_slot?(rec.offset),
+        offset: rec.offset,
+        key: rec.key_string,
+        prev_key: prev.key_string,
       }
     end
     prev = rec
   end
   unless misordered_directory_entries.empty?
-    puts "Misordered page directory entries (key < prev key):"
+    puts 'Misordered page directory entries (key < prev key):'
     misordered_directory_entries.each do |entry|
-      puts "  slot %d, offset %d, key %s, prev key %s" % [
+      puts '  slot %d, offset %d, key %s, prev key %s' % [
         entry[:slot],
         entry[:offset],
         entry[:key],
@@ -1179,20 +1203,20 @@ def page_validate_index(page)
       prev = rec
       next
     end
-    if rec.compare_key(prev.key.map { |v| v[:value]}) == 1
+    if rec.compare_key(prev.key.map { |v| v[:value] }) == 1
       page_is_valid = false
       misordered_records << {
-        :offset => rec.offset,
-        :key => rec.key_string,
-        :prev_key => prev.key_string,
+        offset: rec.offset,
+        key: rec.key_string,
+        prev_key: prev.key_string,
       }
     end
     prev = rec
   end
   unless misordered_records.empty?
-    puts "Misordered records in record list (key < prev key):"
+    puts 'Misordered records in record list (key < prev key):'
     misordered_records.each do |entry|
-      puts "  offset %d, key %s, prev key %s" % [
+      puts '  offset %d, key %s, prev key %s' % [
         entry[:offset],
         entry[:key],
         entry[:prev_key],
@@ -1203,34 +1227,33 @@ def page_validate_index(page)
   page_is_valid
 end
 
-
-def page_validate(innodb_system, space, page_number)
+def page_validate(_innodb_system, space, page_number)
   page_is_valid = true
-  puts "Validating page %d..." % [page_number]
+  puts 'Validating page %d...' % [page_number]
 
-  print "Parsing page... "
+  print 'Parsing page... '
   page = space.page(page_number)
-  puts "done."
+  puts 'done.'
 
   if page.corrupt?
     page_is_valid = false
-    puts "Page appears to be corrupt:"
-    puts "  Stored checksums:"
-    puts "    header  %10d (0x%08x), type %s" % [
+    puts 'Page appears to be corrupt:'
+    puts '  Stored checksums:'
+    puts '    header  %10d (0x%08x), type %s' % [
       page.checksum,
       page.checksum,
-      page.checksum_type ? page.checksum_type : "unknown",
+      page.checksum_type || 'unknown',
     ]
-    puts "    trailer %10d (0x%08x)" % [
+    puts '    trailer %10d (0x%08x)' % [
       page.fil_trailer.checksum,
       page.fil_trailer.checksum,
     ]
-    puts "  Calculated checksums:"
-    puts "    crc32  %10d (0x%08x)" % [
+    puts '  Calculated checksums:'
+    puts '    crc32  %10d (0x%08x)' % [
       page.checksum_crc32,
       page.checksum_crc32,
     ]
-    puts "    innodb %10d (0x%08x)" % [
+    puts '    innodb %10d (0x%08x)' % [
       page.checksum_innodb,
       page.checksum_innodb,
     ]
@@ -1238,18 +1261,18 @@ def page_validate(innodb_system, space, page_number)
 
   if page.torn?
     page_is_valid = false
-    puts "Page appears to be torn:"
-    puts "  Full LSN:"
-    puts "    header  %d (0x%016x)" % [
+    puts 'Page appears to be torn:'
+    puts '  Full LSN:'
+    puts '    header  %d (0x%016x)' % [
       page.lsn,
       page.lsn,
     ]
-    puts "  Low 32 bits of LSN:"
-    puts "    header  %10d (0x%08x)" % [
+    puts '  Low 32 bits of LSN:'
+    puts '    header  %10d (0x%08x)' % [
       page.fil_header.lsn_low32,
       page.fil_header.lsn_low32,
     ]
-    puts "    trailer %10d (0x%08x)" % [
+    puts '    trailer %10d (0x%08x)' % [
       page.fil_trailer.lsn_low32,
       page.fil_trailer.lsn_low32,
     ]
@@ -1257,50 +1280,45 @@ def page_validate(innodb_system, space, page_number)
 
   if page.misplaced?
     page_is_valid = false
-    puts "Page appears to be misplaced:"
+    puts 'Page appears to be misplaced:'
     if page.misplaced_offset?
-      puts "  Requested page %d but offset stored in page is %d." % [
+      puts '  Requested page %d but offset stored in page is %d.' % [
         page_number,
         page.offset,
       ]
     end
     if page.misplaced_space?
-      puts "  Space's ID %d does not match page's stored space ID %d." % [
+      puts '  Space ID %d does not match page stored space ID %d.' % [
         page.space.space_id,
         page.space_id,
       ]
     end
   end
 
-  if page.type == :INDEX && !page_validate_index(page)
-    page_is_valid = false
-  end
+  page_is_valid = false if page.type == :INDEX && !page_validate_index(page)
 
-  puts "Page %d appears to be %s!" % [
+  puts 'Page %d appears to be %s!' % [
     page_number,
-    page_is_valid ? "valid" : "corrupted",
+    page_is_valid ? 'valid' : 'corrupted',
   ]
 end
 
-def page_directory_summary(space, page)
-  if page.type != :INDEX
-    usage 1, "Page must be an index page"
-  end
+def page_directory_summary(_space, page)
+  usage(1, 'Page must be an index page') if page.type != :INDEX
 
-  puts "%-8s%-8s%-14s%-8s%s" % [
-    "slot",
-    "offset",
-    "type",
-    "owned",
-    "key",
+  puts '%-8s%-8s%-14s%-8s%s' % %w[
+    slot
+    offset
+    type
+    owned
+    key
   ]
 
   page.directory.each_with_index do |offset, slot|
     record = page.record(offset)
-    key = if [:conventional, :node_pointer].include? record.header[:type]
-      "(%s)" % record.key_string
-    end
-    puts "%-8i%-8i%-14s%-8i%s" % [
+    key = %i[conventional node_pointer].include?(record.header[:type]) ? '(%s)' % record.key_string : ''
+
+    puts '%-8i%-8i%-14s%-8i%s' % [
       slot,
       offset,
       record.header[:type],
@@ -1310,9 +1328,9 @@ def page_directory_summary(space, page)
   end
 end
 
-def page_records(space, page)
+def page_records(_space, page)
   page.each_record do |record|
-    puts "Record %i: %s" % [
+    puts 'Record %i: %s' % [
       record.offset,
       record.string,
     ]
@@ -1323,28 +1341,24 @@ end
 def page_illustrate(page)
   width = 64
   unknown_page_content = page.type == :INDEX && page.record_describer.nil?
-  blocks = Array.new(page.size, unknown_page_content ? "▞" : " ")
+  blocks = Array.new(page.size, unknown_page_content ? '▞' : ' ')
   identifiers = {}
   identifier_sort = 0
   count_by_identifier = Hash.new(0)
 
-  page.each_region.sort { |a,b| a[:offset] <=> b[:offset]}.each do |region|
+  page.each_region.sort { |a, b| a[:offset] <=> b[:offset] }.each do |region|
     region[:length].times do |n|
       identifier = nil
       fraction = 0.0
       if region[:name] != :garbage
-        if n ==  region[:length] - 1
-          fraction = 0.5
-        else
-          fraction = 1.0
-        end
+        fraction = n == region[:length] - 1 ? 0.5 : 1.0
         identifier = region[:name].hash.abs
         unless identifiers[identifier]
           # Prefix an integer <0123> on each name so that the legend can be
           # sorted by the appearance of each region in the page.
-          identifiers[identifier] = "<%04i>%s" % [
+          identifiers[identifier] = '<%04i>%s' % [
             identifier_sort,
-            region[:info]
+            region[:info],
           ]
           identifier_sort += 1
         end
@@ -1355,79 +1369,75 @@ def page_illustrate(page)
   end
 
   puts
-  puts "%12s ╭%-#{width}s╮" % [ "Offset", "─" * width ]
+  puts "%12s ╭%-#{width}s╮" % ['Offset', '─' * width]
   offset = 0
   blocks.each_slice(width) do |slice|
-    puts "%12i │%-s│" % [offset, slice.join]
+    puts '%12i │%-s│' % [offset, slice.join]
     offset += width
   end
-  puts "%12s ╰%-#{width}s╯" % [ "", "─" * width ]
+  puts "%12s ╰%-#{width}s╯" % ['', '─' * width]
 
   puts
-  puts "Legend (%s = 1 byte):" % [filled_block(1.0, nil)]
-  puts "  %-32s %8s %8s" % [
-    "Region Type",
-    "Bytes",
-    "Ratio",
+  puts 'Legend (%s = 1 byte):' % [filled_block(1.0, nil)]
+  puts '  %-32s %8s %8s' % [
+    'Region Type',
+    'Bytes',
+    'Ratio',
   ]
-  identifiers.sort { |a,b| a[1] <=> b[1] }.each do |identifier, description|
-    puts "  %s %-30s %8i %7.2f%%" % [
+  identifiers.sort { |a, b| a[1] <=> b[1] }.each do |identifier, description|
+    puts '  %s %-30s %8i %7.2f%%' % [
       filled_block(1.0, identifier),
-      description.gsub(/^<\d+>/, ""),
+      description.gsub(/^<\d+>/, ''),
       count_by_identifier[identifier],
-      100.0 * (count_by_identifier[identifier].to_f / page.size.to_f),
+      100.0 * (count_by_identifier[identifier].to_f / page.size),
     ]
   end
-  puts "  %s %-30s %8i %7.2f%%" % [
+  puts '  %s %-30s %8i %7.2f%%' % [
     filled_block(0.0, nil),
-    "Garbage",
+    'Garbage',
     count_by_identifier[nil],
-    100.0 * (count_by_identifier[nil].to_f / page.size.to_f),
+    100.0 * (count_by_identifier[nil].to_f / page.size),
   ]
-  free_space = page.size - count_by_identifier.inject(0) { |sum,(k,v)| sum + v }
-  puts "  %s %-30s %8i %7.2f%%" % [
-    unknown_page_content ? "▞" : " ",
-    unknown_page_content ? "Unknown (no data dictionary)" : "Free",
+  free_space = page.size - count_by_identifier.inject(0) { |sum, (_k, v)| sum + v }
+  puts '  %s %-30s %8i %7.2f%%' % [
+    unknown_page_content ? '▞' : ' ',
+    unknown_page_content ? 'Unknown (no data dictionary)' : 'Free',
     free_space,
-    100.0 * (free_space.to_f / page.size.to_f),
+    100.0 * (free_space.to_f / page.size),
   ]
 
   if unknown_page_content
     puts
-    puts "Note:"
-    puts "  Records could not be parsed because no data dictionary or record describer"
-    puts "  was available. Use -s instead of -f, or provide a record describer class."
+    puts 'Note:'
+    puts '  Records could not be parsed because no data dictionary or record describer'
+    puts '  was available. Use -s instead of -f, or provide a record describer class.'
   end
 
   puts
 end
 
 def record_dump(page, record_offset)
-  unless record = page.record(record_offset)
-    raise "Record at offset #{record_offset} not found"
-  end
+  record = page.record(record_offset)
+  raise "Record at offset #{record_offset} not found" unless record
 
   record.dump
 end
 
 def record_history(page, record_offset)
-  unless page.leaf?
-    raise "Record is not located on a leaf page; no history available"
-  end
+  raise 'Record is not located on a leaf page; no history available' unless page.leaf?
 
-  unless record = page.record(record_offset)
-    raise "Record at offset #{record_offset} not found"
-  end
+  record = page.record(record_offset)
+  raise "Record at offset #{record_offset} not found" unless record
 
-  puts "%-14s%-20s%s" % [
-    "Transaction",
-    "Type",
-    "Undo record",
+  puts '%-14s%-20s%s' % [
+    'Transaction',
+    'Type',
+    'Undo record',
   ]
 
   record.each_undo_record do |undo|
-    puts "%-14s%-20s%s" % [
-      undo.trx_id || "(n/a)",
+    puts '%-14s%-20s%s' % [
+      undo.trx_id || '(n/a)',
       undo.header[:type],
       undo.string,
     ]
@@ -1435,29 +1445,23 @@ def record_history(page, record_offset)
 end
 
 def index_fseg_lists(index, fseg_name)
-  unless index.fseg(fseg_name)
-    raise "File segment '#{fseg_name}' doesn't exist"
-  end
+  raise "File segment '#{fseg_name}' doesn't exist" unless index.fseg(fseg_name)
 
   print_lists(index.each_fseg_list(index.fseg(fseg_name)))
 end
 
 def index_fseg_list_iterate(index, fseg_name, list_name)
-  unless fseg = index.fseg(fseg_name)
-    raise "File segment '#{fseg_name}' doesn't exist"
-  end
+  fseg = index.fseg(fseg_name)
+  raise "File segment '#{fseg_name}' doesn't exist" unless fseg
 
-  unless list = fseg.list(list_name)
-    raise "List '#{list_name}' doesn't exist"
-  end
+  list = fseg.list(list_name)
+  raise "List '#{list_name}' doesn't exist" unless list
 
   print_xdes_list(index.space, list)
 end
 
 def index_fseg_frag_pages(index, fseg_name)
-  unless index.fseg(fseg_name)
-    raise "File segment '#{fseg_name}' doesn't exist"
-  end
+  raise "File segment '#{fseg_name}' doesn't exist" unless index.fseg(fseg_name)
 
   print_index_page_summary(index.each_fseg_frag_page(index.fseg(fseg_name)))
 end
@@ -1465,27 +1469,27 @@ end
 def index_recurse(index)
   index.recurse(
     lambda do |page, depth|
-      puts "%s%s NODE #%i: %i records, %i bytes" % [
-        "  " * depth,
+      puts '%s%s NODE #%i: %i records, %i bytes' % [
+        '  ' * depth,
         index.node_type(page).to_s.upcase,
         page.offset,
         page.records,
         page.record_space,
       ]
-      if page.level == 0
+      if page.level.zero?
         page.each_record do |record|
-          puts "%sRECORD: (%s) → (%s)" % [
-            "  " * (depth+1),
+          puts '%sRECORD: (%s) → (%s)' % [
+            '  ' * (depth + 1),
             record.key_string,
             record.row_string,
           ]
         end
       end
     end,
-    lambda do |parent_page, child_page, child_min_key, depth|
-      puts "%sNODE POINTER RECORD ≥ (%s) → #%i" % [
-        "  " * depth,
-        child_min_key.map { |r| "%s=%s" % [r[:name], r[:value].inspect] }.join(", "),
+    lambda do |_parent_page, child_page, child_min_key, depth|
+      puts '%sNODE POINTER RECORD ≥ (%s) → #%i' % [
+        '  ' * depth,
+        child_min_key.map { |r| '%s=%s' % [r[:name], r[:value].inspect] }.join(', '),
         child_page.offset,
       ]
     end
@@ -1493,72 +1497,72 @@ def index_recurse(index)
 end
 
 def index_record_offsets(index)
-  puts "%-20s%-20s" % [
-    "page_offset",
-    "record_offset",
+  puts '%-20s%-20s' % %w[
+    page_offset
+    record_offset
   ]
   index.recurse(
-    lambda do |page, depth|
-      if page.level == 0
+    lambda do |page, _depth|
+      if page.level.zero?
         page.each_record do |record|
-          puts "%-20i%-20i" % [
+          puts '%-20i%-20i' % [
             page.offset,
             record.offset,
           ]
         end
       end
     end,
-    lambda { |*x| }
+    ->(*_) {}
   )
 end
 
 def index_digraph(index)
-  puts "digraph btree {"
-  puts "  rankdir = LR;"
-  puts "  ranksep = 2.0;"
+  puts 'digraph btree {'
+  puts '  rankdir = LR;'
+  puts '  ranksep = 2.0;'
   index.recurse(
     lambda do |page, depth|
-      label = "<page>Page %i|(%i records)" % [
+      label = '<page>Page %i|(%i records)' % [
         page.offset,
         page.records,
       ]
       page.each_child_page do |child_page_number, child_key|
-        label += "|<dir_%i>(%s)" % [
+        label += '|<dir_%i>(%s)' % [
           child_page_number,
-          child_key.join(", "),
+          child_key.join(', '),
         ]
       end
-      puts "  %spage_%i [ shape = \"record\"; label = \"%s\"; ];" % [
-        "  " * depth,
+      puts '  %spage_%i [ shape = \'record\'; label = \'%s\'; ];' % [
+        '  ' * depth,
         page.offset,
         label,
       ]
     end,
-    lambda do |parent_page, child_page, child_key, depth|
-      puts "  %spage_%i:dir_%i → page_%i:page:nw;" % [
-        "  " * depth,
+    lambda do |parent_page, child_page, _child_key, depth|
+      puts '  %spage_%i:dir_%i → page_%i:page:nw;' % [
+        '  ' * depth,
         parent_page.offset,
         child_page.offset,
         child_page.offset,
       ]
     end
   )
-  puts "}"
+  puts '}'
 end
 
 def index_level_summary(index, level)
-  puts "%-8s%-8s%-8s%-8s%-8s%-8s%-8s" % [
-    "page",
-    "index",
-    "level",
-    "data",
-    "free",
-    "records",
-    "min_key",
+  puts '%-8s%-8s%-8s%-8s%-8s%-8s%-8s' % %w[
+    page
+    index
+    level
+    data
+    free
+    records
+    min_key
   ]
 
   index.each_page_at_level(level) do |page|
-    puts "%-8i%-8i%-8i%-8i%-8i%-8i%s" % [
+    puts '%-8i%-8i%-8i%-8i%-8i%-8i%s' % [
       page.offset,
       page.page_header[:index_id],
       page.level,
@@ -1571,21 +1575,20 @@ def index_level_summary(index, level)
 end
 
 def undo_history_summary(innodb_system)
-  history = innodb_system.history.each_history_list
-  history_list = history.select { |history| history.list.length > 0 }
+  history_list = innodb_system.history.each_history_list.reject { |h| h.list.empty? }
 
-  puts "%-8s%-8s%-14s%-20s%s" % [
-    "Page",
-    "Offset",
-    "Transaction",
-    "Type",
-    "Table",
+  puts '%-8s%-8s%-14s%-20s%s' % %w[
+    Page
+    Offset
+    Transaction
+    Type
+    Table
   ]
 
   history_list.each do |history|
     history.each_undo_record do |undo|
       table_name = innodb_system.table_name_by_id(undo.table_id)
-      puts "%-8s%-8s%-14s%-20s%s" % [
+      puts '%-8s%-8s%-14s%-20s%s' % [
         undo.page,
         undo.offset,
         undo.trx_id,
@@ -1609,6 +1612,7 @@ def usage(exit_code, message = nil)
     exit exit_code
   end
 
+  # rubocop:disable Layout/HeredocIndentation
   print <<'END_OF_USAGE'
 
 Usage: innodb_space <options> <mode>
@@ -1636,9 +1640,9 @@ The following options are supported:
 
   --system-space-file, -s <arg>
     Load the system tablespace file or files <arg>: Either a single file e.g.
-    "ibdata1", a comma-delimited list of files e.g. "ibdata1,ibdata1", or a
+    'ibdata1', a comma-delimited list of files e.g. 'ibdata1,ibdata1', or a
     directory name. If a directory name is provided, it will be scanned for all
-    files named "ibdata?" which will then be sorted alphabetically and used to
+    files named 'ibdata?' which will then be sorted alphabetically and used to
     load the system tablespace.
 
   --table-name, -T <name>
@@ -1663,7 +1667,7 @@ The following options are supported:
       Operate on the file segment (fseg) <fseg_id>.
 
   --require, -r <file>
-    Use Ruby's "require" to load the file <file>. This is useful for loading
+    Use Ruby's 'require' to load the file <file>. This is useful for loading
     classes with record describers.
 
   --describer, -d <describer>
@@ -1691,9 +1695,9 @@ The following modes are supported:
     provided with the --page/-p argument.
 
   space-index-pages-summary
-    Summarize all "INDEX" pages within a tablespace. This is useful to analyze
-    page fill rates and record counts per page. In addition to "INDEX" pages,
-    "ALLOCATED" pages are also printed and assumed to be completely empty.
+    Summarize all 'INDEX' pages within a tablespace. This is useful to analyze
+    page fill rates and record counts per page. In addition to 'INDEX' pages,
+    'ALLOCATED' pages are also printed and assumed to be completely empty.
     A starting page number can be provided with the --page/-p argument.
 
   space-index-fseg-pages-summary
@@ -1702,7 +1706,7 @@ The following modes are supported:
 
   space-index-pages-free-plot
     Use Ruby's gnuplot module to produce a scatterplot of page free space for
-    all "INDEX" and "ALLOCATED" pages in a tablespace. More aesthetically
+    all 'INDEX' and 'ALLOCATED' pages in a tablespace. More aesthetically
     pleasing plots can be produced with space-index-pages-summary output,
     but this is a quick and easy way to produce a passable plot. A starting
     page number can be provided with the --page/-p argument.
@@ -1785,7 +1789,7 @@ The following modes are supported:
     Iterate the file segment list (whose name is provided in the first --list/-L
     argument) for internal or leaf pages for a given index (whose root page
     is provided in the first --page/-p argument). The lists used for each
-    index are "full", "not_full", and "free".
+    index are 'full', 'not_full', and 'free'.
 
   index-fseg-internal-frag-pages
   index-fseg-leaf-frag-pages
@@ -1793,7 +1797,7 @@ The following modes are supported:
     page must be provided with --page/-p.
 
   page-dump
-    Dump the contents of a page, using the Ruby pp ("pretty-print") module.
+    Dump the contents of a page, using the Ruby pp ('pretty-print') module.
 
   page-account
     Account for a page's usage in FSEGs.
@@ -1827,12 +1831,13 @@ The following modes are supported:
     A record offset must be provided with -R/--record.
 
 END_OF_USAGE
+  # rubocop:enable Layout/HeredocIndentation
 
   exit exit_code
 end
 
-Signal.trap("INT")  { exit }
-Signal.trap("PIPE") { exit }
+Signal.trap('INT')  { exit }
+Signal.trap('PIPE') { exit }
 
 @options = OpenStruct.new
 @options.trace                    = 0
@@ -1849,72 +1854,74 @@ Signal.trap("PIPE") { exit }
 @options.illustration_line_width  = 64
 @options.illustration_block_size  = 8
 
+# rubocop:disable Layout/SpaceInsideArrayLiteralBrackets
 getopt_options = [
-  [ "--help",                     "-?",     GetoptLong::NO_ARGUMENT ],
-  [ "--trace",                    "-t",     GetoptLong::NO_ARGUMENT ],
-  [ "--system-space-file",        "-s",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--space-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--table-name",               "-T",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--index-name",               "-I",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--page",                     "-p",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--record",                   "-R",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--level",                    "-l",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--list",                     "-L",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--fseg-id",                  "-F",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--require",                  "-r",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--describer",                "-d",     GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--illustration-line-width",            GetoptLong::REQUIRED_ARGUMENT ],
-  [ "--illustration-block-size",            GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--help',                     '-?',     GetoptLong::NO_ARGUMENT ],
+  [ '--trace',                    '-t',     GetoptLong::NO_ARGUMENT ],
+  [ '--system-space-file',        '-s',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--space-file',               '-f',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--table-name',               '-T',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--index-name',               '-I',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--page',                     '-p',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--record',                   '-R',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--level',                    '-l',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--list',                     '-L',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--fseg-id',                  '-F',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--require',                  '-r',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--describer',                '-d',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--illustration-line-width',            GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--illustration-block-size',            GetoptLong::REQUIRED_ARGUMENT ],
 ]
+# rubocop:enable Layout/SpaceInsideArrayLiteralBrackets
 
 getopt = GetoptLong.new(*getopt_options)
 
 getopt.each do |opt, arg|
   case opt
-  when "--help"
+  when '--help'
     usage 0
-  when "--trace"
+  when '--trace'
     @options.trace += 1
-  when "--system-space-file"
-    @options.system_space_file = arg.split(",")
-  when "--space-file"
-    @options.space_file = arg.split(",")
-  when "--table-name"
+  when '--system-space-file'
+    @options.system_space_file = arg.split(',')
+  when '--space-file'
+    @options.space_file = arg.split(',')
+  when '--table-name'
     @options.table_name = arg
-  when "--index-name"
+  when '--index-name'
     @options.index_name = arg
-  when "--page"
+  when '--page'
     @options.page = arg.to_i
-  when "--record"
+  when '--record'
     @options.record = arg.to_i
-  when "--level"
+  when '--level'
     @options.level = arg.to_i
-  when "--list"
+  when '--list'
     @options.list = arg.to_sym
-  when "--fseg-id"
+  when '--fseg-id'
     @options.fseg_id = arg.to_i
-  when "--require"
+  when '--require'
     require File.expand_path(arg)
-  when "--describer"
+  when '--describer'
     @options.describer = arg
-  when "--illustration-line-width"
+  when '--illustration-line-width'
     @options.illustration_line_width = arg.to_i
-  when "--illustration-block-size"
+  when '--illustration-block-size'
     @options.illustration_block_size = arg.to_i
   end
 end
 
-unless @options.system_space_file or @options.space_file
-  usage 1, "System space file (-s) or space file (-f) must be specified"
+# rubocop:disable Style/IfUnlessModifier
+
+unless @options.system_space_file || @options.space_file
+  usage 1, 'System space file (-s) or space file (-f) must be specified'
 end
 
-if @options.system_space_file and @options.space_file
-  usage 1, "Only one of system space or space file may be specified"
+if @options.system_space_file && @options.space_file
+  usage 1, 'Only one of system space or space file may be specified'
 end
 
-if @options.trace > 1
-  BufferCursor.trace!
-end
+BufferCursor.trace! if @options.trace > 1
 
 # A few globals that we'll try to populate from the command-line arguments.
 innodb_system = nil
@@ -1926,7 +1933,7 @@ if @options.system_space_file
   innodb_system = Innodb::System.new(@options.system_space_file)
 end
 
-if innodb_system and @options.table_name
+if innodb_system && @options.table_name
   table_tablespace = innodb_system.space_by_table_name(@options.table_name)
   space = table_tablespace || innodb_system.system_space
 elsif @options.space_file
@@ -1936,24 +1943,17 @@ else
 end
 
 if @options.describer
-  describer = eval(@options.describer)
-  unless describer
-    describer = Innodb::RecordDescriber.const_get(@options.describer)
-  end
+  describer = eval(@options.describer) # rubocop:disable Security/Eval
+  describer ||= Innodb::RecordDescriber.const_get(@options.describer)
   space.record_describer = describer.new
 end
 
-if innodb_system and @options.table_name and @options.index_name
+if innodb_system && @options.table_name && @options.index_name
   index = innodb_system.index_by_name(@options.table_name, @options.index_name)
-  if @options.page
-    page = space.page(@options.page)
-  else
-    page = index.root
-  end
+  page = @options.page ? space.page(@options.page) : index.root
 elsif @options.page
-  if page = space.page(@options.page) and page.type == :INDEX and page.root?
-    index = space.index(@options.page)
-  end
+  page = space.page(@options.page)
+  index = space.index(@options.page) if page&.type == :INDEX && page&.root?
 end
 
 # The non-option argument on the command line is the mode (usually the last,
@@ -1961,139 +1961,149 @@ end
 mode = ARGV.shift
 
 unless mode
-  usage 1, "At least one mode must be provided"
+  usage(1, 'At least one mode must be provided')
 end
 
-if /^(system-|data-dictionary-)/.match(mode) and !innodb_system
-  usage 1, "System tablespace must be specified using -s/--system-space-file"
+if /^(system-|data-dictionary-)/.match(mode) && !innodb_system
+  usage(1, 'System tablespace must be specified using -s/--system-space-file')
 end
 
-if /^space-/.match(mode) and !space
-  usage 1, "Tablespace must be specified using either -f/--space-file or a combination of -s/--system-space-file and -T/--table"
+if /^space-/.match(mode) && !space
+  usage(
+    1,
+    'Tablespace must be specified using either -f/--space-file ' \
+      'or a combination of -s/--system-space-file and -T/--table'
+  )
 end
 
-if /^index-/.match(mode) and !index
-  usage 1, "Index must be specified using a combination of either -f/--space-file and -p/--page or -s/--system-space-file, -T/--table-name, and -I/--index-name"
+if /^index-/.match(mode) && !index
+  usage(
+    1,
+    'Index must be specified using a combination of either -f/--space-file and -p/--page ' \
+      'or -s/--system-space-file, -T/--table-name, and -I/--index-name'
+  )
 end
 
-if /^page-/.match(mode) and !page
-  usage 1, "Page number must be specified using -p/--page"
+if /^page-/.match(mode) && !page
+  usage(1, 'Page number must be specified using -p/--page')
 end
 
-if /^record-/.match(mode) and !@options.record
-  usage 1, "Record offset must be specified using -R/--record"
+if /^record-/.match(mode) && !@options.record
+  usage(1, 'Record offset must be specified using -R/--record')
 end
 
-if /-list-iterate$/.match(mode) and !@options.list
-  usage 1, "List name must be specified using -L/--list"
+if /-list-iterate$/.match(mode) && !@options.list
+  usage(1, 'List name must be specified using -L/--list')
 end
 
-if /-level-/.match(mode) and !@options.level
-  usage 1, "Level must be specified using -l/--level"
+if /-level-/.match(mode) && !@options.level
+  usage(1, 'Level must be specified using -l/--level')
 end
 
-if [
-  "index-recurse",
-  "index-record-offsets",
-  "index-digraph",
-  "index-level-summary",
-].include?(mode) and !index.record_describer
-  usage 1, "Record describer must be specified using -d/--describer"
+if %w[
+  index-recurse
+  index-record-offsets
+  index-digraph
+  index-level-summary
+].include?(mode) && !index.record_describer
+  usage(1, 'Record describer must be specified using -d/--describer')
 end
 
-if ["space-index-fseg-pages-summary"].include?(mode) and !@options.fseg_id
-  usage 1, "File segment id must be specified using -F/--fseg-id"
+if %w[
+  space-index-fseg-pages-summary
+].include?(mode) && !@options.fseg_id
+  usage(1, 'File segment id must be specified using -F/--fseg-id')
 end
 
-if @options.trace > 0
-  BufferCursor.trace!
-end
+# rubocop:enable Style/IfUnlessModifier
+
+BufferCursor.trace! if @options.trace.positive?
 
 case mode
-when "system-spaces"
+when 'system-spaces'
   system_spaces(innodb_system)
-when "data-dictionary-tables"
+when 'data-dictionary-tables'
   data_dictionary_tables(innodb_system)
-when "data-dictionary-columns"
+when 'data-dictionary-columns'
   data_dictionary_columns(innodb_system)
-when "data-dictionary-indexes"
+when 'data-dictionary-indexes'
   data_dictionary_indexes(innodb_system)
-when "data-dictionary-fields"
+when 'data-dictionary-fields'
   data_dictionary_fields(innodb_system)
-when "space-summary"
+when 'space-summary'
   space_summary(space, @options.page || 0)
-when "space-index-pages-summary"
+when 'space-index-pages-summary'
   space_index_pages_summary(space, @options.page || 0)
-when "space-index-fseg-pages-summary"
+when 'space-index-fseg-pages-summary'
   space_index_fseg_pages_summary(space, @options.fseg_id)
-when "space-index-pages-free-plot"
-  file_name = space.name.sub(".ibd", "").sub(/[^a-zA-Z0-9_]/, "_")
+when 'space-index-pages-free-plot'
+  file_name = space.name.sub('.ibd', '').sub(/[^a-zA-Z0-9_]/, '_')
   space_index_pages_free_plot(space, file_name, @options.page || 0)
-when "space-page-type-regions"
+when 'space-page-type-regions'
   space_page_type_regions(space, @options.page || 0)
-when "space-page-type-summary"
+when 'space-page-type-summary'
   space_page_type_summary(space, @options.page || 0)
-when "space-lists"
+when 'space-lists'
   space_lists(space)
-when "space-list-iterate"
+when 'space-list-iterate'
   space_list_iterate(space, @options.list)
-when "space-indexes"
+when 'space-indexes'
   space_indexes(innodb_system, space)
-when "space-extents"
+when 'space-extents'
   space_extents(space)
-when "space-extents-illustrate"
+when 'space-extents-illustrate'
   space_extents_illustrate(space)
-when "space-extents-illustrate-svg"
+when 'space-extents-illustrate-svg'
   space_extents_illustrate_svg(space)
-when "space-lsn-age-illustrate"
+when 'space-lsn-age-illustrate'
   space_lsn_age_illustrate(space)
-when "space-lsn-age-illustrate-svg"
+when 'space-lsn-age-illustrate-svg'
   space_lsn_age_illustrate_svg(space)
-when "space-inodes-fseg-id"
+when 'space-inodes-fseg-id'
   space_inodes_fseg_id(space)
-when "space-inodes-summary"
+when 'space-inodes-summary'
   space_inodes_summary(space)
-when "space-inodes-detail"
+when 'space-inodes-detail'
   space_inodes_detail(space)
-when "index-recurse"
+when 'index-recurse'
   index_recurse(index)
-when "index-record-offsets"
+when 'index-record-offsets'
   index_record_offsets(index)
-when "index-digraph"
+when 'index-digraph'
   index_digraph(index)
-when "index-level-summary"
+when 'index-level-summary'
   index_level_summary(index, @options.level)
-when "index-fseg-leaf-lists"
+when 'index-fseg-leaf-lists'
   index_fseg_lists(index, :leaf)
-when "index-fseg-internal-lists"
+when 'index-fseg-internal-lists'
   index_fseg_lists(index, :internal)
-when "index-fseg-leaf-list-iterate"
+when 'index-fseg-leaf-list-iterate'
   index_fseg_list_iterate(index, :leaf, @options.list)
-when "index-fseg-internal-list-iterate"
+when 'index-fseg-internal-list-iterate'
   index_fseg_list_iterate(index, :internal, @options.list)
-when "index-fseg-leaf-frag-pages"
+when 'index-fseg-leaf-frag-pages'
   index_fseg_frag_pages(index, :leaf)
-when "index-fseg-internal-frag-pages"
+when 'index-fseg-internal-frag-pages'
   index_fseg_frag_pages(index, :internal)
-when "page-dump"
+when 'page-dump'
   page.dump
-when "page-account"
+when 'page-account'
   page_account(innodb_system, space, @options.page)
-when "page-validate"
+when 'page-validate'
   page_validate(innodb_system, space, @options.page)
-when "page-directory-summary"
+when 'page-directory-summary'
   page_directory_summary(space, page)
-when "page-records"
+when 'page-records'
   page_records(space, page)
-when "page-illustrate"
+when 'page-illustrate'
   page_illustrate(page)
-when "record-dump"
+when 'record-dump'
   record_dump(page, @options.record)
-when "record-history"
+when 'record-history'
   record_history(page, @options.record)
-when "undo-history-summary"
+when 'undo-history-summary'
   undo_history_summary(innodb_system)
-when "undo-record-dump"
+when 'undo-record-dump'
   undo_record_dump(innodb_system, page, @options.record)
 else
   usage 1, "Unknown mode: #{mode}"
