@@ -54,87 +54,85 @@
 #   my_table_clustered.row "age", :INT, :UNSIGNED
 #
 
-class Innodb::RecordDescriber
-  # Internal method to initialize the class's instance variable on access.
-  def self.static_description
-    @static_description ||= {
-      :type => nil,
-      :key => [],
-      :row => []
-    }
-  end
-
-  # A 'type' method to be used from the DSL.
-  def self.type(type)
-    static_description[:type] = type
-  end
-
-  # An internal method wrapped with 'key' and 'row' helpers.
-  def self.add_static_field(group, name, type)
-    static_description[group] << { :name => name, :type => type }
-  end
-
-  # A 'key' method to be used from the DSL.
-  def self.key(name, *type)
-    add_static_field :key, name, type
-  end
-
-  # A 'row' method to be used from the DSL.
-  def self.row(name, *type)
-    add_static_field :row, name, type
-  end
-
-  attr_accessor :description
-
-  def initialize
-    @description = self.class.static_description.dup
-    @description[:key] = @description[:key].dup
-    @description[:row] = @description[:row].dup
-  end
-
-  # Set the type of this record (:clustered or :secondary).
-  def type(type)
-    description[:type] = type
-  end
-
-  # An internal method wrapped with 'key' and 'row' helpers.
-  def add_field(group, name, type)
-    description[group] << { :name => name, :type => type }
-  end
-
-  # Add a key column to the record description.
-  def key(name, *type)
-    add_field :key, name, type
-  end
-
-  # Add a row (non-key) column to the record description.
-  def row(name, *type)
-    add_field :row, name, type
-  end
-
-  def field_names
-    names = []
-    [:key, :row].each do |group|
-      names += description[group].map { |n| n[:name] }
+module Innodb
+  class RecordDescriber
+    # Internal method to initialize the class's instance variable on access.
+    def self.static_description
+      @static_description ||= { type: nil, key: [], row: [] }
     end
-    names
-  end
 
-  def generate_class(name="Describer_#{object_id}")
-    str = "class #{name}\n"
-    str << "  type %s\n" % [
-      description[:type].inspect
-    ]
-    [:key, :row].each do |group|
-      description[group].each do |item|
-        str << "  %s %s, %s\n" % [
-          group,
-          item[:name].inspect,
-          item[:type].map { |s| s.inspect }.join(", "),
-        ]
+    # A 'type' method to be used from the DSL.
+    def self.type(type)
+      static_description[:type] = type
+    end
+
+    # An internal method wrapped with 'key' and 'row' helpers.
+    def self.add_static_field(group, name, type)
+      static_description[group] << { name: name, type: type }
+    end
+
+    # A 'key' method to be used from the DSL.
+    def self.key(name, *type)
+      add_static_field :key, name, type
+    end
+
+    # A 'row' method to be used from the DSL.
+    def self.row(name, *type)
+      add_static_field :row, name, type
+    end
+
+    attr_accessor :description
+
+    def initialize
+      @description = self.class.static_description.dup
+      @description[:key] = @description[:key].dup
+      @description[:row] = @description[:row].dup
+    end
+
+    # Set the type of this record (:clustered or :secondary).
+    def type(type)
+      description[:type] = type
+    end
+
+    # An internal method wrapped with 'key' and 'row' helpers.
+    def add_field(group, name, type)
+      description[group] << { name: name, type: type }
+    end
+
+    # Add a key column to the record description.
+    def key(name, *type)
+      add_field :key, name, type
+    end
+
+    # Add a row (non-key) column to the record description.
+    def row(name, *type)
+      add_field :row, name, type
+    end
+
+    def field_names
+      names = []
+      %i[key row].each do |group|
+        names += description[group].map { |n| n[:name] }
       end
+      names
     end
-    str << "end\n"
-    str
+
+    def generate_class(name = "Describer_#{object_id}")
+      str = "class #{name}\n".dup
+      str << "  type %s\n" % [
+        description[:type].inspect,
+      ]
+      %i[key row].each do |group|
+        description[group].each do |item|
+          str << "  %s %s, %s\n" % [
+            group,
+            item[:name].inspect,
+            item[:type].map(&:inspect).join(', '),
+          ]
+        end
+      end
+      str << "end\n"
+      str
+    end
   end
 end

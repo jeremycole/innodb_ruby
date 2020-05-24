@@ -1222,8 +1222,8 @@ def page_validate(innodb_system, space, page_number)
       page.checksum_type ? page.checksum_type : "unknown",
     ]
     puts "    trailer %10d (0x%08x)" % [
-      page.checksum_trailer,
-      page.checksum_trailer,
+      page.fil_trailer.checksum,
+      page.fil_trailer.checksum,
     ]
     puts "  Calculated checksums:"
     puts "    crc32  %10d (0x%08x)" % [
@@ -1246,12 +1246,12 @@ def page_validate(innodb_system, space, page_number)
     ]
     puts "  Low 32 bits of LSN:"
     puts "    header  %10d (0x%08x)" % [
-      page.lsn_low32_header,
-      page.lsn_low32_header,
+      page.fil_header.lsn_low32,
+      page.fil_header.lsn_low32,
     ]
     puts "    trailer %10d (0x%08x)" % [
-      page.lsn_low32_trailer,
-      page.lsn_low32_trailer,
+      page.fil_trailer.lsn_low32,
+      page.fil_trailer.lsn_low32,
     ]
   end
 

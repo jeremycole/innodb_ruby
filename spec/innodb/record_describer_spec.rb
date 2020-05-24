@@ -61,14 +61,10 @@ describe Innodb::RecordDescriber do
       end
 
       it '#roll_pointer' do
-        @rec.roll_pointer.should eql(
-          is_insert: true,
-          undo_log: {
-            offset: 272,
-            page: 435,
-          },
-          rseg_id: 2
-        )
+        @rec.roll_pointer.is_insert.should eql true
+        @rec.roll_pointer.undo_log.offset.should eql 272
+        @rec.roll_pointer.undo_log.page.should eql 435
+        @rec.roll_pointer.rseg_id.should eql 2
       end
 
       it 'key is (1, 1)' do
@@ -103,15 +99,15 @@ describe Innodb::RecordDescriber do
       end
 
       it '#header' do
-        @rec.header.should include(
-          type: :node_pointer,
-          length: 5,
-          min_rec: true,
-          heap_number: 2,
-          deleted: false
-        )
-        @rec.header[:nulls].size.should eql 0
-        @rec.header[:lengths].size.should eql 0
+        @rec.header.type.should eql :node_pointer
+        @rec.header.length.should eql 5
+        @rec.header.heap_number.should eql 2
+
+        @rec.header.min_rec?.should eql true
+        @rec.header.deleted?.should eql false
+
+        @rec.header.nulls.size.should eql 0
+        @rec.header.lengths.size.should eql 0
       end
 
       it '#child_page_number' do

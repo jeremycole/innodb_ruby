@@ -25,17 +25,16 @@ describe Innodb::Page::TrxSys do
   end
 
   describe '#trx_sys' do
-    it 'is a Hash' do
-      @page.trx_sys.should be_an_instance_of Hash
+    it 'is a Innodb::Page::TrxSys::Header' do
+      @page.trx_sys.should be_an_instance_of Innodb::Page::TrxSys::Header
     end
 
     it 'has the right keys and values' do
-      @page.trx_sys.size.should eql 6
-      @page.trx_sys[:trx_id].should eql 1280
-      @page.trx_sys[:rsegs].should be_an_instance_of Array
-      @page.trx_sys[:binary_log].should eql nil
-      @page.trx_sys[:master_log].should eql nil
-      @page.trx_sys[:doublewrite].should be_an_instance_of Hash
+      @page.trx_sys.trx_id.should eql 1280
+      @page.trx_sys.rsegs.should be_an_instance_of Array
+      @page.trx_sys.binary_log.should eql nil
+      @page.trx_sys.master_log.should eql nil
+      @page.trx_sys.doublewrite.should be_an_instance_of Innodb::Page::TrxSys::DoublewriteInfo
     end
   end
 end

@@ -106,13 +106,8 @@ describe Innodb::Page do
   end
 
   describe '#fil_header' do
-    it 'returns a Hash' do
-      @page.fil_header.should be_an_instance_of Hash
-    end
-
-    it 'has only Symbol keys' do
-      classes = @page.fil_header.keys.map(&:class).uniq
-      classes.should eql [Symbol]
+    it 'returns a Innodb::Page::FilHeader' do
+      @page.fil_header.should be_an_instance_of Innodb::Page::FilHeader
     end
 
     it 'has the right keys and values' do

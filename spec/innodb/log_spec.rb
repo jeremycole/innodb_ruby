@@ -51,65 +51,49 @@ describe Innodb::Log do
   end
 
   describe '#header' do
-    it 'returns a Hash' do
-      @log.header.should be_an_instance_of Hash
-    end
-
-    it 'has only Symbol keys' do
-      classes = @log.header.keys.map(&:class).uniq
-      classes.should eql [Symbol]
+    it 'returns a Innodb::Log::Header' do
+      @log.header.should be_an_instance_of Innodb::Log::Header
     end
 
     it 'has the right keys and values' do
       @log.header.size.should eql 4
-      @log.header.should include(
-        group_id: 0,
-        start_lsn: 8_192,
-        file_no: 0,
-        created_by: '    '
-      )
+      @log.header.group_id.should eql 0
+      @log.header.start_lsn.should eql 8_192
+      @log.header.file_no.should eql 0
+      @log.header.created_by.should eql '    '
     end
   end
 
   describe '#checkpoint' do
-    it 'returns a Hash' do
-      @log.checkpoint.should be_an_instance_of Hash
+    it 'returns a Innodb::Log::CheckpointSet' do
+      @log.checkpoint.should be_an_instance_of Innodb::Log::CheckpointSet
       @log.checkpoint.size.should eql 2
     end
 
-    it 'has only Symbol keys' do
-      classes = @log.checkpoint.keys.map(&:class).uniq
-      classes.should eql [Symbol]
-    end
-
     it 'has a correct checkpoint_1' do
-      @log.checkpoint[:checkpoint_1].should include(
-        number: 10,
-        lsn: 1_603_732,
-        lsn_offset: 1_597_588,
-        buffer_size: 1_048_576,
-        archived_lsn: 18_446_744_073_709_551_615,
-        # group_array
-        checksum_1: 654_771_786,
-        checksum_2: 1_113_429_956,
-        fsp_free_limit: 5,
-        fsp_magic: LOG_CHECKPOINT_FSP_MAGIC_N_VAL
-      )
+      c = @log.checkpoint.checkpoint_1
+      c.number.should eql 10
+      c.lsn.should eql 1_603_732
+      c.lsn_offset.should eql 1_597_588
+      c.buffer_size.should eql 1_048_576
+      c.archived_lsn.should eql 18_446_744_073_709_551_615
+      c.checksum_1.should eql 654_771_786
+      c.checksum_2.should eql 1_113_429_956
+      c.fsp_free_limit.should eql 5
+      c.fsp_magic.should eql LOG_CHECKPOINT_FSP_MAGIC_N_VAL
     end
 
     it 'has a correct checkpoint_2' do
-      @log.checkpoint[:checkpoint_2].should include(
-        number: 11,
-        lsn: 1_603_732,
-        lsn_offset: 1_597_588,
-        buffer_size: 1_048_576,
-        archived_lsn: 18_446_744_073_709_551_615,
-        # group_array
-        checksum_1: 843_938_123,
-        checksum_2: 674_570_893,
-        fsp_free_limit: 5,
-        fsp_magic: LOG_CHECKPOINT_FSP_MAGIC_N_VAL
-      )
+      c = @log.checkpoint.checkpoint_2
+      c.number.should eql 11
+      c.lsn.should eql 1_603_732
+      c.lsn_offset.should eql 1_597_588
+      c.buffer_size.should eql 1_048_576
+      c.archived_lsn.should eql 18_446_744_073_709_551_615
+      c.checksum_1.should eql 843_938_123
+      c.checksum_2.should eql 674_570_893
+      c.fsp_free_limit.should eql 5
+      c.fsp_magic.should eql LOG_CHECKPOINT_FSP_MAGIC_N_VAL
     end
   end
 end

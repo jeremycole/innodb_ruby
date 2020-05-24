@@ -47,15 +47,15 @@ describe Innodb::Xdes do
     it 'has the right methods and values' do
       @xdes0.start_page.should eql 0
       @xdes0.fseg_id.should eql 0
-      @xdes0.this.should be_an_instance_of Hash
-      @xdes0.list.should be_an_instance_of Hash
+      @xdes0.this.should be_an_instance_of Innodb::Page::Address
+      @xdes0.list.should be_an_instance_of Innodb::List::Node
       @xdes0.bitmap.size.should eql 16
     end
   end
 
   describe '#xdes' do
     it 'is a Hash' do
-      @xdes0.xdes.should be_an_instance_of Hash
+      @xdes0.xdes.should be_an_instance_of Innodb::Xdes::Entry
     end
   end
 
@@ -69,7 +69,7 @@ describe Innodb::Xdes do
   describe '#page_status' do
     it 'returns the status of a page' do
       status = @xdes0.page_status(0)
-      status.should be_an_instance_of Hash
+      status.should be_an_instance_of Innodb::Xdes::PageStatus
       status.size.should eql 2
       status[:free].should eql false
       status[:clean].should eql true
@@ -82,7 +82,7 @@ describe Innodb::Xdes do
     end
 
     it 'yields Hashes' do
-      @xdes0.each_page_status.to_a.map { |v| v[1].class }.uniq.should eql [Hash]
+      @xdes0.each_page_status.to_a.map { |v| v[1].class }.uniq.should eql [Innodb::Xdes::PageStatus]
     end
 
     it 'yields Hashes with the right keys and values' do
