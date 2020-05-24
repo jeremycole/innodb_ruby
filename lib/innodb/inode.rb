@@ -130,7 +130,7 @@ module Innodb
     def list(name)
       return unless LISTS.include?(name)
 
-      @data[name]
+      header[name]
     end
 
     # Iterate through all lists, yielding the list name and the list itself.
@@ -184,7 +184,7 @@ module Innodb
 
     # Dump a summary of this object for debugging purposes.
     def dump
-      pp @data
+      pp header
     end
   end
 end
