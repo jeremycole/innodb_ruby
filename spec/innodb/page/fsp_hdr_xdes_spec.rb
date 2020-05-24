@@ -24,4 +24,16 @@ describe Innodb::Page::FspHdrXdes do
       @page.should be_a Innodb::Page
     end
   end
+
+  describe '#each_list' do
+    it 'returns an appropriate set of lists' do
+      @page.each_list.map { |name, _| name }.should include(
+        :free,
+        :free_frag,
+        :full_frag,
+        :full_inodes,
+        :free_inodes
+      )
+    end
+  end
 end

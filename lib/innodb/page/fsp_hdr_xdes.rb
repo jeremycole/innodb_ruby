@@ -140,7 +140,7 @@ module Innodb
       def each_list
         return enum_for(:each_list) unless block_given?
 
-        fsp_header.each do |key, value|
+        fsp_header.to_h.each do |key, value|
           yield key, value if value.is_a?(Innodb::List)
         end
       end
