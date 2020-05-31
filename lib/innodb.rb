@@ -3,14 +3,14 @@
 # A set of classes for parsing and working with InnoDB data files.
 
 module Innodb
-  @@debug = false
+  @debug = false
 
   def self.debug?
-    @@debug == true
+    @debug == true
   end
 
   def self.debug=(value)
-    @@debug = value
+    @debug = value
   end
 end
 
