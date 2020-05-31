@@ -9,8 +9,8 @@ describe Innodb::Page::Inode do
   end
 
   describe 'class' do
-    it 'registers itself in Innodb::Page::SPECIALIZED_CLASSES' do
-      Innodb::Page::SPECIALIZED_CLASSES[:INODE].should eql Innodb::Page::Inode
+    it 'registers itself as a specialized page type' do
+      Innodb::Page.specialization_for?(:INODE).should be_truthy
     end
   end
 

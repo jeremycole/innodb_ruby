@@ -17,6 +17,9 @@ module Innodb
     class FspHdrXdes < Page
       extend ReadBitsAtOffset
 
+      specialization_for :FSP_HDR
+      specialization_for :XDES
+
       Flags = Struct.new(
         :system_page_size,
         :compressed,
@@ -203,6 +206,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:FSP_HDR] = Innodb::Page::FspHdrXdes
-Innodb::Page::SPECIALIZED_CLASSES[:XDES]    = Innodb::Page::FspHdrXdes

@@ -9,8 +9,8 @@ describe Innodb::Page::TrxSys do
   end
 
   describe 'class' do
-    it 'registers itself in Innodb::Page::SPECIALIZED_CLASSES' do
-      Innodb::Page::SPECIALIZED_CLASSES[:TRX_SYS].should eql Innodb::Page::TrxSys
+    it 'registers itself as a specialized page type' do
+      Innodb::Page.specialization_for?(:TRX_SYS).should be_truthy
     end
   end
 

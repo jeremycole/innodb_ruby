@@ -16,6 +16,8 @@ module Innodb
     class TrxSys < Page
       extend Forwardable
 
+      specialization_for :TRX_SYS
+
       RsegSlot = Struct.new(
         :offset,
         :space_id,
@@ -235,5 +237,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:TRX_SYS] = Innodb::Page::TrxSys
