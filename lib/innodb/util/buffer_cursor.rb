@@ -37,11 +37,15 @@ class BufferCursor
     end
   end
 
-  @@global_tracing = false
+  @global_tracing = false
 
   # Enable tracing for all BufferCursor objects globally.
   def self.trace!(arg = true)
-    @@global_tracing = arg
+    @global_tracing = arg
+  end
+
+  def self.global_tracing?
+    @global_tracing
   end
 
   # Initialize a cursor within a buffer at the given position.
@@ -104,7 +108,7 @@ class BufferCursor
   end
 
   def tracing_enabled?
-    (@@global_tracing || @instance_tracing) && @trace_proc
+    (self.class.global_tracing? || @instance_tracing) && @trace_proc
   end
 
   # Generate a trace record from the current cursor.
