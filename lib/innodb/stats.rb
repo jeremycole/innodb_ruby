@@ -10,7 +10,6 @@ module Innodb
       attr_reader :data
     end
 
-
     # Increment a statistic by name (typically a symbol), optionally by a value
     # provided.
     def self.increment(name, value = 1)
