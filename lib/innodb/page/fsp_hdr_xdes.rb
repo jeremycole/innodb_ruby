@@ -123,16 +123,16 @@ module Innodb
       def fsp_header
         @fsp_header ||= cursor(pos_fsp_header).name('fsp') do |c|
           Header.new(
-            space_id: c.name('space_id') { c.get_uint32 },
-            unused: c.name('unused') { c.get_uint32 },
-            size: c.name('size') { c.get_uint32 },
-            free_limit: c.name('free_limit') { c.get_uint32 },
-            flags: c.name('flags') { self.class.decode_flags(c.get_uint32) },
-            frag_n_used: c.name('frag_n_used') { c.get_uint32 },
+            space_id: c.name('space_id') { c.read_uint32 },
+            unused: c.name('unused') { c.read_uint32 },
+            size: c.name('size') { c.read_uint32 },
+            free_limit: c.name('free_limit') { c.read_uint32 },
+            flags: c.name('flags') { self.class.decode_flags(c.read_uint32) },
+            frag_n_used: c.name('frag_n_used') { c.read_uint32 },
             free: c.name('list[free]') { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
             free_frag: c.name('list[free_frag]') { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
             full_frag: c.name('list[full_frag]') { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
-            first_unused_seg: c.name('first_unused_seg') { c.get_uint64 },
+            first_unused_seg: c.name('first_unused_seg') { c.read_uint64 },
             full_inodes: c.name('list[full_inodes]') { Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c)) },
             free_inodes: c.name('list[free_inodes]') { Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c)) }
           )

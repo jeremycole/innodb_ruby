@@ -281,14 +281,14 @@ module Innodb
     def fil_header
       @fil_header ||= cursor(pos_fil_header).name('fil_header') do |c|
         FilHeader.new(
-          checksum: c.name('checksum') { c.get_uint32 },
-          offset: c.name('offset') { c.get_uint32 },
-          prev: c.name('prev') { Innodb::Page.maybe_undefined(c.get_uint32) },
-          next: c.name('next') { Innodb::Page.maybe_undefined(c.get_uint32) },
-          lsn: c.name('lsn') { c.get_uint64 },
-          type: c.name('type') { PAGE_TYPE_BY_VALUE[c.get_uint16] },
-          flush_lsn: c.name('flush_lsn') { c.get_uint64 },
-          space_id: c.name('space_id') { c.get_uint32 }
+          checksum: c.name('checksum') { c.read_uint32 },
+          offset: c.name('offset') { c.read_uint32 },
+          prev: c.name('prev') { Innodb::Page.maybe_undefined(c.read_uint32) },
+          next: c.name('next') { Innodb::Page.maybe_undefined(c.read_uint32) },
+          lsn: c.name('lsn') { c.read_uint64 },
+          type: c.name('type') { PAGE_TYPE_BY_VALUE[c.read_uint16] },
+          flush_lsn: c.name('flush_lsn') { c.read_uint64 },
+          space_id: c.name('space_id') { c.read_uint32 }
         )
       end
     end
@@ -297,8 +297,8 @@ module Innodb
     def fil_trailer
       @fil_trailer ||= cursor(pos_fil_trailer).name('fil_trailer') do |c|
         FilTrailer.new(
-          checksum: c.name('checksum') { c.get_uint32 },
-          lsn_low32: c.name('lsn_low32') { c.get_uint32 }
+          checksum: c.name('checksum') { c.read_uint32 },
+          lsn_low32: c.name('lsn_low32') { c.read_uint32 }
         )
       end
     end

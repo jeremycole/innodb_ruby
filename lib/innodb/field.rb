@@ -71,7 +71,7 @@ module Innodb
 
     # Read an InnoDB encoded data field.
     def read(cursor, field_length)
-      cursor.name(@data_type.name) { cursor.get_bytes(field_length) }
+      cursor.name(@data_type.name) { cursor.read_bytes(field_length) }
     end
 
     def value_by_length(cursor, field_length)
@@ -105,10 +105,10 @@ module Innodb
     def read_extern(cursor)
       cursor.name('extern') do |c|
         ExternReference.new(
-          space_id: c.name('space_id') { c.get_uint32 },
-          page_number: c.name('page_number') { c.get_uint32 },
-          offset: c.name('offset') { c.get_uint32 },
-          length: c.name('length') { c.get_uint64 & 0x3fffffff }
+          space_id: c.name('space_id') { c.read_uint32 },
+          page_number: c.name('page_number') { c.read_uint32 },
+          offset: c.name('offset') { c.read_uint32 },
+          length: c.name('length') { c.read_uint64 & 0x3fffffff }
         )
       end
     end

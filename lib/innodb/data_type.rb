@@ -344,7 +344,7 @@ module Innodb
       end
 
       def read(cursor)
-        cursor.name('transaction_id') { cursor.get_uint48 }
+        cursor.name('transaction_id') { cursor.read_uint48 }
       end
     end
 

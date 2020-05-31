@@ -29,37 +29,37 @@ module Innodb
       def data_dictionary_header
         cursor(pos_data_dictionary_header).name('data_dictionary_header') do |c|
           Header.new(
-            max_row_id: c.name('max_row_id') { c.get_uint64 },
-            max_table_id: c.name('max_table_id') { c.get_uint64 },
-            max_index_id: c.name('max_index_id') { c.get_uint64 },
-            max_space_id: c.name('max_space_id') { c.get_uint32 },
-            unused_mix_id_low: c.name('unused_mix_id_low') { c.get_uint32 },
+            max_row_id: c.name('max_row_id') { c.read_uint64 },
+            max_table_id: c.name('max_table_id') { c.read_uint64 },
+            max_index_id: c.name('max_index_id') { c.read_uint64 },
+            max_space_id: c.name('max_space_id') { c.read_uint32 },
+            unused_mix_id_low: c.name('unused_mix_id_low') { c.read_uint32 },
             indexes: c.name('indexes') do
               {
                 SYS_TABLES: c.name('SYS_TABLES') do
                   {
-                    PRIMARY: c.name('PRIMARY') { c.get_uint32 },
-                    ID: c.name('ID') { c.get_uint32 },
+                    PRIMARY: c.name('PRIMARY') { c.read_uint32 },
+                    ID: c.name('ID') { c.read_uint32 },
                   }
                 end,
                 SYS_COLUMNS: c.name('SYS_COLUMNS') do
                   {
-                    PRIMARY: c.name('PRIMARY') { c.get_uint32 },
+                    PRIMARY: c.name('PRIMARY') { c.read_uint32 },
                   }
                 end,
                 SYS_INDEXES: c.name('SYS_INDEXES') do
                   {
-                    PRIMARY: c.name('PRIMARY') { c.get_uint32 },
+                    PRIMARY: c.name('PRIMARY') { c.read_uint32 },
                   }
                 end,
                 SYS_FIELDS: c.name('SYS_FIELDS') do
                   {
-                    PRIMARY: c.name('PRIMARY') { c.get_uint32 },
+                    PRIMARY: c.name('PRIMARY') { c.read_uint32 },
                   }
                 end,
               }
             end,
-            unused_space: c.name('unused_space') { c.get_bytes(4) },
+            unused_space: c.name('unused_space') { c.read_bytes(4) },
             fseg: c.name('fseg') { Innodb::FsegEntry.get_inode(@space, c) }
           )
         end

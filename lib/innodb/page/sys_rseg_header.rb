@@ -36,8 +36,8 @@ module Innodb
       def rseg_header
         cursor(pos_rseg_header).name('rseg_header') do |c|
           Header.new(
-            max_size: c.name('max_size') { c.get_uint32 },
-            history_size: c.name('history_size') { c.get_uint32 },
+            max_size: c.name('max_size') { c.read_uint32 },
+            history_size: c.name('history_size') { c.read_uint32 },
             history_list: c.name('history_list') do
               Innodb::List::History.new(@space, Innodb::List.get_base_node(c))
             end,
@@ -56,7 +56,7 @@ module Innodb
         cursor(pos_undo_segment_array).name('undo_segment_array') do |c|
           (0...UNDO_SEGMENT_SLOTS).each do |slot|
             page_number = c.name("slot[#{slot}]") do
-              Innodb::Page.maybe_undefined(c.get_uint32)
+              Innodb::Page.maybe_undefined(c.read_uint32)
             end
             yield slot, page_number
           end

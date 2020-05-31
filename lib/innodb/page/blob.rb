@@ -20,15 +20,15 @@ module Innodb
       def blob_header
         cursor(pos_blob_header).name('blob_header') do |c|
           {
-            length: c.name('length') { c.get_uint32 },
-            next: c.name('next') { Innodb::Page.maybe_undefined(c.get_uint32) },
+            length: c.name('length') { c.read_uint32 },
+            next: c.name('next') { Innodb::Page.maybe_undefined(c.read_uint32) },
           }
         end
       end
 
       def blob_data
         cursor(pos_blob_data).name('blob_data') do |c|
-          c.get_bytes(blob_header[:length])
+          c.read_bytes(blob_header[:length])
         end
       end
 

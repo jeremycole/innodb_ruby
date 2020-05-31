@@ -85,11 +85,11 @@ module Innodb
           offset: c.position,
           start_page: start_page,
           end_page: start_page + page.space.pages_per_extent - 1,
-          fseg_id: c.name('fseg_id') { c.get_uint64 },
+          fseg_id: c.name('fseg_id') { c.read_uint64 },
           this: Innodb::Page::Address.new(page: page.offset, offset: c.position),
           list: c.name('list') { Innodb::List.get_node(c) },
-          state: c.name('state') { STATES[c.get_uint32] },
-          bitmap: c.name('bitmap') { c.get_bytes(size_bitmap) }
+          state: c.name('state') { STATES[c.read_uint32] },
+          bitmap: c.name('bitmap') { c.read_bytes(size_bitmap) }
         )
       end
     end

@@ -44,7 +44,7 @@ module Innodb
     def self.page_number_array(size, cursor)
       size.times.map do |n|
         cursor.name("page[#{n}]") do |c|
-          Innodb::Page.maybe_undefined(c.get_uint32)
+          Innodb::Page.maybe_undefined(c.read_uint32)
         end
       end
     end
@@ -55,12 +55,12 @@ module Innodb
         space,
         Header.new(
           offset: cursor.position,
-          fseg_id: cursor.name('fseg_id') { cursor.get_uint64 },
-          not_full_n_used: cursor.name('not_full_n_used') { cursor.get_uint32 },
+          fseg_id: cursor.name('fseg_id') { cursor.read_uint64 },
+          not_full_n_used: cursor.name('not_full_n_used') { cursor.read_uint32 },
           free: cursor.name('list[free]') { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
           not_full: cursor.name('list[not_full]') { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
           full: cursor.name('list[full]') { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
-          magic_n: cursor.name('magic_n') { cursor.get_uint32 },
+          magic_n: cursor.name('magic_n') { cursor.read_uint32 },
           frag_array: cursor.name('frag_array') { page_number_array(FRAG_ARRAY_N_SLOTS, cursor) }
         )
       )

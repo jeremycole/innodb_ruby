@@ -300,18 +300,18 @@ module Innodb
       def page_header
         @page_header ||= cursor(pos_index_header).name('index') do |c|
           index = PageHeader.new(
-            n_dir_slots: c.name('n_dir_slots') { c.get_uint16 },
-            heap_top: c.name('heap_top') { c.get_uint16 },
-            n_heap_format: c.name('n_heap_format') { c.get_uint16 },
-            garbage_offset: c.name('garbage_offset') { c.get_uint16 },
-            garbage_size: c.name('garbage_size') { c.get_uint16 },
-            last_insert_offset: c.name('last_insert_offset') { c.get_uint16 },
-            direction: c.name('direction') { PAGE_DIRECTION[c.get_uint16] },
-            n_direction: c.name('n_direction') { c.get_uint16 },
-            n_recs: c.name('n_recs') { c.get_uint16 },
-            max_trx_id: c.name('max_trx_id') { c.get_uint64 },
-            level: c.name('level') { c.get_uint16 },
-            index_id: c.name('index_id') { c.get_uint64 }
+            n_dir_slots: c.name('n_dir_slots') { c.read_uint16 },
+            heap_top: c.name('heap_top') { c.read_uint16 },
+            n_heap_format: c.name('n_heap_format') { c.read_uint16 },
+            garbage_offset: c.name('garbage_offset') { c.read_uint16 },
+            garbage_size: c.name('garbage_size') { c.read_uint16 },
+            last_insert_offset: c.name('last_insert_offset') { c.read_uint16 },
+            direction: c.name('direction') { PAGE_DIRECTION[c.read_uint16] },
+            n_direction: c.name('n_direction') { c.read_uint16 },
+            n_recs: c.name('n_recs') { c.read_uint16 },
+            max_trx_id: c.name('max_trx_id') { c.read_uint64 },
+            level: c.name('level') { c.read_uint16 },
+            index_id: c.name('index_id') { c.read_uint64 }
           )
 
           index.n_heap = index.n_heap_format & (2**15 - 1)
@@ -355,23 +355,23 @@ module Innodb
           case page_header.format
           when :compact
             # The "next" pointer is a relative offset from the current record.
-            header.next = c.name('next') { origin + c.get_sint16 }
+            header.next = c.name('next') { origin + c.read_sint16 }
 
             # Fields packed in a 16-bit integer (LSB first):
             #   3 bits for type
             #   13 bits for heap_number
-            bits1 = c.name('bits1') { c.get_uint16 }
+            bits1 = c.name('bits1') { c.read_uint16 }
             header.type = RECORD_TYPES[bits1 & 0x07]
             header.heap_number = (bits1 & 0xfff8) >> 3
           when :redundant
             # The "next" pointer is an absolute offset within the page.
-            header.next = c.name('next') { c.get_uint16 }
+            header.next = c.name('next') { c.read_uint16 }
 
             # Fields packed in a 24-bit integer (LSB first):
             #   1 bit for offset_size (0 = 2 bytes, 1 = 1 byte)
             #   10 bits for n_fields
             #   13 bits for heap_number
-            bits1 = c.name('bits1') { c.get_uint24 }
+            bits1 = c.name('bits1') { c.read_uint24 }
             header.offset_size = (bits1 & 1).zero? ? 2 : 1
             header.n_fields = (bits1 & (((1 << 10) - 1) << 1)) >> 1
             header.heap_number = (bits1 & (((1 << 13) - 1) << 11)) >> 11
@@ -380,7 +380,7 @@ module Innodb
           # Fields packed in an 8-bit integer (LSB first):
           #   4 bits for n_owned
           #   4 bits for flags
-          bits2 = c.name('bits2') { c.get_uint8 }
+          bits2 = c.name('bits2') { c.read_uint8 }
           header.n_owned = bits2 & 0x0f
           header.info_flags = (bits2 & 0xf0) >> 4
 
@@ -424,7 +424,7 @@ module Innodb
         return [] unless size.positive?
 
         # TODO: This is really ugly.
-        null_bit_array = cursor.get_bit_array(size).reverse!
+        null_bit_array = cursor.read_bit_array(size).reverse!
 
         # For every nullable field, select the ones which are actually null.
         fields.select { |f| f.nullable? && (null_bit_array.shift == 1) }.map(&:name)
@@ -443,14 +443,14 @@ module Innodb
         fields.each do |f|
           next if !f.variable? || nulls.include?(f.name)
 
-          len = cursor.get_uint8
+          len = cursor.read_uint8
           ext = false
 
           # Two bytes are used only if the length exceeds 127 bytes and the
           # maximum length exceeds 255 bytes (or the field is a BLOB type).
           if len > 127 && (f.blob? || f.data_type.width > 255)
             ext = (0x40 & len) != 0
-            len = ((len & 0x3f) << 8) + cursor.get_uint8
+            len = ((len & 0x3f) << 8) + cursor.read_uint8
           end
 
           lengths[f.name] = len
@@ -508,7 +508,7 @@ module Innodb
       # by n_fields.
       def record_header_redundant_field_end_offsets(header, cursor)
         header.n_fields.times.map do |n|
-          cursor.name("field_end_offset[#{n}]") { cursor.get_uint_by_size(header.offset_size) }
+          cursor.name("field_end_offset[#{n}]") { cursor.read_uint_by_size(header.offset_size) }
         end
       end
 
@@ -523,7 +523,7 @@ module Innodb
               offset: offset,
               header: header,
               next: header.next,
-              data: c.name('data') { c.get_bytes(size_mum_record) },
+              data: c.name('data') { c.read_bytes(size_mum_record) },
               length: c.position - offset
             )
           )
@@ -633,7 +633,7 @@ module Innodb
 
             # If this is a node (non-leaf) page, it will have a child page number
             # (or "node pointer") stored as the last field.
-            this_record.child_page_number = c.name('child_page_number') { c.get_uint32 } unless leaf?
+            this_record.child_page_number = c.name('child_page_number') { c.read_uint32 } unless leaf?
 
             this_record.length = c.position - offset
 
@@ -655,7 +655,7 @@ module Innodb
       # Return an array of row offsets for all entries in the page directory.
       def directory
         @directory ||= cursor(pos_directory).backward.name('page_directory') do |c|
-          directory_slots.times.map { |n| c.name("slot[#{n}]") { c.get_uint16 } }
+          directory_slots.times.map { |n| c.name("slot[#{n}]") { c.read_uint16 } }
         end
       end
 
