@@ -113,8 +113,8 @@ module Innodb
           cursor.name("slot[#{n}]") do |c|
             slot = RsegSlot.new(
               offset: c.position,
-              space_id: c.name('space_id') { Innodb::Page.maybe_undefined(c.get_uint32) },
-              page_number: c.name('page_number') { Innodb::Page.maybe_undefined(c.get_uint32) }
+              space_id: c.name('space_id') { Innodb::Page.maybe_undefined(c.read_uint32) },
+              page_number: c.name('page_number') { Innodb::Page.maybe_undefined(c.read_uint32) }
             )
             a << slot if slot.space_id && slot.page_number
           end
@@ -124,24 +124,24 @@ module Innodb
       # Read a MySQL binary log information structure from a given position.
       def mysql_log_info(cursor, offset)
         cursor.peek(offset) do |c|
-          magic_n = c.name('magic_n') { c.get_uint32 } == MYSQL_LOG_MAGIC_N
+          magic_n = c.name('magic_n') { c.read_uint32 } == MYSQL_LOG_MAGIC_N
           break unless magic_n
 
           MysqlLogInfo.new(
             magic_n: magic_n,
-            offset: c.name('offset') { c.get_uint64 },
-            name: c.name('name') { c.get_bytes(100) }
+            offset: c.name('offset') { c.read_uint64 },
+            name: c.name('name') { c.read_bytes(100) }
           )
         end
       end
 
       # Read a single doublewrite buffer information structure from a given cursor.
       def doublewrite_page_info(cursor)
-        magic_n = cursor.name('magic_n') { cursor.get_uint32 }
+        magic_n = cursor.name('magic_n') { cursor.read_uint32 }
 
         DoublewritePageInfo.new(
           magic_n: magic_n,
-          page_number: [0, 1].map { |n| cursor.name("page[#{n}]") { cursor.get_uint32 } }
+          page_number: [0, 1].map { |n| cursor.name("page[#{n}]") { cursor.read_uint32 } }
         )
       end
 
@@ -152,7 +152,7 @@ module Innodb
             DoublewriteInfo.new(
               fseg: c.name('fseg') { Innodb::FsegEntry.get_inode(@space, c) },
               page_info: [0, 1].map { |n| c.name("group[#{n}]") { doublewrite_page_info(c) } },
-              space_id_stored: (c.name('space_id_stored') { c.get_uint32 } == DOUBLEWRITE_SPACE_ID_STORED_MAGIC_N)
+              space_id_stored: (c.name('space_id_stored') { c.read_uint32 } == DOUBLEWRITE_SPACE_ID_STORED_MAGIC_N)
             )
           end
         end
@@ -162,7 +162,7 @@ module Innodb
       def trx_sys
         @trx_sys ||= cursor(pos_trx_sys_header).name('trx_sys') do |c|
           Header.new(
-            trx_id: c.name('trx_id') { c.get_uint64 },
+            trx_id: c.name('trx_id') { c.read_uint64 },
             fseg: c.name('fseg') { Innodb::FsegEntry.get_inode(@space, c) },
             rsegs: c.name('rsegs') { rsegs_array(c) },
             binary_log: c.name('binary_log') { mysql_log_info(c, pos_mysql_binary_log_info) },

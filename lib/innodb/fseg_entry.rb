@@ -12,9 +12,9 @@ module Innodb
     # Return the FSEG entry address, which points to an entry on an INODE page.
     def self.get_entry_address(cursor)
       {
-        space_id: cursor.name('space_id') { cursor.get_uint32 },
-        page_number: cursor.name('page_number') { Innodb::Page.maybe_undefined(cursor.get_uint32) },
-        offset: cursor.name('offset') { cursor.get_uint16 },
+        space_id: cursor.name('space_id') { cursor.read_uint32 },
+        page_number: cursor.name('page_number') { Innodb::Page.maybe_undefined(cursor.read_uint32) },
+        offset: cursor.name('offset') { cursor.read_uint16 },
       }
     end
 

@@ -62,11 +62,11 @@ module Innodb
     def header
       @header ||= cursor(HEADER_OFFSET).name('header') do |c|
         Header.new(
-          flush: c.name('flush') { c.peek { (c.get_uint32 & HEADER_FLUSH_BIT_MASK).positive? } },
-          block_number: c.name('block_number') { c.get_uint32 & ~HEADER_FLUSH_BIT_MASK },
-          data_length: c.name('data_length') { c.get_uint16 },
-          first_rec_group: c.name('first_rec_group') { c.get_uint16 },
-          checkpoint_no: c.name('checkpoint_no') { c.get_uint32 }
+          flush: c.name('flush') { c.peek { (c.read_uint32 & HEADER_FLUSH_BIT_MASK).positive? } },
+          block_number: c.name('block_number') { c.read_uint32 & ~HEADER_FLUSH_BIT_MASK },
+          data_length: c.name('data_length') { c.read_uint16 },
+          first_rec_group: c.name('first_rec_group') { c.read_uint16 },
+          checkpoint_no: c.name('checkpoint_no') { c.read_uint32 }
         )
       end
     end
@@ -91,7 +91,7 @@ module Innodb
     # Return the log block trailer.
     def trailer
       @trailer ||= cursor(TRAILER_OFFSET).name('trailer') do |c|
-        Trailer.new(checksum: c.name('checksum') { c.get_uint32 })
+        Trailer.new(checksum: c.name('checksum') { c.read_uint32 })
       end
     end
 

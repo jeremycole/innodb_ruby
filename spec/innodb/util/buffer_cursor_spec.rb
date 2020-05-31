@@ -217,241 +217,241 @@ describe BufferCursor do
     end
   end
 
-  describe '#get_bytes' do
+  describe '#read_bytes' do
     it 'returns a raw byte string of the given length' do
-      @cursor.get_bytes(4).should eql "\x00\x01\x02\x03"
+      @cursor.read_bytes(4).should eql "\x00\x01\x02\x03"
     end
 
     it 'returns a string uncorrupted' do
       @cursor.seek(@data[:offset][:alphabet])
-      @cursor.get_bytes(4).should eql 'abcd'
+      @cursor.read_bytes(4).should eql 'abcd'
     end
   end
 
-  describe '#get_hex' do
+  describe '#read_hex' do
     it 'returns a hex string of the given length' do
-      @cursor.get_hex(4).should eql '00010203'
-      @cursor.get_hex(4).should eql '04050607'
-      @cursor.get_hex(4).should eql '08090a0b'
-      @cursor.get_hex(4).should eql '0c0d0e0f'
+      @cursor.read_hex(4).should eql '00010203'
+      @cursor.read_hex(4).should eql '04050607'
+      @cursor.read_hex(4).should eql '08090a0b'
+      @cursor.read_hex(4).should eql '0c0d0e0f'
     end
   end
 
-  describe '#get_uint8' do
+  describe '#read_uint8' do
     it 'reads 1 byte as uint8' do
-      @cursor.get_uint8.should eql 0x00
-      @cursor.get_uint8.should eql 0x01
-      @cursor.get_uint8.should eql 0x02
-      @cursor.get_uint8.should eql 0x03
+      @cursor.read_uint8.should eql 0x00
+      @cursor.read_uint8.should eql 0x01
+      @cursor.read_uint8.should eql 0x02
+      @cursor.read_uint8.should eql 0x03
       @cursor.seek(@data[:offset][:max_uint])
-      @cursor.get_uint8.should eql 0xff
+      @cursor.read_uint8.should eql 0xff
     end
   end
 
-  describe '#get_uint16' do
+  describe '#read_uint16' do
     it 'returns 2 bytes as uint16' do
-      @cursor.get_uint16.should eql 0x0001
-      @cursor.get_uint16.should eql 0x0203
-      @cursor.get_uint16.should eql 0x0405
-      @cursor.get_uint16.should eql 0x0607
+      @cursor.read_uint16.should eql 0x0001
+      @cursor.read_uint16.should eql 0x0203
+      @cursor.read_uint16.should eql 0x0405
+      @cursor.read_uint16.should eql 0x0607
       @cursor.seek(@data[:offset][:max_uint])
-      @cursor.get_uint16.should eql 0xffff
+      @cursor.read_uint16.should eql 0xffff
     end
   end
 
-  describe '#get_uint24' do
+  describe '#read_uint24' do
     it 'returns 3 bytes as uint24' do
-      @cursor.get_uint24.should eql 0x000102
-      @cursor.get_uint24.should eql 0x030405
-      @cursor.get_uint24.should eql 0x060708
-      @cursor.get_uint24.should eql 0x090a0b
+      @cursor.read_uint24.should eql 0x000102
+      @cursor.read_uint24.should eql 0x030405
+      @cursor.read_uint24.should eql 0x060708
+      @cursor.read_uint24.should eql 0x090a0b
       @cursor.seek(@data[:offset][:max_uint])
-      @cursor.get_uint24.should eql 0xffffff
+      @cursor.read_uint24.should eql 0xffffff
     end
   end
 
-  describe '#get_uint32' do
+  describe '#read_uint32' do
     it 'returns 4 bytes as uint32' do
-      @cursor.get_uint32.should eql 0x00010203
-      @cursor.get_uint32.should eql 0x04050607
-      @cursor.get_uint32.should eql 0x08090a0b
-      @cursor.get_uint32.should eql 0x0c0d0e0f
+      @cursor.read_uint32.should eql 0x00010203
+      @cursor.read_uint32.should eql 0x04050607
+      @cursor.read_uint32.should eql 0x08090a0b
+      @cursor.read_uint32.should eql 0x0c0d0e0f
       @cursor.seek(@data[:offset][:max_uint])
-      @cursor.get_uint32.should eql 0xffffffff
+      @cursor.read_uint32.should eql 0xffffffff
     end
   end
 
-  describe '#get_uint64' do
+  describe '#read_uint64' do
     it 'returns 8 bytes as uint64' do
-      @cursor.get_uint64.should eql 0x0001020304050607
-      @cursor.get_uint64.should eql 0x08090a0b0c0d0e0f
+      @cursor.read_uint64.should eql 0x0001020304050607
+      @cursor.read_uint64.should eql 0x08090a0b0c0d0e0f
       @cursor.seek(@data[:offset][:max_uint])
-      @cursor.get_uint64.should eql 0xffffffffffffffff
+      @cursor.read_uint64.should eql 0xffffffffffffffff
     end
   end
 
-  describe '#get_uint_by_size' do
+  describe '#read_uint_by_size' do
     it 'returns a uint8 for size 1' do
-      @cursor.get_uint_by_size(1).should eql 0x00
+      @cursor.read_uint_by_size(1).should eql 0x00
     end
 
     it 'returns a uint16 for size 2' do
-      @cursor.get_uint_by_size(2).should eql 0x0001
+      @cursor.read_uint_by_size(2).should eql 0x0001
     end
 
     it 'returns a uint24 for size 3' do
-      @cursor.get_uint_by_size(3).should eql 0x000102
+      @cursor.read_uint_by_size(3).should eql 0x000102
     end
 
     it 'returns a uint32 for size 4' do
-      @cursor.get_uint_by_size(4).should eql 0x00010203
+      @cursor.read_uint_by_size(4).should eql 0x00010203
     end
 
     it 'returns a uint64 for size 8' do
-      @cursor.get_uint_by_size(8).should eql 0x0001020304050607
+      @cursor.read_uint_by_size(8).should eql 0x0001020304050607
     end
   end
 
-  describe '#get_ic_uint32' do
+  describe '#read_ic_uint32' do
     it 'reads a 1-byte zero value correctly' do
       @cursor.seek(@data[:offset][:ic_uint32_00000000])
-      @cursor.get_ic_uint32.should eql 0
+      @cursor.read_ic_uint32.should eql 0
       @cursor.position.should eql @data[:offset][:ic_uint32_00000000] + 1
     end
 
     it 'reads a 1-byte maximal value correctly' do
       @cursor.seek(@data[:offset][:ic_uint32_0000007f])
-      @cursor.get_ic_uint32.should eql 0x7f
+      @cursor.read_ic_uint32.should eql 0x7f
       @cursor.position.should eql @data[:offset][:ic_uint32_0000007f] + 1
     end
 
     it 'reads a 2-byte maximal value correctly' do
       @cursor.seek(@data[:offset][:ic_uint32_00003fff])
-      @cursor.get_ic_uint32.should eql 0x3fff
+      @cursor.read_ic_uint32.should eql 0x3fff
       @cursor.position.should eql @data[:offset][:ic_uint32_00003fff] + 2
     end
 
     it 'reads a 3-byte maximal value correctly' do
       @cursor.seek(@data[:offset][:ic_uint32_001fffff])
-      @cursor.get_ic_uint32.should eql 0x1fffff
+      @cursor.read_ic_uint32.should eql 0x1fffff
       @cursor.position.should eql @data[:offset][:ic_uint32_001fffff] + 3
     end
 
     it 'reads a 4-byte maximal value correctly' do
       @cursor.seek(@data[:offset][:ic_uint32_0fffffff])
-      @cursor.get_ic_uint32.should eql 0x0fffffff
+      @cursor.read_ic_uint32.should eql 0x0fffffff
       @cursor.position.should eql @data[:offset][:ic_uint32_0fffffff] + 4
     end
 
     it 'reads a 5-byte maximal value correctly' do
       @cursor.seek(@data[:offset][:ic_uint32_ffffffff])
-      @cursor.get_ic_uint32.should eql 0xffffffff
+      @cursor.read_ic_uint32.should eql 0xffffffff
       @cursor.position.should eql @data[:offset][:ic_uint32_ffffffff] + 5
     end
   end
 
-  describe '#get_ic_uint64' do
+  describe '#read_ic_uint64' do
     it 'reads a 5-byte zero value correctly' do
       @cursor.seek(@data[:offset][:ic_uint64_0000000000000000])
-      @cursor.get_ic_uint64.should eql 0
+      @cursor.read_ic_uint64.should eql 0
       @cursor.position.should eql @data[:offset][:ic_uint64_0000000000000000] + 5
     end
 
     it 'reads a 5-byte interesting value 0x0000000100000001 correctly' do
       @cursor.seek(@data[:offset][:ic_uint64_0000000100000001])
-      @cursor.get_ic_uint64.should eql 0x0000000100000001
+      @cursor.read_ic_uint64.should eql 0x0000000100000001
       @cursor.position.should eql @data[:offset][:ic_uint64_0000000100000001] + 5
     end
 
     it 'reads a 5-byte interesting value 0x00000000ffffffff correctly' do
       @cursor.seek(@data[:offset][:ic_uint64_00000000ffffffff])
-      @cursor.get_ic_uint64.should eql 0x00000000ffffffff
+      @cursor.read_ic_uint64.should eql 0x00000000ffffffff
       @cursor.position.should eql @data[:offset][:ic_uint64_00000000ffffffff] + 5
     end
 
     it 'reads a 9-byte interesting value 0xffffffff00000000 correctly' do
       @cursor.seek(@data[:offset][:ic_uint64_ffffffff00000000])
-      @cursor.get_ic_uint64.should eql 0xffffffff00000000
+      @cursor.read_ic_uint64.should eql 0xffffffff00000000
       @cursor.position.should eql @data[:offset][:ic_uint64_ffffffff00000000] + 9
     end
 
     it 'reads a 7-byte interesting value 0x0000ffff0000ffff correctly' do
       @cursor.seek(@data[:offset][:ic_uint64_0000ffff0000ffff])
-      @cursor.get_ic_uint64.should eql 0x0000ffff0000ffff
+      @cursor.read_ic_uint64.should eql 0x0000ffff0000ffff
       @cursor.position.should eql @data[:offset][:ic_uint64_0000ffff0000ffff] + 7
     end
 
     it 'reads a 9-byte interesting value 0xffff0000ffff0000 correctly' do
       @cursor.seek(@data[:offset][:ic_uint64_ffff0000ffff0000])
-      @cursor.get_ic_uint64.should eql 0xffff0000ffff0000
+      @cursor.read_ic_uint64.should eql 0xffff0000ffff0000
       @cursor.position.should eql @data[:offset][:ic_uint64_ffff0000ffff0000] + 9
     end
 
     it 'reads a 9-byte maximal value correctly' do
       @cursor.seek(@data[:offset][:ic_uint64_ffffffffffffffff])
-      @cursor.get_ic_uint64.should eql 0xffffffffffffffff
+      @cursor.read_ic_uint64.should eql 0xffffffffffffffff
       @cursor.position.should eql @data[:offset][:ic_uint64_ffffffffffffffff] + 9
     end
   end
 
-  describe '#get_imc_uint64' do
+  describe '#read_imc_uint64' do
     it 'reads a 1-byte zero value correctly' do
       @cursor.seek(@data[:offset][:imc_uint64_0000000000000000])
-      @cursor.get_imc_uint64.should eql 0
+      @cursor.read_imc_uint64.should eql 0
       @cursor.position.should eql @data[:offset][:imc_uint64_0000000000000000] + 1
     end
 
     it 'reads a 3-byte interesting value 0x0000000100000001 correctly' do
       @cursor.seek(@data[:offset][:imc_uint64_0000000100000001])
-      @cursor.get_imc_uint64.should eql 0x0000000100000001
+      @cursor.read_imc_uint64.should eql 0x0000000100000001
       @cursor.position.should eql @data[:offset][:imc_uint64_0000000100000001] + 3
     end
 
     it 'reads a 5-byte interesting value 0x00000000ffffffff correctly' do
       @cursor.seek(@data[:offset][:imc_uint64_00000000ffffffff])
-      @cursor.get_imc_uint64.should eql 0x00000000ffffffff
+      @cursor.read_imc_uint64.should eql 0x00000000ffffffff
       @cursor.position.should eql @data[:offset][:imc_uint64_00000000ffffffff] + 5
     end
 
     it 'reads a 7-byte interesting value 0xffffffff00000000 correctly' do
       @cursor.seek(@data[:offset][:imc_uint64_ffffffff00000000])
-      @cursor.get_imc_uint64.should eql 0xffffffff00000000
+      @cursor.read_imc_uint64.should eql 0xffffffff00000000
       @cursor.position.should eql @data[:offset][:imc_uint64_ffffffff00000000] + 7
     end
 
     it 'reads a 7-byte interesting value 0x0000ffff0000ffff correctly' do
       @cursor.seek(@data[:offset][:imc_uint64_0000ffff0000ffff])
-      @cursor.get_imc_uint64.should eql 0x0000ffff0000ffff
+      @cursor.read_imc_uint64.should eql 0x0000ffff0000ffff
       @cursor.position.should eql @data[:offset][:imc_uint64_0000ffff0000ffff] + 7
     end
 
     it 'reads a 11-byte interesting value 0xffff0000ffff0000 correctly' do
       @cursor.seek(@data[:offset][:imc_uint64_ffff0000ffff0000])
-      @cursor.get_imc_uint64.should eql 0xffff0000ffff0000
+      @cursor.read_imc_uint64.should eql 0xffff0000ffff0000
       @cursor.position.should eql @data[:offset][:imc_uint64_ffff0000ffff0000] + 11
     end
 
     it 'reads a 11-byte maximal value correctly' do
       @cursor.seek(@data[:offset][:imc_uint64_ffffffffffffffff])
-      @cursor.get_imc_uint64.should eql 0xffffffffffffffff
+      @cursor.read_imc_uint64.should eql 0xffffffffffffffff
       @cursor.position.should eql @data[:offset][:imc_uint64_ffffffffffffffff] + 11
     end
   end
 
-  describe '#get_bit_array' do
+  describe '#read_bit_array' do
     it 'returns an array of bits' do
-      @cursor.get_bit_array(64).uniq.sort.should eql [0, 1]
+      @cursor.read_bit_array(64).uniq.sort.should eql [0, 1]
     end
 
     it 'returns the right bits' do
-      @cursor.get_bit_array(8).should eql [0, 0, 0, 0, 0, 0, 0, 0]
-      @cursor.get_bit_array(8).should eql [0, 0, 0, 0, 0, 0, 0, 1]
+      @cursor.read_bit_array(8).should eql [0, 0, 0, 0, 0, 0, 0, 0]
+      @cursor.read_bit_array(8).should eql [0, 0, 0, 0, 0, 0, 0, 1]
       @cursor.seek(@data[:offset][:max_uint])
-      @cursor.get_bit_array(8).should eql [1, 1, 1, 1, 1, 1, 1, 1]
+      @cursor.read_bit_array(8).should eql [1, 1, 1, 1, 1, 1, 1, 1]
     end
 
     it 'can handle large bit arrays' do
-      @cursor.get_bit_array(64).size.should eql 64
+      @cursor.read_bit_array(64).size.should eql 64
     end
   end
 
@@ -464,13 +464,13 @@ describe BufferCursor do
 
       c1 = BufferCursor.new(@buffer, 0)
       c1.trace_to(trace_output)
-      c1.get_bytes(4).should eql "\x00\x01\x02\x03"
+      c1.read_bytes(4).should eql "\x00\x01\x02\x03"
 
       trace_string.should match(/000000 → 00010203/)
 
       c2 = BufferCursor.new(@buffer, 0)
       c2.trace_to(trace_output)
-      c2.seek(4).get_bytes(4).should eql "\x04\x05\x06\x07"
+      c2.seek(4).read_bytes(4).should eql "\x04\x05\x06\x07"
 
       trace_string.should match(/000004 → 04050607/)
 
@@ -486,13 +486,13 @@ describe BufferCursor do
       c1 = BufferCursor.new(@buffer, 0)
       c1.trace
       c1.trace_to(trace_output)
-      c1.get_bytes(4).should eql "\x00\x01\x02\x03"
+      c1.read_bytes(4).should eql "\x00\x01\x02\x03"
 
       trace_string.should match(/000000 → 00010203/)
 
       c2 = BufferCursor.new(@buffer, 0)
       c2.trace_to(trace_output)
-      c2.seek(4).get_bytes(4).should eql "\x04\x05\x06\x07"
+      c2.seek(4).read_bytes(4).should eql "\x04\x05\x06\x07"
 
       trace_string.should_not match(/000004 → 04050607/)
     end

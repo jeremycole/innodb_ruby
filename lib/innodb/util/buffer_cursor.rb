@@ -227,12 +227,12 @@ class BufferCursor
   end
 
   # Return raw bytes.
-  def get_bytes(length)
+  def read_bytes(length)
     read_and_advance(length)
   end
 
   # Return a null-terminated string.
-  def get_string(length)
+  def read_string(length)
     BinData::Stringz.read(read_and_advance(length))
   end
 
@@ -248,82 +248,82 @@ class BufferCursor
   end
 
   # Return raw bytes as hex.
-  def get_hex(length)
+  def read_hex(length)
     read_and_advance(length).bytes.map { |c| '%02x' % c }.join
   end
 
   # Read an unsigned 8-bit integer.
-  def get_uint8(position = nil)
+  def read_uint8(position = nil)
     seek(position)
     data = read_and_advance(1)
     BinData::Uint8.read(data).to_i
   end
 
   # Read a big-endian unsigned 16-bit integer.
-  def get_uint16(position = nil)
+  def read_uint16(position = nil)
     seek(position)
     data = read_and_advance(2)
     BinData::Uint16be.read(data).to_i
   end
 
   # Read a big-endian signed 16-bit integer.
-  def get_sint16(position = nil)
+  def read_sint16(position = nil)
     seek(position)
     data = read_and_advance(2)
     BinData::Int16be.read(data).to_i
   end
 
   # Read a big-endian unsigned 24-bit integer.
-  def get_uint24(position = nil)
+  def read_uint24(position = nil)
     seek(position)
     data = read_and_advance(3)
     BinData::Uint24be.read(data).to_i
   end
 
   # Read a big-endian unsigned 32-bit integer.
-  def get_uint32(position = nil)
+  def read_uint32(position = nil)
     seek(position)
     data = read_and_advance(4)
     BinData::Uint32be.read(data).to_i
   end
 
   # Read a big-endian unsigned 48-bit integer.
-  def get_uint48(position = nil)
+  def read_uint48(position = nil)
     seek(position)
     data = read_and_advance(6)
     BinData::Uint48be.read(data).to_i
   end
 
   # Read a big-endian unsigned 64-bit integer.
-  def get_uint64(position = nil)
+  def read_uint64(position = nil)
     seek(position)
     data = read_and_advance(8)
     BinData::Uint64be.read(data).to_i
   end
 
   # Read a big-endian unsigned integer given its size in bytes.
-  def get_uint_by_size(size)
+  def read_uint_by_size(size)
     case size
     when 1
-      get_uint8
+      read_uint8
     when 2
-      get_uint16
+      read_uint16
     when 3
-      get_uint24
+      read_uint24
     when 4
-      get_uint32
+      read_uint32
     when 6
-      get_uint48
+      read_uint48
     when 8
-      get_uint64
+      read_uint64
     else
       raise "Integer size #{size} not implemented"
     end
   end
 
   # Read an array of count unsigned integers given their size in bytes.
-  def get_uint_array_by_size(size, count)
-    count.times.map { get_uint_by_size(size) }
+  def read_uint_array_by_size(size, count)
+    count.times.map { read_uint_by_size(size) }
   end
 
   # Read an InnoDB-compressed unsigned 32-bit integer (1-5 bytes).
@@ -333,24 +333,24 @@ class BufferCursor
   # flag for integers >= 0xf0000000.
   #
   # Optionally accept a flag (first byte) if it has already been read (as is
-  # the case in get_imc_uint64).
-  def get_ic_uint32(flag = nil)
+  # the case in read_imc_uint64).
+  def read_ic_uint32(flag = nil)
     name('ic_uint32') do
-      flag ||= peek { name('uint8_or_flag') { get_uint8 } }
+      flag ||= peek { name('uint8_or_flag') { read_uint8 } }
 
       case
       when flag < 0x80
         adjust(+1)
         flag
       when flag < 0xc0
-        name('uint16') { get_uint16 } & 0x7fff
+        name('uint16') { read_uint16 } & 0x7fff
       when flag < 0xe0
-        name('uint24') { get_uint24 } & 0x3fffff
+        name('uint24') { read_uint24 } & 0x3fffff
       when flag < 0xf0
-        name('uint32') { get_uint32 } & 0x1fffffff
+        name('uint32') { read_uint32 } & 0x1fffffff
       when flag == 0xf0
         adjust(+1) # Skip the flag byte.
-        name('uint32+1') { get_uint32 }
+        name('uint32+1') { read_uint32 }
       else
         raise "Invalid flag #{flag} seen"
       end
@@ -363,10 +363,10 @@ class BufferCursor
   # integer (1-5 bytes) while the low 32 bits are stored as a standard
   # big-endian 32-bit integer (4 bytes). This makes a combined size of
   # between 5 and 9 bytes.
-  def get_ic_uint64
+  def read_ic_uint64
     name('ic_uint64') do
-      high = name('high') { get_ic_uint32 }
-      low = name('low') { name('uint32') { get_uint32 } }
+      high = name('high') { read_ic_uint32 }
+      low = name('low') { name('uint32') { read_uint32 } }
 
       (high << 32) | low
     end
@@ -380,28 +380,28 @@ class BufferCursor
   # is also a flag) of the low 32 bits of the value, also as an InnoDB-
   # compressed 32-bit unsigned integer. This makes for a combined size
   # of between 1 and 11 bytes.
-  def get_imc_uint64
+  def read_imc_uint64
     name('imc_uint64') do
       high = 0
-      flag = peek { name('uint8_or_flag') { get_uint8 } }
+      flag = peek { name('uint8_or_flag') { read_uint8 } }
 
       if flag == 0xff
         # The high 32-bits are stored first as an ic_uint32.
         adjust(+1) # Skip the flag byte.
-        high = name('high') { get_ic_uint32 }
+        high = name('high') { read_ic_uint32 }
         flag = nil
       end
 
       # The low 32-bits are stored as an ic_uint32; pass the flag we already
       # read, so we don't have to read it again.
-      low = name('low') { get_ic_uint32(flag) }
+      low = name('low') { read_ic_uint32(flag) }
 
       (high << 32) | low
     end
   end
 
   # Read an array of 1-bit integers.
-  def get_bit_array(num_bits)
+  def read_bit_array(num_bits)
     size = (num_bits + 7) / 8
     data = read_and_advance(size)
     bit_array = BinData::Array.new(type: :bit1, initial_length: size * 8)

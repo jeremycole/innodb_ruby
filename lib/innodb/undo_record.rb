@@ -113,11 +113,11 @@ module Innodb
     def header
       @header ||= cursor(pos_header).name('header') do |c|
         header = Header.new(
-          prev: c.name('prev') { c.get_uint16 },
-          next: c.name('next') { c.get_uint16 }
+          prev: c.name('prev') { c.read_uint16 },
+          next: c.name('next') { c.read_uint16 }
         )
 
-        info = c.name('info') { c.get_uint8 }
+        info = c.name('info') { c.read_uint8 }
         cmpl = (info & COMPILATION_INFO_MASK) >> COMPILATION_INFO_SHIFT
         header.type = TYPE[info & TYPE_MASK]
         header.extern_flag = (info & EXTERN_FLAG) != 0
@@ -161,15 +161,15 @@ module Innodb
           page: undo_page.offset,
           offset: position,
           header: header,
-          undo_no: c.name('undo_no') { c.get_imc_uint64 },
-          table_id: c.name('table_id') { c.get_imc_uint64 }
+          undo_no: c.name('undo_no') { c.read_imc_uint64 },
+          table_id: c.name('table_id') { c.read_imc_uint64 }
         )
 
         if previous_version?
-          this_record.info_bits = c.name('info_bits') { c.get_uint8 }
-          this_record.trx_id = c.name('trx_id') { c.get_ic_uint64 }
+          this_record.info_bits = c.name('info_bits') { c.read_uint8 }
+          this_record.trx_id = c.name('trx_id') { c.read_ic_uint64 }
           this_record.roll_ptr = c.name('roll_ptr') do
-            Innodb::DataType::RollPointerType.parse_roll_pointer(c.get_ic_uint64)
+            Innodb::DataType::RollPointerType.parse_roll_pointer(c.read_ic_uint64)
           end
         end
 
@@ -177,7 +177,7 @@ module Innodb
           read_record_fields(this_record, c)
         else
           # Slurp up the remaining data as a string.
-          this_record.data = c.get_bytes(header[:next] - c.position - 2)
+          this_record.data = c.read_bytes(header[:next] - c.position - 2)
         end
 
         this_record
@@ -187,7 +187,7 @@ module Innodb
     def read_record_fields(this_record, cursor)
       this_record.key = []
       index_page.record_format[:key].each do |field|
-        length = cursor.name('field_length') { cursor.get_ic_uint32 }
+        length = cursor.name('field_length') { cursor.read_ic_uint32 }
         value = cursor.name(field.name) { field.value_by_length(cursor, length) }
 
         this_record.key[field.position] = Field.new(name: field.name, type: field.data_type.name, value: value)
@@ -195,10 +195,10 @@ module Innodb
 
       return unless previous_version?
 
-      field_count = cursor.name('field_count') { cursor.get_ic_uint32 }
+      field_count = cursor.name('field_count') { cursor.read_ic_uint32 }
       this_record.row = Array.new(index_page.record_format[:row].size)
       field_count.times do
-        field_number = cursor.name("field_number[#{field_count}]") { cursor.get_ic_uint32 }
+        field_number = cursor.name("field_number[#{field_count}]") { cursor.read_ic_uint32 }
         field = nil
         field_index = nil
         index_page.record_format[:row].each_with_index do |candidate_field, index|
@@ -210,7 +210,7 @@ module Innodb
 
         raise "Unknown field #{field_number}" unless field
 
-        length = cursor.name('field_length') { cursor.get_ic_uint32 }
+        length = cursor.name('field_length') { cursor.read_ic_uint32 }
         value = cursor.name(field.name) { field.value_by_length(cursor, length) }
 
         this_record.row[field_index] = Field.new(name: field.name, type: field.data_type.name, value: value)

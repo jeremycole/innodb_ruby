@@ -37,7 +37,7 @@ module Innodb
         puts 'Free space start == %04x' % [offset * size + free_space_start]
         c = cursor(free_space_start).backward
         zero_bytes = 0
-        zero_bytes += 1 while c.get_uint8.zero?
+        zero_bytes += 1 while c.read_uint8.zero?
         zero_bytes
         # page_header[:garbage] + (size - size_fil_trailer - directory_space - page_header[:heap_top])
       end

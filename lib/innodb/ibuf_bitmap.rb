@@ -25,7 +25,7 @@ module Innodb
     end
 
     def read_bitmap(cursor)
-      cursor.name('ibuf_bitmap') { |c| c.get_bytes(size_bitmap) }
+      cursor.name('ibuf_bitmap') { |c| c.read_bytes(size_bitmap) }
     end
 
     def each_page_status

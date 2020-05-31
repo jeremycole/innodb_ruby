@@ -87,7 +87,7 @@ describe Innodb::Page do
 
     it 'is reading reasonable data' do
       # This will read the page number from page 0, which should be 0.
-      @page.cursor(4).get_uint32.should eql 0
+      @page.cursor(4).read_uint32.should eql 0
     end
   end
 
