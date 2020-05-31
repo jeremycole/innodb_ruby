@@ -3,6 +3,8 @@
 module Innodb
   class Page
     class Blob < Page
+      specialization_for :BLOB
+
       def pos_blob_header
         pos_page_body
       end
@@ -83,5 +85,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:BLOB] = Innodb::Page::Blob

@@ -10,6 +10,8 @@ require 'innodb/page/sys_ibuf_header'
 module Innodb
   class Page
     class Sys < Page
+      specialization_for :SYS
+
       def self.handle(page, space, buffer, page_number = nil)
         return Innodb::Page::SysIbufHeader.new(space, buffer, page_number) if page.offset == 3
         return Innodb::Page::SysDataDictionaryHeader.new(space, buffer, page_number) if page.offset == 7
@@ -20,5 +22,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:SYS] = Innodb::Page::Sys

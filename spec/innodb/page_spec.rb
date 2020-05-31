@@ -41,29 +41,25 @@ describe Innodb::Page do
     end
   end
 
-  describe '::SPECIALIZED_CLASSES' do
+  describe 'specialized_classes' do
     it 'is a Hash' do
-      Innodb::Page::SPECIALIZED_CLASSES.should be_an_instance_of Hash
+      Innodb::Page.specialized_classes.should be_an_instance_of Hash
     end
 
     it 'has only Symbol keys' do
-      classes = Innodb::Page::SPECIALIZED_CLASSES.keys.map(&:class).uniq
-      classes.should eql [Symbol]
+      Innodb::Page.specialized_classes.keys.map(&:class).uniq.should eql [Symbol]
     end
 
     it 'has only keys that are keys in ::PAGE_TYPE' do
-      checks = Innodb::Page::SPECIALIZED_CLASSES.keys.map { |k| Innodb::Page::PAGE_TYPE.include?(k) }.uniq
-      checks.should eql [true]
+      Innodb::Page.specialized_classes.keys.all? { |k| Innodb::Page::PAGE_TYPE.include?(k) }.should be_truthy
     end
 
     it 'has only Class values' do
-      classes = Innodb::Page::SPECIALIZED_CLASSES.values.map(&:class).uniq
-      classes.should eql [Class]
+      Innodb::Page.specialized_classes.values.map(&:class).uniq.should eql [Class]
     end
 
     it 'has only values subclassing Innodb::Page' do
-      classes = Innodb::Page::SPECIALIZED_CLASSES.values.map(&:superclass).uniq
-      classes.should eql [Innodb::Page]
+      Innodb::Page.specialized_classes.values.map(&:superclass).uniq.should eql [Innodb::Page]
     end
   end
 

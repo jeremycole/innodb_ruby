@@ -17,6 +17,8 @@ module Innodb
     class Index < Page
       extend Forwardable
 
+      specialization_for :INDEX
+
       RecordHeader = Struct.new(
         :length,
         :next,
@@ -1108,5 +1110,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:INDEX] = Innodb::Page::Index

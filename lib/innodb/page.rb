@@ -43,7 +43,25 @@ module Innodb
 
     # A hash of page types to specialized classes to handle them. Normally
     # subclasses will register themselves in this list.
-    SPECIALIZED_CLASSES = {}
+    @specialized_classes = {}
+
+    class << self
+      attr_reader :specialized_classes
+    end
+
+    def self.register_specialization(page_type, specialized_class)
+      @specialized_classes[page_type] = specialized_class
+    end
+
+    def self.specialization_for(page_type)
+      # This needs to intentionally use Innodb::Page because we need to register
+      # in the class instance variable in *that* class.
+      Innodb::Page.register_specialization(page_type, self)
+    end
+
+    def self.specialization_for?(page_type)
+      Innodb::Page.specialized_classes.include?(page_type)
+    end
 
     # Load a page as a generic page in order to make the "fil" header accessible,
     # and then attempt to hand off the page to a specialized class to be
@@ -60,7 +78,7 @@ module Innodb
 
       # If there is a specialized class available for this page type, re-create
       # the page object using that specialized class.
-      if (specialized_class = SPECIALIZED_CLASSES[page.type])
+      if (specialized_class = specialized_classes[page.type])
         page = specialized_class.handle(page, space, buffer, page_number)
       end
 

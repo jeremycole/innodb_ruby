@@ -7,6 +7,8 @@
 module Innodb
   class Page
     class IndexCompressed < Index
+      specialization_for({ type: :INDEX, compressed: true })
+
       # The number of directory slots in use.
       def directory_slots
         page_header[:n_heap] - 2
@@ -42,5 +44,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[{ type: :INDEX, compressed: true }] = Innodb::Page::IndexCompressed

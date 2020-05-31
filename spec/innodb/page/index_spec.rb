@@ -9,8 +9,8 @@ describe Innodb::Page::Index do
   end
 
   describe 'class' do
-    it 'registers itself in Innodb::Page::SPECIALIZED_CLASSES' do
-      Innodb::Page::SPECIALIZED_CLASSES[:INDEX].should eql Innodb::Page::Index
+    it 'registers itself as a specialized page type' do
+      Innodb::Page.specialization_for?(:INDEX).should be_truthy
     end
   end
 

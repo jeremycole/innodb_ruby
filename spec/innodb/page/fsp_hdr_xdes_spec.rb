@@ -9,9 +9,9 @@ describe Innodb::Page::FspHdrXdes do
   end
 
   describe 'class' do
-    it 'registers itself in Innodb::Page::SPECIALIZED_CLASSES' do
-      Innodb::Page::SPECIALIZED_CLASSES[:FSP_HDR].should eql Innodb::Page::FspHdrXdes
-      Innodb::Page::SPECIALIZED_CLASSES[:XDES].should eql Innodb::Page::FspHdrXdes
+    it 'registers itself as a specialized page type' do
+      Innodb::Page.specialization_for?(:FSP_HDR).should be_truthy
+      Innodb::Page.specialization_for?(:XDES).should be_truthy
     end
   end
 

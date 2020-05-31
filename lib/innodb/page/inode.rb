@@ -8,6 +8,8 @@ require 'innodb/list'
 module Innodb
   class Page
     class Inode < Page
+      specialization_for :INODE
+
       # Return the byte offset of the list node, which immediately follows the
       # FIL header.
       def pos_list_entry
@@ -128,5 +130,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:INODE] = Innodb::Page::Inode

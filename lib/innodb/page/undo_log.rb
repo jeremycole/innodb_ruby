@@ -3,6 +3,8 @@
 module Innodb
   class Page
     class UndoLog < Page
+      specialization_for :UNDO_LOG
+
       PageHeader = Struct.new(
         :type,
         :latest_log_record_offset,
@@ -105,5 +107,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:UNDO_LOG] = Innodb::Page::UndoLog

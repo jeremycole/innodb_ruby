@@ -5,6 +5,8 @@ module Innodb
     class IbufBitmap < Page
       extend ReadBitsAtOffset
 
+      specialization_for :IBUF_BITMAP
+
       def pos_ibuf_bitmap
         pos_page_body
       end
@@ -45,5 +47,3 @@ module Innodb
     end
   end
 end
-
-Innodb::Page::SPECIALIZED_CLASSES[:IBUF_BITMAP] = Innodb::Page::IbufBitmap
