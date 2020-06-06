@@ -24,6 +24,7 @@ Gem::Specification.new do |s|
 
   s.add_runtime_dependency('bindata', '~> 1.4', '>= 1.4.5')
   s.add_runtime_dependency('digest-crc', '~> 0.4', '>= 0.4.1')
+  s.add_runtime_dependency('histogram', '~> 0.2')
 
   s.add_development_dependency('rspec')
   s.add_development_dependency('rubocop')

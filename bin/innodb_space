@@ -3,6 +3,7 @@
 
 require 'getoptlong'
 require 'ostruct'
+require 'histogram/array'
 require 'innodb'
 
 # Convert a floating point RGB array into an ANSI color number approximating it.
@@ -582,32 +583,23 @@ def space_lsn_age_illustrate(space)
 
   puts "%12s ╰%-#{line_width}s╯" % ['', '─' * line_width]
 
-  lsn_legend = '<' + ('─' * (colors.size - 2)) + '>'
+  _, lsn_freq = page_lsn.reject(&:nil?).histogram(colors.size, min: lsn_min, max: lsn_max)
+  lsn_freq_delta = lsn_freq.max - lsn_freq.min
 
-  begin
-    # Try to optionally replace the boring lsn_legend with a histogram of
-    # page age distribution. If histogram/array is not available, move on.
-
-    require 'histogram/array'
-
-    _lsn_bins, lsn_freq = page_lsn.reject(&:nil?).histogram(colors.size, min: lsn_min, max: lsn_max)
-
-    lsn_freq_delta = lsn_freq.max - lsn_freq.min
-
-    lsn_legend = ''
-    lsn_freq.each do |freq|
-      freq_norm = freq / lsn_freq_delta
-      lsn_legend << freq_norm > 0.0 ? filled_block(freq_norm) : ' '
-    end
-  rescue LoadError
-    # That's okay! Leave the legend boring.
+  lsn_age_histogram = ''.dup
+  lsn_freq.each do |freq|
+    freq_norm = freq / lsn_freq_delta
+    lsn_age_histogram << (freq_norm > 0.0 ? filled_block(freq_norm) : ' ')
   end
 
   puts
-  puts 'Legend (%s = 1 page):' % [filled_block(1.0, nil)]
+  puts 'LSN Age Histogram (%s = ~%d pages):' % [
+    filled_block(1.0, nil),
+    (space.pages.to_f / colors.size).round
+  ]
   puts '  %12s %s %-12s' % [
     'Min LSN',
-    lsn_legend,
+    lsn_age_histogram,
     'Max LSN',
   ]
   puts '  %12i %s %-12i' % [
