@@ -462,40 +462,43 @@ def space_extents(space)
   print_xdes_list(space, space.each_xdes)
 end
 
+# rubocop:disable Metrics/BlockNesting
 def space_extents_illustrate_page_status(space, entry, count_by_identifier, identifiers)
-  entry.each_page_status.each_with_object(String.new) do |(page_number, page_status), bitmap|
-    if page_number < space.pages
-      used_fraction = 1.0
-      identifier = nil
-      if page_status[:free]
-        used_fraction = 0.0
-      else
-        page = space.page(page_number)
-        used_fraction = page.used_space.to_f / page.size if page.respond_to?(:used_space)
-        if page.respond_to?(:index_id)
-          identifier = page.index_id
-          unless identifiers[identifier]
-            identifiers[identifier] = page.ibuf_index? ? 'Insert Buffer Index' : "Index #{page.index_id}"
-            if space.innodb_system
-              table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
-              identifiers[identifier] += ' (%s.%s)' % [table, index] if table && index
-            end
+  entry.each_page_status.each_with_object(''.dup) do |(page_number, page_status), bitmap|
+    if page_number >= space.pages
+      bitmap << ' '
+      next
+    end
+
+    used_fraction = 1.0
+    identifier = nil
+    if page_status[:free]
+      used_fraction = 0.0
+    else
+      page = space.page(page_number)
+      used_fraction = page.used_space.to_f / page.size if page.respond_to?(:used_space)
+      if page.respond_to?(:index_id)
+        identifier = page.index_id
+        unless identifiers[identifier]
+          identifiers[identifier] = page.ibuf_index? ? 'Insert Buffer Index' : "Index #{page.index_id}"
+          if space.innodb_system
+            table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
+            identifiers[identifier] += ' (%s.%s)' % [table, index] if table && index
           end
         end
       end
+    end
 
-      bitmap << filled_block(used_fraction, identifier)
+    bitmap << filled_block(used_fraction, identifier)
 
-      if used_fraction != 0.0
-        count_by_identifier[identifier] += 1
-      else
-        count_by_identifier[:free] += 1
-      end
+    if used_fraction != 0.0
+      count_by_identifier[identifier] += 1
     else
-      bitmap << ' '
+      count_by_identifier[:free] += 1
     end
   end
 end
+# rubocop:enable Metrics/BlockNesting
 
 # Illustrate the space by printing each extent and for each page, printing a
 # filled block colored based on the index the page is part of. Print a legend
@@ -720,7 +723,7 @@ def page_account(innodb_system, space, page_number)
       end
     end
 
-    if inode.frag_array.include?(page_number)
+    if inode.frag_array.include?(page_number) # rubocop:disable Style/Next
       page_inode = inode
       puts '  Page is in fragment array of fseg %d.' % [
         inode.fseg_id,
