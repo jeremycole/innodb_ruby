@@ -337,6 +337,11 @@ module Innodb
         level.zero?
       end
 
+      # A helper to determine if an this page is part of an insert buffer index.
+      def ibuf_index?
+        index_id == Innodb::IbufIndex::INDEX_ID
+      end
+
       # Return the "fseg" header.
       def fseg_header
         @fseg_header ||= cursor(pos_fseg_header).name('fseg') do |c|
