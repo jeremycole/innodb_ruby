@@ -493,6 +493,41 @@ def space_extents(space)
   print_xdes_list(space, space.each_xdes)
 end
 
+def space_extents_illustrate_page_status(space, entry, count_by_identifier, identifiers)
+  entry.each_page_status.each_with_object(String.new) do |(page_number, page_status), bitmap|
+    if page_number < space.pages
+      used_fraction = 1.0
+      identifier = nil
+      if page_status[:free]
+        used_fraction = 0.0
+      else
+        page = space.page(page_number)
+        used_fraction = page.used_space.to_f / page.size if page.respond_to?(:used_space)
+        if page.respond_to?(:index_id)
+          identifier = page.index_id
+          unless identifiers[identifier]
+            identifiers[identifier] = page.ibuf_index? ? 'Insert Buffer Index' : "Index #{page.index_id}"
+            if space.innodb_system
+              table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
+              identifiers[identifier] += ' (%s.%s)' % [table, index] if table && index
+            end
+          end
+        end
+      end
+
+      bitmap << filled_block(used_fraction, identifier)
+
+      if used_fraction != 0.0
+        count_by_identifier[identifier] += 1
+      else
+        count_by_identifier[:free] += 1
+      end
+    else
+      bitmap << ' '
+    end
+  end
+end
+
 # Illustrate the space by printing each extent and for each page, printing a
 # filled block colored based on the index the page is part of. Print a legend
 # for the colors used afterwards.
@@ -507,39 +542,7 @@ def space_extents_illustrate(space)
   space.each_xdes do |entry|
     puts "%12i │%-#{line_width}s│" % [
       entry.xdes[:start_page],
-      entry.each_page_status.inject('') do |bitmap, (page_number, page_status)|
-        if page_number < space.pages
-          used_fraction = 1.0
-          identifier = nil
-          if page_status[:free]
-            used_fraction = 0.0
-          else
-            page = space.page(page_number)
-            used_fraction = page.used_space.to_f / page.size if page.respond_to?(:used_space)
-            if page.respond_to?(:index_id)
-              identifier = page.index_id
-              unless identifiers[identifier]
-                identifiers[identifier] = page.index_id == Innodb::IbufIndex::INDEX_ID ?
-                  'Insert Buffer Index' :
-                  "Index #{page.index_id}"
-                if space.innodb_system
-                  table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
-                  identifiers[identifier] += ' (%s.%s)' % [table, index] if table && index
-                end
-              end
-            end
-          end
-          bitmap += filled_block(used_fraction, identifier)
-          if used_fraction != 0.0
-            count_by_identifier[identifier] += 1
-          else
-            count_by_identifier[:free] += 1
-          end
-        else
-          bitmap += ' '
-        end
-        bitmap
-      end,
+      space_extents_illustrate_page_status(space, entry, count_by_identifier, identifiers),
     ]
   end
   total_pages = count_by_identifier.values.reduce(:+)
@@ -831,7 +834,7 @@ def space_lsn_age_illustrate(space)
 
     require 'histogram/array'
 
-    lsn_bins, lsn_freq = page_lsn.reject(&:nil?).histogram(colors.size, min: lsn_min, max: lsn_max)
+    _lsn_bins, lsn_freq = page_lsn.reject(&:nil?).histogram(colors.size, min: lsn_min, max: lsn_max)
 
     lsn_freq_delta = lsn_freq.max - lsn_freq.min
 
@@ -1018,8 +1021,8 @@ def print_inode_summary(inode)
 end
 
 def print_inode_detail(inode)
-  puts 'INODE fseg_id=%d, pages=%d, frag=%d pages (%s), full=%d extents (%s),' \
-    ' not_full=%d extents (%s) (%d/%d pages used), free=%d extents (%s)' % [
+  # rubocop:disable Layout/LineLength
+  puts 'INODE fseg_id=%d, pages=%d, frag=%d pages (%s), full=%d extents (%s), not_full=%d extents (%s) (%d/%d pages used), free=%d extents (%s)' % [
     inode.fseg_id,
     inode.total_pages,
     inode.frag_array_n_used,
@@ -1033,6 +1036,7 @@ def print_inode_detail(inode)
     inode.free.length,
     inode.free.each.to_a.map { |x| "#{x.start_page}-#{x.end_page}" }.join(', '),
   ]
+  # rubocop:enable Layout/LineLength
 end
 
 def space_inodes_fseg_id(space)
@@ -1122,7 +1126,7 @@ def page_account(innodb_system, space, page_number)
     end
   end
 
-  if space.system_space?
+  if space.system_space? # rubocop:disable Style/GuardClause
     puts '  Fseg is trx_sys.' if page_inode == space.trx_sys.fseg
     puts '  Fseg is doublewrite buffer.' if page_inode == space.trx_sys.doublewrite[:fseg]
 
