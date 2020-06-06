@@ -11,10 +11,6 @@ def rgb_to_ansi(rgb)
   16 + (rgb_n[0] * 36) + (rgb_n[1] * 6) + rgb_n[2]
 end
 
-def rgb_to_rgbhex(rgb)
-  rgb.map { |c| '%02x' % [(c * 255.0).round] }.join
-end
-
 # Interpolate intermediate float-arrays between two float-arrays. Do not
 # include the points a and b in the result.
 def interpolate(ary_a, ary_b, count)
@@ -52,12 +48,6 @@ HEATMAP_PROGRESSION = [
 
 # Typical heatmap color progression.
 ANSI_COLORS_HEATMAP = interpolate_sequence(HEATMAP_PROGRESSION, 6).map { |rgb| rgb_to_ansi(rgb) }
-
-RGBHEX_COLORS_HEATMAP = interpolate_sequence(HEATMAP_PROGRESSION, 41).map { |rgb| rgb_to_rgbhex(rgb) }
-
-RGBHEX_COLORS_RANDOM = 100.times.inject([]) do |a, _|
-  a << rgb_to_rgbhex([rand * 0.7 + 0.25, rand * 0.7 + 0.25, rand * 0.7 + 0.25])
-end
 
 # The 24-step grayscale progression.
 ANSI_COLORS_GRAYSCALE = (0xe8..0xff).to_a
