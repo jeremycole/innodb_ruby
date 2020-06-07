@@ -975,8 +975,17 @@ def page_illustrate(page)
   puts
   puts "%12s ╭%-#{width}s╮" % ['Offset', '─' * width]
   offset = 0
+  skipped_lines = 0
   blocks.each_slice(width) do |slice|
-    puts '%12i │%-s│' % [offset, slice.join]
+    if slice.any? { |s| s != ' ' }
+      if skipped_lines > 0
+        puts "%12s │%-#{width}s│" % ['...', '']
+        skipped_lines = 0
+      end
+      puts '%12i │%-s│' % [offset, slice.join]
+    else
+      skipped_lines += 1
+    end
     offset += width
   end
   puts "%12s ╰%-#{width}s╯" % ['', '─' * width]
