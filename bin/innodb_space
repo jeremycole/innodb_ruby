@@ -84,6 +84,13 @@ def filled_block(fraction, identifier = nil, block_chars = BLOCK_CHARS_V)
   end
 end
 
+def center(text, width)
+  return text if text.size >= width
+
+  spaces = (width - text.size) / 2
+  (' ' * spaces) + text + (' ' * spaces)
+end
+
 # Print metadata about each list in an array of InnoDB::List objects.
 def print_lists(lists)
   puts '%-20s%-12s%-12s%-12s%-12s%-12s' % %w[
@@ -495,22 +502,23 @@ end
 # filled block colored based on the index the page is part of. Print a legend
 # for the colors used afterwards.
 def space_extents_illustrate(space)
-  line_width = space.pages_per_extent
+  width = space.pages_per_extent
   puts
-  puts "%12s ╭%-#{line_width}s╮" % ['Start Page', '─' * line_width]
+  puts "%12s  %-#{width}s " % ['', center(space.name, width)]
+  puts "%12s ╭%-#{width}s╮" % ['Start Page', '─' * width]
 
   identifiers = {}
   count_by_identifier = Hash.new(0)
 
   space.each_xdes do |entry|
-    puts "%12i │%-#{line_width}s│" % [
+    puts "%12i │%-#{width}s│" % [
       entry.xdes[:start_page],
       space_extents_illustrate_page_status(space, entry, count_by_identifier, identifiers),
     ]
   end
   total_pages = count_by_identifier.values.reduce(:+)
 
-  puts "%12s ╰%-#{line_width}s╯" % ['', '─' * line_width]
+  puts "%12s ╰%-#{width}s╯" % ['', '─' * width]
 
   puts
   puts 'Legend (%s = 1 page):' % [filled_block(1.0, nil)]
@@ -544,7 +552,7 @@ end
 
 def space_lsn_age_illustrate(space)
   colors = ANSI_COLORS_HEATMAP
-  line_width = @options.illustration_line_width
+  width = @options.illustration_line_width
 
   # Calculate the minimum and maximum LSN in the space. This is pretty
   # inefficient as we end up scanning all pages twice.
@@ -561,11 +569,12 @@ def space_lsn_age_illustrate(space)
   lsn_delta = lsn_max - lsn_min
 
   puts
-  puts "%12s ╭%-#{line_width}s╮" % ['Start Page', '─' * line_width]
+  puts "%12s  %-#{width}s " % ['', center(space.name, width)]
+  puts "%12s ╭%-#{width}s╮" % ['Start Page', '─' * width]
 
   start_page = 0
-  page_lsn.each_slice(line_width) do |slice|
-    puts "%12i │%-#{line_width}s│" % [
+  page_lsn.each_slice(width) do |slice|
+    puts "%12i │%-#{width}s│" % [
       start_page,
       slice.inject('') do |line, lsn|
         if lsn
@@ -578,10 +587,10 @@ def space_lsn_age_illustrate(space)
         line
       end,
     ]
-    start_page += line_width
+    start_page += width
   end
 
-  puts "%12s ╰%-#{line_width}s╯" % ['', '─' * line_width]
+  puts "%12s ╰%-#{width}s╯" % ['', '─' * width]
 
   _, lsn_freq = page_lsn.reject(&:nil?).histogram(colors.size, min: lsn_min, max: lsn_max)
   lsn_freq_delta = lsn_freq.max - lsn_freq.min
@@ -973,12 +982,13 @@ def page_illustrate(page)
   end
 
   puts
+  puts "%12s  %-#{width}s " % ['', center("Page #{page.offset} (#{page.type})", width)]
   puts "%12s ╭%-#{width}s╮" % ['Offset', '─' * width]
   offset = 0
   skipped_lines = 0
   blocks.each_slice(width) do |slice|
     if slice.any? { |s| s != ' ' }
-      if skipped_lines > 0
+      if skipped_lines.positive?
         puts "%12s │%-#{width}s│" % ['...', '']
         skipped_lines = 0
       end
