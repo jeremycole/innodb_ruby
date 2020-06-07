@@ -595,7 +595,7 @@ def space_lsn_age_illustrate(space)
   puts
   puts 'LSN Age Histogram (%s = ~%d pages):' % [
     filled_block(1.0, nil),
-    (space.pages.to_f / colors.size).round
+    (space.pages.to_f / colors.size).round,
   ]
   puts '  %12s %s %-12s' % [
     'Min LSN',
