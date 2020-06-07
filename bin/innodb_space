@@ -950,24 +950,24 @@ def page_illustrate(page)
   identifier_sort = 0
   count_by_identifier = Hash.new(0)
 
-  page.each_region.sort { |a, b| a[:offset] <=> b[:offset] }.each do |region|
-    region[:length].times do |n|
+  page.each_region.sort_by(&:offset).each do |region|
+    region.length.times do |n|
       identifier = nil
       fraction = 0.0
-      if region[:name] != :garbage
-        fraction = n == region[:length] - 1 ? 0.5 : 1.0
-        identifier = region[:name].hash.abs
+      if region.name != :garbage
+        fraction = n == region.length - 1 ? 0.5 : 1.0
+        identifier = region.name.hash.abs
         unless identifiers[identifier]
           # Prefix an integer <0123> on each name so that the legend can be
           # sorted by the appearance of each region in the page.
           identifiers[identifier] = '<%04i>%s' % [
             identifier_sort,
-            region[:info],
+            region.info,
           ]
           identifier_sort += 1
         end
       end
-      blocks[region[:offset] + n] = filled_block(fraction, identifier, BLOCK_CHARS_H)
+      blocks[region.offset + n] = filled_block(fraction, identifier, BLOCK_CHARS_H)
       count_by_identifier[identifier] += 1
     end
   end

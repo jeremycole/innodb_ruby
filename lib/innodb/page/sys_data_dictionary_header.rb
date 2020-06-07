@@ -72,12 +72,12 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_data_dictionary_header,
           length: size_data_dictionary_header,
           name: :data_dictionary_header,
-          info: 'Data Dictionary Header',
-        })
+          info: 'Data Dictionary Header'
+        )
 
         nil
       end

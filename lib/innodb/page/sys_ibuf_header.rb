@@ -31,12 +31,12 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_ibuf_header,
           length: size_ibuf_header,
           name: :ibuf_header,
-          info: 'Insert Buffer Header',
-        })
+          info: 'Insert Buffer Header'
+        )
       end
 
       def dump

@@ -1002,66 +1002,66 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_index_header,
           length: size_index_header,
           name: :index_header,
-          info: 'Index Header',
-        })
+          info: 'Index Header'
+        )
 
-        yield({
+        yield Region.new(
           offset: pos_fseg_header,
           length: size_fseg_header,
           name: :fseg_header,
-          info: 'File Segment Header',
-        })
+          info: 'File Segment Header'
+        )
 
-        yield({
+        yield Region.new(
           offset: pos_infimum - 5,
           length: size_mum_record + 5,
           name: :infimum,
-          info: 'Infimum',
-        })
+          info: 'Infimum'
+        )
 
-        yield({
+        yield Region.new(
           offset: pos_supremum - 5,
           length: size_mum_record + 5,
           name: :supremum,
-          info: 'Supremum',
-        })
+          info: 'Supremum'
+        )
 
         directory_slots.times do |n|
-          yield({
+          yield Region.new(
             offset: pos_directory - (n * 2),
             length: 2,
             name: :directory,
-            info: 'Page Directory',
-          })
+            info: 'Page Directory'
+          )
         end
 
         each_garbage_record do |record|
-          yield({
+          yield Region.new(
             offset: record.offset - record.header.length,
             length: record.length + record.header.length,
             name: :garbage,
-            info: 'Garbage',
-          })
+            info: 'Garbage'
+          )
         end
 
         each_record do |record|
-          yield({
+          yield Region.new(
             offset: record.offset - record.header.length,
             length: record.header.length,
             name: :record_header,
-            info: 'Record Header',
-          })
+            info: 'Record Header'
+          )
 
-          yield({
+          yield Region.new(
             offset: record.offset,
             length: record.length || 1,
             name: :record_data,
-            info: 'Record Data',
-          })
+            info: 'Record Data'
+          )
         end
 
         nil

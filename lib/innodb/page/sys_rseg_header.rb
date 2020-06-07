@@ -70,20 +70,20 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_rseg_header,
           length: size_rseg_header,
           name: :rseg_header,
-          info: 'Rollback Segment Header',
-        })
+          info: 'Rollback Segment Header'
+        )
 
         (0...UNDO_SEGMENT_SLOTS).each do |slot|
-          yield({
+          yield Region.new(
             offset: pos_undo_segment_array + (slot * size_undo_segment_slot),
             length: size_undo_segment_slot,
             name: :undo_segment_slot,
-            info: 'Undo Segment Slot',
-          })
+            info: 'Undo Segment Slot'
+          )
         end
 
         nil

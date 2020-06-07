@@ -169,21 +169,21 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_fsp_header,
           length: size_fsp_header,
           name: :fsp_header,
-          info: 'FSP Header',
-        })
+          info: 'FSP Header'
+        )
 
         each_xdes do |xdes|
           state = xdes.state || 'unused'
-          yield({
+          yield Region.new(
             offset: xdes.offset,
             length: size_xdes_entry,
             name: "xdes_#{state}".to_sym,
-            info: "Extent Descriptor (#{state})",
-          })
+            info: "Extent Descriptor (#{state})"
+          )
         end
 
         nil

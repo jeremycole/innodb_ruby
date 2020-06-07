@@ -41,6 +41,14 @@ module Innodb
       keyword_init: true
     )
 
+    Region = Struct.new(
+      :offset,
+      :length,
+      :name,
+      :info,
+      keyword_init: true
+    )
+
     # A hash of page types to specialized classes to handle them. Normally
     # subclasses will register themselves in this list.
     @specialized_classes = {}
@@ -435,14 +443,14 @@ module Innodb
     def each_region
       return enum_for(:each_region) unless block_given?
 
-      yield(
+      yield Region.new(
         offset: pos_fil_header,
         length: size_fil_header,
         name: :fil_header,
         info: 'FIL Header'
       )
 
-      yield(
+      yield Region.new(
         offset: pos_fil_trailer,
         length: size_fil_trailer,
         name: :fil_trailer,

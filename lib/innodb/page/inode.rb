@@ -87,28 +87,28 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_list_entry,
           length: size_list_entry,
           name: :list_entry,
-          info: 'Inode List Entry',
-        })
+          info: 'Inode List Entry'
+        )
 
         each_inode do |inode|
           if inode.allocated?
-            yield({
+            yield Region.new(
               offset: inode.offset,
               length: Innodb::Inode::SIZE,
               name: :inode_used,
-              info: 'Inode (used)',
-            })
+              info: 'Inode (used)'
+            )
           else
-            yield({
+            yield Region.new(
               offset: inode.offset,
               length: Innodb::Inode::SIZE,
               name: :inode_free,
-              info: 'Inode (free)',
-            })
+              info: 'Inode (free)'
+            )
           end
         end
 

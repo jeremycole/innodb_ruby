@@ -51,19 +51,19 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_blob_header,
           length: size_blob_header,
           name: :blob_header,
-          info: 'Blob Header',
-        })
+          info: 'Blob Header'
+        )
 
-        yield({
+        yield Region.new(
           offset: pos_blob_data,
           length: blob_header[:length],
           name: :blob_data,
-          info: 'Blob Data',
-        })
+          info: 'Blob Data'
+        )
 
         nil
       end

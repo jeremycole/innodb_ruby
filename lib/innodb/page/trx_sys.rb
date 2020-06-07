@@ -186,42 +186,42 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_trx_sys_header,
           length: size_trx_sys_header,
           name: :trx_sys_header,
-          info: 'Transaction System Header',
-        })
+          info: 'Transaction System Header'
+        )
 
         rsegs.each do |rseg|
-          yield({
+          yield Region.new(
             offset: rseg[:offset],
             length: 4 + 4,
             name: :rseg,
-            info: 'Rollback Segment',
-          })
+            info: 'Rollback Segment'
+          )
         end
 
-        yield({
+        yield Region.new(
           offset: pos_mysql_binary_log_info,
           length: size_mysql_log_info,
           name: :mysql_binary_log_info,
-          info: 'Binary Log Info',
-        })
+          info: 'Binary Log Info'
+        )
 
-        yield({
+        yield Region.new(
           offset: pos_mysql_master_log_info,
           length: size_mysql_log_info,
           name: :mysql_master_log_info,
-          info: 'Master Log Info',
-        })
+          info: 'Master Log Info'
+        )
 
-        yield({
+        yield Region.new(
           offset: pos_doublewrite_info,
           length: size_doublewrite_info,
           name: :doublewrite_info,
-          info: 'Double Write Buffer Info',
-        })
+          info: 'Double Write Buffer Info'
+        )
 
         nil
       end

@@ -26,12 +26,12 @@ module Innodb
           yield region
         end
 
-        yield({
+        yield Region.new(
           offset: pos_ibuf_bitmap,
           length: size_ibuf_bitmap,
           name: :ibuf_bitmap,
-          info: 'Insert Buffer Bitmap',
-        })
+          info: 'Insert Buffer Bitmap'
+        )
 
         nil
       end
