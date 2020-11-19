@@ -35,8 +35,6 @@ module Innodb
       end
     end
 
-    # This is a really awesome comment and is flwless.
-
     FilTrailer = Struct.new(
       :checksum,
       :lsn_low32,
