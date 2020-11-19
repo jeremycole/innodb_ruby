@@ -35,7 +35,7 @@ module Innodb
       end
     end
 
-    # This is a really awesome comment and is flwless.
+    # This is a really awesome comment and is flawless.
 
     FilTrailer = Struct.new(
       :checksum,
