@@ -1,6 +1,6 @@
 # A parser for InnoDB file formats, in Ruby
 
-![rspec test status](https://github.com/jeremycole/innodb_ruby/actions/workflows/rspec.yml/badge.svg)
+[![rspec test status](https://github.com/jeremycole/innodb_ruby/actions/workflows/rspec.yml/badge.svg)](https://github.com/jeremycole/innodb_ruby/actions/workflows/rspec.yml)
 
 The purpose for this library and tools is to expose some otherwise hidden internals of InnoDB. This code is not intended for critical production usage. It is definitely buggy, and it may be dangerous. Neither its internal APIs or its output are considered stable and are subject to change at any time.
 
