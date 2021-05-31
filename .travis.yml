@@ -1,5 +1,0 @@
-language: ruby
-rvm:
-  - 2.6
-  - 2.7
-script: bundle exec rspec spec
