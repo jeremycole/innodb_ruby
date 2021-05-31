@@ -1,5 +1,7 @@
 # A parser for InnoDB file formats, in Ruby
 
+![rspec test status](https://github.com/jeremycole/innodb_ruby/actions/workflows/rspec.yml/badge.svg)
+
 The purpose for this library and tools is to expose some otherwise hidden internals of InnoDB. This code is not intended for critical production usage. It is definitely buggy, and it may be dangerous. Neither its internal APIs or its output are considered stable and are subject to change at any time.
 
 It is intended as for a few purposes:
@@ -15,5 +17,3 @@ Various parts of this library and the tools included may have wildly differing m
 
 * The [innodb_ruby wiki](https://github.com/jeremycole/innodb_ruby/wiki) contains some additional references and documentation to help you get started.
 * See the [RubyGems page for innodb_ruby](http://rubygems.org/gems/innodb_ruby) &mdash; Gem packaged releases are published regularly to RubyGems.org, which also provides online documentation.
-
-[![Build Status](https://travis-ci.org/jeremycole/innodb_ruby.svg?branch=master)](https://travis-ci.org/jeremycole/innodb_ruby)
