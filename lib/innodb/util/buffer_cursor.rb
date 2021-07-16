@@ -40,7 +40,7 @@ class BufferCursor
   @global_tracing = false
 
   # Enable tracing for all BufferCursor objects globally.
-  def self.trace!(arg = true)
+  def self.trace!(arg = true) # rubocop:disable Style/OptionalBooleanParameter
     @global_tracing = arg
   end
 
@@ -66,7 +66,7 @@ class BufferCursor
     ]
   end
 
-  def trace(arg = true)
+  def trace(arg = true) # rubocop:disable Style/OptionalBooleanParameter
     @instance_tracing = arg
 
     self

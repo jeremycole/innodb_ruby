@@ -185,9 +185,6 @@ describe Innodb::DataDictionary do
     end
   end
 
-  describe "#clustered_index_name_by_table_name" do
-  end
-
   describe "#each_column_description_by_index_name" do
     it "is an enumerator" do
       is_enumerator?(@dict.each_column_description_by_index_name("sakila/film", "PRIMARY")).should be_truthy

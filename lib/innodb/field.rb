@@ -11,7 +11,7 @@ module Innodb
       :space_id,
       :page_number,
       :offset,
-      :length,
+      :length, # rubocop:disable Lint/StructNewOverride
       keyword_init: true
     )
 

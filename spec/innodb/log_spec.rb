@@ -3,8 +3,6 @@
 require "spec_helper"
 
 describe Innodb::Log do
-  LOG_CHECKPOINT_FSP_MAGIC_N_VAL = 1_441_231_243
-
   before :all do
     @log = Innodb::Log.new("spec/data/ib_logfile0")
   end
@@ -80,7 +78,7 @@ describe Innodb::Log do
       c.checksum_1.should eql 654_771_786
       c.checksum_2.should eql 1_113_429_956
       c.fsp_free_limit.should eql 5
-      c.fsp_magic.should eql LOG_CHECKPOINT_FSP_MAGIC_N_VAL
+      c.fsp_magic.should eql 1_441_231_243 # LOG_CHECKPOINT_FSP_MAGIC_N_VAL
     end
 
     it "has a correct checkpoint_2" do
@@ -93,7 +91,7 @@ describe Innodb::Log do
       c.checksum_1.should eql 843_938_123
       c.checksum_2.should eql 674_570_893
       c.fsp_free_limit.should eql 5
-      c.fsp_magic.should eql LOG_CHECKPOINT_FSP_MAGIC_N_VAL
+      c.fsp_magic.should eql 1_441_231_243 # LOG_CHECKPOINT_FSP_MAGIC_N_VAL
     end
   end
 end

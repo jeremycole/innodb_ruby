@@ -20,7 +20,7 @@ module Innodb
       specialization_for :INDEX
 
       RecordHeader = Struct.new(
-        :length,
+        :length, # rubocop:disable Lint/StructNewOverride
         :next,
         :type,
         :heap_number,
@@ -55,7 +55,7 @@ module Innodb
         :header,
         :next,
         :data,
-        :length,
+        :length, # rubocop:disable Lint/StructNewOverride
         keyword_init: true
       )
 
@@ -71,7 +71,7 @@ module Innodb
         :child_page_number,
         :transaction_id,
         :roll_pointer,
-        :length,
+        :length, # rubocop:disable Lint/StructNewOverride
         keyword_init: true
       )
 

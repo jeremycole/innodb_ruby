@@ -43,7 +43,7 @@ module Innodb
 
     Region = Struct.new(
       :offset,
-      :length,
+      :length, # rubocop:disable Lint/StructNewOverride
       :name,
       :info,
       keyword_init: true

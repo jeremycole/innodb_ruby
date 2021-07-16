@@ -69,7 +69,7 @@ COLOR_SPACING_PRIME = 999_983
 # Return a string with a possibly colored filled block for use in printing
 # to an ANSI-capable Unicode-enabled terminal.
 def filled_block(fraction, identifier = nil, block_chars = BLOCK_CHARS_V)
-  if fraction == 0.0
+  if fraction.zero?
     block = block_chars[0]
   else
     parts = (fraction.to_f * (block_chars.size.to_f - 1)).floor
@@ -489,7 +489,7 @@ def space_extents_illustrate_page_status(space, entry, count_by_identifier, iden
 
     bitmap << filled_block(used_fraction, identifier)
 
-    if used_fraction == 0.0
+    if used_fraction.zero?
       count_by_identifier[:free] += 1
     else
       count_by_identifier[identifier] += 1
