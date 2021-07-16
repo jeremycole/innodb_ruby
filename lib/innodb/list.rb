@@ -6,8 +6,18 @@
 
 module Innodb
   class List
-    BaseNode = Struct.new(:length, :first, :last, keyword_init: true)
-    Node = Struct.new(:prev, :next, keyword_init: true)
+    BaseNode = Struct.new(
+      :length, # rubocop:disable Lint/StructNewOverride
+      :first, # rubocop:disable Lint/StructNewOverride
+      :last,
+      keyword_init: true
+    )
+
+    Node = Struct.new(
+      :prev,
+      :next,
+      keyword_init: true
+    )
 
     # An "address", which consists of a page number and byte offset within the
     # page. This points to the list "node" pointers (prev and next) of the

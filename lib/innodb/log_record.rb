@@ -14,7 +14,7 @@ module Innodb
     IndexFieldInfo = Struct.new(
       :mtype,
       :prtype,
-      :length,
+      :length, # rubocop:disable Lint/StructNewOverride
       keyword_init: true
     )
 
@@ -223,6 +223,8 @@ module Innodb
       }
     end
 
+    # The bodies of the branches here are sometimes duplicates, but logically distinct.
+    # rubocop:disable Lint/DuplicateBranch
     def read_payload(type, cursor)
       case type
       when :MLOG_1BYTE, :MLOG_2BYTE, :MLOG_4BYTE
@@ -359,5 +361,6 @@ module Innodb
         raise "Unsupported log record type: #{type}"
       end
     end
+    # rubocop:enable Lint/DuplicateBranch
   end
 end

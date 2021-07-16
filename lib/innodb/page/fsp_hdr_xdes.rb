@@ -34,7 +34,7 @@ module Innodb
       Header = Struct.new(
         :space_id,
         :unused,
-        :size,
+        :size, # rubocop:disable Lint/StructNewOverride
         :free_limit,
         :flags,
         :frag_n_used,
