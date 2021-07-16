@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'innodb/record_describer'
+require "innodb/record_describer"
 
 # CREATE TABLE hello_world (
 #   id          INT             NOT NULL,
@@ -15,13 +15,13 @@ require 'innodb/record_describer'
 
 class HelloWorld_PRIMARY < Innodb::RecordDescriber
   type :clustered
-  key 'id',             :INT, :NOT_NULL
-  row 'message',        'VARCHAR(100)', :NOT_NULL
-  row 'author',         'VARCHAR(100)', :NOT_NULL
+  key "id",             :INT, :NOT_NULL
+  row "message",        "VARCHAR(100)", :NOT_NULL
+  row "author",         "VARCHAR(100)", :NOT_NULL
 end
 
 class HelloWorld_message < Innodb::RecordDescriber
   type :secondary
-  key 'message',        'VARCHAR(100)', :NOT_NULL
-  row 'id',             :INT, :NOT_NULL
+  key "message",        "VARCHAR(100)", :NOT_NULL
+  row "id",             :INT, :NOT_NULL
 end

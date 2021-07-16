@@ -15,53 +15,53 @@ module Innodb
     # A record describer for SYS_TABLES clustered records.
     class SysTablesPrimary < Innodb::RecordDescriber
       type :clustered
-      key 'NAME',         'VARCHAR(100)',      :NOT_NULL
-      row 'ID',           :BIGINT, :UNSIGNED,  :NOT_NULL
-      row 'N_COLS',       :INT,    :UNSIGNED,  :NOT_NULL
-      row 'TYPE',         :INT,    :UNSIGNED,  :NOT_NULL
-      row 'MIX_ID',       :BIGINT, :UNSIGNED,  :NOT_NULL
-      row 'MIX_LEN',      :INT,    :UNSIGNED,  :NOT_NULL
-      row 'CLUSTER_NAME', 'VARCHAR(100)',      :NOT_NULL
-      row 'SPACE',        :INT,    :UNSIGNED,  :NOT_NULL
+      key "NAME",         "VARCHAR(100)",      :NOT_NULL
+      row "ID",           :BIGINT, :UNSIGNED,  :NOT_NULL
+      row "N_COLS",       :INT,    :UNSIGNED,  :NOT_NULL
+      row "TYPE",         :INT,    :UNSIGNED,  :NOT_NULL
+      row "MIX_ID",       :BIGINT, :UNSIGNED,  :NOT_NULL
+      row "MIX_LEN",      :INT,    :UNSIGNED,  :NOT_NULL
+      row "CLUSTER_NAME", "VARCHAR(100)",      :NOT_NULL
+      row "SPACE",        :INT,    :UNSIGNED,  :NOT_NULL
     end
 
     # A record describer for SYS_TABLES secondary key on ID.
     class SysTablesId < Innodb::RecordDescriber
       type :secondary
-      key 'ID',           :BIGINT, :UNSIGNED,  :NOT_NULL
-      row 'NAME',         'VARCHAR(100)',      :NOT_NULL
+      key "ID",           :BIGINT, :UNSIGNED,  :NOT_NULL
+      row "NAME",         "VARCHAR(100)",      :NOT_NULL
     end
 
     # A record describer for SYS_COLUMNS clustered records.
     class SysColumnsPrimary < Innodb::RecordDescriber
       type :clustered
-      key 'TABLE_ID',     :BIGINT, :UNSIGNED,  :NOT_NULL
-      key 'POS',          :INT,    :UNSIGNED,  :NOT_NULL
-      row 'NAME',         'VARCHAR(100)',      :NOT_NULL
-      row 'MTYPE',        :INT,    :UNSIGNED,  :NOT_NULL
-      row 'PRTYPE',       :INT,    :UNSIGNED,  :NOT_NULL
-      row 'LEN',          :INT,    :UNSIGNED,  :NOT_NULL
-      row 'PREC',         :INT,    :UNSIGNED,  :NOT_NULL
+      key "TABLE_ID",     :BIGINT, :UNSIGNED,  :NOT_NULL
+      key "POS",          :INT,    :UNSIGNED,  :NOT_NULL
+      row "NAME",         "VARCHAR(100)",      :NOT_NULL
+      row "MTYPE",        :INT,    :UNSIGNED,  :NOT_NULL
+      row "PRTYPE",       :INT,    :UNSIGNED,  :NOT_NULL
+      row "LEN",          :INT,    :UNSIGNED,  :NOT_NULL
+      row "PREC",         :INT,    :UNSIGNED,  :NOT_NULL
     end
 
     # A record describer for SYS_INDEXES clustered records.
     class SysIndexesPrimary < Innodb::RecordDescriber
       type :clustered
-      key 'TABLE_ID',     :BIGINT, :UNSIGNED,  :NOT_NULL
-      key 'ID',           :BIGINT, :UNSIGNED,  :NOT_NULL
-      row 'NAME',         'VARCHAR(100)',      :NOT_NULL
-      row 'N_FIELDS',     :INT,    :UNSIGNED,  :NOT_NULL
-      row 'TYPE',         :INT,    :UNSIGNED,  :NOT_NULL
-      row 'SPACE',        :INT,    :UNSIGNED,  :NOT_NULL
-      row 'PAGE_NO',      :INT,    :UNSIGNED,  :NOT_NULL
+      key "TABLE_ID",     :BIGINT, :UNSIGNED,  :NOT_NULL
+      key "ID",           :BIGINT, :UNSIGNED,  :NOT_NULL
+      row "NAME",         "VARCHAR(100)",      :NOT_NULL
+      row "N_FIELDS",     :INT,    :UNSIGNED,  :NOT_NULL
+      row "TYPE",         :INT,    :UNSIGNED,  :NOT_NULL
+      row "SPACE",        :INT,    :UNSIGNED,  :NOT_NULL
+      row "PAGE_NO",      :INT,    :UNSIGNED,  :NOT_NULL
     end
 
     # A record describer for SYS_FIELDS clustered records.
     class SysFieldsPrimary < Innodb::RecordDescriber
       type :clustered
-      key 'INDEX_ID',     :BIGINT, :UNSIGNED,  :NOT_NULL
-      key 'POS',          :INT,    :UNSIGNED,  :NOT_NULL
-      row 'COL_NAME',     'VARCHAR(100)',      :NOT_NULL
+      key "INDEX_ID",     :BIGINT, :UNSIGNED,  :NOT_NULL
+      key "POS",          :INT,    :UNSIGNED,  :NOT_NULL
+      row "COL_NAME",     "VARCHAR(100)",      :NOT_NULL
     end
 
     # rubocop:enable Layout/ExtraSpacing
@@ -179,10 +179,10 @@ module Innodb
       case external_type
       when :VARCHAR
         # One-argument: length.
-        '%s(%i)' % [external_type, len]
+        "%s(%i)" % [external_type, len]
       when :FLOAT, :DOUBLE
         # Two-argument: length and precision.
-        '%s(%i,%i)' % [external_type, len, prec]
+        "%s(%i,%i)" % [external_type, len, prec]
       when :CHAR
         if COLUMN_MTYPE_BY_VALUE[mtype] == :MYSQL
           # When the mtype is :MYSQL, the column is actually
@@ -190,9 +190,9 @@ module Innodb
           # done for CHAR columns having multi-byte character
           # sets in order to limit size. Note that such data
           # are still space-padded to at least len.
-          'VARCHAR(%i)' % [len]
+          "VARCHAR(%i)" % [len]
         else
-          'CHAR(%i)' % [len]
+          "CHAR(%i)" % [len]
         end
       when :DECIMAL
         # The DECIMAL type is designated as DECIMAL(M,D)
@@ -203,7 +203,7 @@ module Innodb
         # can't figure out the right decimal type. The
         # len stored here is actually the on-disk storage
         # size.
-        'CHAR(%i)' % [len]
+        "CHAR(%i)" % [len]
       else
         external_type
       end
@@ -384,17 +384,17 @@ module Innodb
 
     # Lookup a table by table ID.
     def table_by_id(table_id)
-      object_by_field(:each_table, 'ID', table_id)
+      object_by_field(:each_table, "ID", table_id)
     end
 
     # Lookup a table by table name.
     def table_by_name(table_name)
-      object_by_field(:each_table, 'NAME', table_name)
+      object_by_field(:each_table, "NAME", table_name)
     end
 
     # Lookup a table by space ID.
     def table_by_space_id(space_id)
-      object_by_field(:each_table, 'SPACE', space_id)
+      object_by_field(:each_table, "SPACE", space_id)
     end
 
     # Lookup a column by table name and column name.
@@ -402,12 +402,12 @@ module Innodb
       table = table_by_name(table_name)
       return unless table
 
-      object_by_two_fields(:each_column, 'TABLE_ID', table['ID'], 'NAME', column_name)
+      object_by_two_fields(:each_column, "TABLE_ID", table["ID"], "NAME", column_name)
     end
 
     # Lookup an index by index ID.
     def index_by_id(index_id)
-      object_by_field(:each_index, 'ID', index_id)
+      object_by_field(:each_index, "ID", index_id)
     end
 
     # Lookup an index by table name and index name.
@@ -415,7 +415,7 @@ module Innodb
       table = table_by_name(table_name)
       return unless table
 
-      object_by_two_fields(:each_index, 'TABLE_ID', table['ID'], 'NAME', index_name)
+      object_by_two_fields(:each_index, "TABLE_ID", table["ID"], "NAME", index_name)
     end
 
     # Iterate through indexes by space ID.
@@ -423,7 +423,7 @@ module Innodb
       return enum_for(:each_index_by_space_id, space_id) unless block_given?
 
       each_index do |record|
-        yield record if record['SPACE'] == space_id
+        yield record if record["SPACE"] == space_id
       end
 
       nil
@@ -434,7 +434,7 @@ module Innodb
       return enum_for(:each_index_by_table_id, table_id) unless block_given?
 
       each_index do |record|
-        yield record if record['TABLE_ID'] == table_id
+        yield record if record["TABLE_ID"] == table_id
       end
 
       nil
@@ -447,7 +447,7 @@ module Innodb
       table = table_by_name(table_name)
       raise "Table #{table_name} not found" unless table
 
-      each_index_by_table_id(table['ID'], &block)
+      each_index_by_table_id(table["ID"], &block)
 
       nil
     end
@@ -457,7 +457,7 @@ module Innodb
       return enum_for(:each_field_by_index_id, index_id) unless block_given?
 
       each_field do |record|
-        yield record if record['INDEX_ID'] == index_id
+        yield record if record["INDEX_ID"] == index_id
       end
 
       nil
@@ -470,7 +470,7 @@ module Innodb
       index = index_by_name(table_name, index_name)
       raise "Index #{index_name} for table #{table_name} not found" unless index
 
-      each_field_by_index_id(index['ID'], &block)
+      each_field_by_index_id(index["ID"], &block)
 
       nil
     end
@@ -480,7 +480,7 @@ module Innodb
       return enum_for(:each_column_by_table_id, table_id) unless block_given?
 
       each_column do |record|
-        yield record if record['TABLE_ID'] == table_id
+        yield record if record["TABLE_ID"] == table_id
       end
 
       nil
@@ -491,7 +491,7 @@ module Innodb
       return enum_for(:each_column_by_table_name, table_name) unless block_given?
       raise "Table #{table_name} not found" unless (table = table_by_name(table_name))
 
-      each_column_by_table_id(table['ID'], &block)
+      each_column_by_table_id(table["ID"], &block)
 
       nil
     end
@@ -501,7 +501,7 @@ module Innodb
       return enum_for(:each_column_in_index_by_name, table_name, index_name) unless block_given?
 
       each_field_by_index_name(table_name, index_name) do |record|
-        yield column_by_name(table_name, record['COL_NAME'])
+        yield column_by_name(table_name, record["COL_NAME"])
       end
 
       nil
@@ -514,11 +514,11 @@ module Innodb
 
       columns_in_index = {}
       each_column_in_index_by_name(table_name, index_name) do |record|
-        columns_in_index[record['NAME']] = 1
+        columns_in_index[record["NAME"]] = 1
       end
 
       each_column_by_table_name(table_name) do |record|
-        yield record unless columns_in_index.include?(record['NAME'])
+        yield record unless columns_in_index.include?(record["NAME"])
       end
 
       nil
@@ -530,8 +530,8 @@ module Innodb
       table_record = table_by_name(table_name)
       raise "Table #{table_name} not found" unless table_record
 
-      index_record = object_by_two_fields(:each_index, 'TABLE_ID', table_record['ID'], 'TYPE', 3)
-      index_record['NAME'] if index_record
+      index_record = object_by_two_fields(:each_index, "TABLE_ID", table_record["ID"], "TYPE", 3)
+      index_record["NAME"] if index_record
     end
 
     # Produce a Innodb::RecordDescriber-compatible column description
@@ -539,12 +539,12 @@ module Innodb
     def _make_column_description(type, record)
       {
         type: type,
-        name: record['NAME'],
+        name: record["NAME"],
         description: self.class.mtype_prtype_to_data_type(
-          record['MTYPE'],
-          record['PRTYPE'],
-          record['LEN'],
-          record['PREC']
+          record["MTYPE"],
+          record["PRTYPE"],
+          record["LEN"],
+          record["PREC"]
         ),
       }
     end
@@ -560,11 +560,11 @@ module Innodb
 
       columns_in_index = {}
       each_column_in_index_by_name(table_name, index_name) do |record|
-        columns_in_index[record['NAME']] = 1
+        columns_in_index[record["NAME"]] = 1
         yield _make_column_description(:key, record)
       end
 
-      if (index['TYPE'] & INDEX_TYPE_FLAG[:CLUSTERED]).zero?
+      if (index["TYPE"] & INDEX_TYPE_FLAG[:CLUSTERED]).zero?
         clustered_index_name = clustered_index_name_by_table_name(table_name)
 
         each_column_in_index_by_name(table_name, clustered_index_name) do |record|
@@ -572,7 +572,7 @@ module Innodb
         end
       else
         each_column_by_table_name(table_name) do |record|
-          yield _make_column_description(:row, record) unless columns_in_index.include?(record['NAME'])
+          yield _make_column_description(:row, record) unless columns_in_index.include?(record["NAME"])
         end
       end
 
@@ -590,7 +590,7 @@ module Innodb
 
       describer = Innodb::RecordDescriber.new
 
-      if (index['TYPE'] & INDEX_TYPE_FLAG[:CLUSTERED]).zero?
+      if (index["TYPE"] & INDEX_TYPE_FLAG[:CLUSTERED]).zero?
         describer.type :secondary
       else
         describer.type :clustered
@@ -619,11 +619,11 @@ module Innodb
         raise "Index #{index_id} not found"
       end
 
-      unless (table = table_by_id(index['TABLE_ID']))
+      unless (table = table_by_id(index["TABLE_ID"]))
         raise "Table #{INDEX['TABLE_ID']} not found"
       end
 
-      record_describer_by_index_name(table['NAME'], index['NAME'])
+      record_describer_by_index_name(table["NAME"], index["NAME"])
     end
   end
 end

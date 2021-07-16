@@ -18,8 +18,8 @@ module Innodb
     # or "NULL" pointer (the page number is UINT32_MAX), or the address if
     # valid.
     def self.get_address(cursor)
-      page = cursor.name('page') { Innodb::Page.maybe_undefined(cursor.read_uint32) }
-      offset = cursor.name('offset') { cursor.read_uint16 }
+      page = cursor.name("page") { Innodb::Page.maybe_undefined(cursor.read_uint32) }
+      offset = cursor.name("offset") { cursor.read_uint16 }
 
       Innodb::Page::Address.new(page: page, offset: offset) if page
     end
@@ -33,8 +33,8 @@ module Innodb
     # linked list.
     def self.get_node(cursor)
       Node.new(
-        prev: cursor.name('prev') { get_address(cursor) },
-        next: cursor.name('next') { get_address(cursor) }
+        prev: cursor.name("prev") { get_address(cursor) },
+        next: cursor.name("next") { get_address(cursor) }
       )
     end
 
@@ -49,9 +49,9 @@ module Innodb
     # address.
     def self.get_base_node(cursor)
       BaseNode.new(
-        length: cursor.name('length') { cursor.read_uint32 },
-        first: cursor.name('first') { get_address(cursor) },
-        last: cursor.name('last') { get_address(cursor) }
+        length: cursor.name("length") { cursor.read_uint32 },
+        first: cursor.name("first") { get_address(cursor) },
+        last: cursor.name("last") { get_address(cursor) }
       )
     end
 

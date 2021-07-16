@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'innodb/data_type'
+require "innodb/data_type"
 
 # A single field in an InnoDB record (within an INDEX page). This class
 # provides essential information to parse records, including the length
@@ -62,7 +62,7 @@ module Innodb
     def length(record)
       if record.header.lengths.include?(@name)
         len = record.header.lengths[@name]
-        raise 'Fixed-length mismatch' unless variable? || len == @data_type.width
+        raise "Fixed-length mismatch" unless variable? || len == @data_type.width
       else
         len = @data_type.width
       end
@@ -103,12 +103,12 @@ module Innodb
     # Return an external reference field. An extern field contains the page
     # address and the length of the externally stored part of the record data.
     def read_extern(cursor)
-      cursor.name('extern') do |c|
+      cursor.name("extern") do |c|
         ExternReference.new(
-          space_id: c.name('space_id') { c.read_uint32 },
-          page_number: c.name('page_number') { c.read_uint32 },
-          offset: c.name('offset') { c.read_uint32 },
-          length: c.name('length') { c.read_uint64 & 0x3fffffff }
+          space_id: c.name("space_id") { c.read_uint32 },
+          page_number: c.name("page_number") { c.read_uint32 },
+          offset: c.name("offset") { c.read_uint32 },
+          length: c.name("length") { c.read_uint64 & 0x3fffffff }
         )
       end
     end
@@ -121,7 +121,7 @@ module Innodb
       base_type = matches[1].upcase.to_sym
       return [base_type, []] unless matches[3]
 
-      [base_type, matches[3].sub(/ /, '').split(/,/).map(&:to_i)]
+      [base_type, matches[3].sub(/ /, "").split(/,/).map(&:to_i)]
     end
   end
 end

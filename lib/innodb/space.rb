@@ -48,8 +48,8 @@ module Innodb
       end
 
       def name
-        prefix = ''
-        prefix = "#{File.basename(File.dirname(file.path))}/" if File.extname(file.path) == '.ibd'
+        prefix = ""
+        prefix = "#{File.basename(File.dirname(file.path))}/" if File.extname(file.path) == ".ibd"
 
         prefix + File.basename(file.path)
       end
@@ -100,11 +100,11 @@ module Innodb
     # to do anything which could instantiate a BufferCursor so that we can use
     # this method in cursor initialization.
     def name
-      @name ||= @data_files.map(&:name).join(',')
+      @name ||= @data_files.map(&:name).join(",")
     end
 
     def inspect
-      '<%s file=%s, page_size=%i, pages=%i>' % [
+      "<%s file=%s, page_size=%i, pages=%i>" % [
         self.class.name,
         name.inspect,
         page_size,
@@ -121,7 +121,7 @@ module Innodb
       page_offset = BinData::Uint32be.read(read_at_offset(4, 4)).to_i
       page_type   = BinData::Uint16be.read(read_at_offset(24, 2)).to_i
       unless page_offset.zero? && Innodb::Page::PAGE_TYPE_BY_VALUE[page_type] == :FSP_HDR
-        raise 'Something is very wrong; Page 0 does not seem to be type FSP_HDR; got page type %i but expected %i' % [
+        raise "Something is very wrong; Page 0 does not seem to be type FSP_HDR; got page type %i but expected %i" % [
           page_type,
           Innodb::Page::PAGE_TYPE[:FSP_HDR][:value],
         ]
@@ -132,7 +132,7 @@ module Innodb
       fil_space = BinData::Uint32be.read(read_at_offset(34, 4)).to_i
       fsp_space = BinData::Uint32be.read(read_at_offset(38, 4)).to_i
       unless fil_space == fsp_space
-        raise 'Something is very wrong; FIL and FSP header Space IDs do not match: FIL is %i but FSP is %i' % [
+        raise "Something is very wrong; FIL and FSP header Space IDs do not match: FIL is %i but FSP is %i" % [
           fil_space,
           fsp_space,
         ]
@@ -319,7 +319,7 @@ module Innodb
       if innodb_system
         # Retrieve the index root page numbers from the data dictionary.
         innodb_system.data_dictionary.each_index_by_space_id(space_id) do |record|
-          yield record['PAGE_NO']
+          yield record["PAGE_NO"]
         end
       else
         # Guess that the index root pages will be present starting at page 3,

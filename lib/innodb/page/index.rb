@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'forwardable'
+require "forwardable"
 
-require 'innodb/fseg_entry'
+require "innodb/fseg_entry"
 
 # A specialized class for handling INDEX pages, which contain a portion of
 # the data from exactly one B+tree. These are typically the most common type
@@ -298,20 +298,20 @@ module Innodb
 
       # Return the "index" header.
       def page_header
-        @page_header ||= cursor(pos_index_header).name('index') do |c|
+        @page_header ||= cursor(pos_index_header).name("index") do |c|
           index = PageHeader.new(
-            n_dir_slots: c.name('n_dir_slots') { c.read_uint16 },
-            heap_top: c.name('heap_top') { c.read_uint16 },
-            n_heap_format: c.name('n_heap_format') { c.read_uint16 },
-            garbage_offset: c.name('garbage_offset') { c.read_uint16 },
-            garbage_size: c.name('garbage_size') { c.read_uint16 },
-            last_insert_offset: c.name('last_insert_offset') { c.read_uint16 },
-            direction: c.name('direction') { PAGE_DIRECTION[c.read_uint16] },
-            n_direction: c.name('n_direction') { c.read_uint16 },
-            n_recs: c.name('n_recs') { c.read_uint16 },
-            max_trx_id: c.name('max_trx_id') { c.read_uint64 },
-            level: c.name('level') { c.read_uint16 },
-            index_id: c.name('index_id') { c.read_uint64 }
+            n_dir_slots: c.name("n_dir_slots") { c.read_uint16 },
+            heap_top: c.name("heap_top") { c.read_uint16 },
+            n_heap_format: c.name("n_heap_format") { c.read_uint16 },
+            garbage_offset: c.name("garbage_offset") { c.read_uint16 },
+            garbage_size: c.name("garbage_size") { c.read_uint16 },
+            last_insert_offset: c.name("last_insert_offset") { c.read_uint16 },
+            direction: c.name("direction") { PAGE_DIRECTION[c.read_uint16] },
+            n_direction: c.name("n_direction") { c.read_uint16 },
+            n_recs: c.name("n_recs") { c.read_uint16 },
+            max_trx_id: c.name("max_trx_id") { c.read_uint64 },
+            level: c.name("level") { c.read_uint16 },
+            index_id: c.name("index_id") { c.read_uint64 }
           )
 
           index.n_heap = index.n_heap_format & (2**15 - 1)
@@ -344,10 +344,10 @@ module Innodb
 
       # Return the "fseg" header.
       def fseg_header
-        @fseg_header ||= cursor(pos_fseg_header).name('fseg') do |c|
+        @fseg_header ||= cursor(pos_fseg_header).name("fseg") do |c|
           FsegHeader.new(
-            leaf: c.name('fseg[leaf]') { Innodb::FsegEntry.get_inode(@space, c) },
-            internal: c.name('fseg[internal]') { Innodb::FsegEntry.get_inode(@space, c) }
+            leaf: c.name("fseg[leaf]") { Innodb::FsegEntry.get_inode(@space, c) },
+            internal: c.name("fseg[internal]") { Innodb::FsegEntry.get_inode(@space, c) }
           )
         end
       end
@@ -356,27 +356,27 @@ module Innodb
       def record_header(cursor)
         origin = cursor.position
         header = RecordHeader.new
-        cursor.backward.name('header') do |c|
+        cursor.backward.name("header") do |c|
           case page_header.format
           when :compact
             # The "next" pointer is a relative offset from the current record.
-            header.next = c.name('next') { origin + c.read_sint16 }
+            header.next = c.name("next") { origin + c.read_sint16 }
 
             # Fields packed in a 16-bit integer (LSB first):
             #   3 bits for type
             #   13 bits for heap_number
-            bits1 = c.name('bits1') { c.read_uint16 }
+            bits1 = c.name("bits1") { c.read_uint16 }
             header.type = RECORD_TYPES[bits1 & 0x07]
             header.heap_number = (bits1 & 0xfff8) >> 3
           when :redundant
             # The "next" pointer is an absolute offset within the page.
-            header.next = c.name('next') { c.read_uint16 }
+            header.next = c.name("next") { c.read_uint16 }
 
             # Fields packed in a 24-bit integer (LSB first):
             #   1 bit for offset_size (0 = 2 bytes, 1 = 1 byte)
             #   10 bits for n_fields
             #   13 bits for heap_number
-            bits1 = c.name('bits1') { c.read_uint24 }
+            bits1 = c.name("bits1") { c.read_uint24 }
             header.offset_size = (bits1 & 1).zero? ? 2 : 1
             header.n_fields = (bits1 & (((1 << 10) - 1) << 1)) >> 1
             header.heap_number = (bits1 & (((1 << 13) - 1) << 11)) >> 11
@@ -385,7 +385,7 @@ module Innodb
           # Fields packed in an 8-bit integer (LSB first):
           #   4 bits for n_owned
           #   4 bits for flags
-          bits2 = c.name('bits2') { c.read_uint8 }
+          bits2 = c.name("bits2") { c.read_uint8 }
           header.n_owned = bits2 & 0x0f
           header.info_flags = (bits2 & 0xf0) >> 4
 
@@ -410,8 +410,8 @@ module Innodb
           # bit vector indicating NULL fields and the length of each
           # non-NULL variable-length field.
           if record_format
-            header.nulls = cursor.name('nulls') { record_header_compact_null_bitmap(cursor) }
-            header.lengths, header.externs = cursor.name('lengths_and_externs') do
+            header.nulls = cursor.name("nulls") { record_header_compact_null_bitmap(cursor) }
+            header.lengths, header.externs = cursor.name("lengths_and_externs") do
               record_header_compact_variable_lengths_and_externs(cursor, header.nulls)
             end
           end
@@ -528,7 +528,7 @@ module Innodb
               offset: offset,
               header: header,
               next: header.next,
-              data: c.name('data') { c.read_bytes(size_mum_record) },
+              data: c.name("data") { c.read_bytes(size_mum_record) },
               length: c.position - offset
             )
           )
@@ -570,7 +570,7 @@ module Innodb
         # If this is a leaf page of the clustered index, read InnoDB's internal
         # fields, a transaction ID and roll pointer.
         if leaf? && fields[:type] == :clustered
-          [['DB_TRX_ID', :TRX_ID], ['DB_ROLL_PTR', :ROLL_PTR]].each do |name, type|
+          [["DB_TRX_ID", :TRX_ID], ["DB_ROLL_PTR", :ROLL_PTR]].each do |name, type|
             fields[:sys] << Innodb::Field.new(position.next, name, type, :NOT_NULL)
           end
         end
@@ -638,16 +638,16 @@ module Innodb
 
             # If this is a node (non-leaf) page, it will have a child page number
             # (or "node pointer") stored as the last field.
-            this_record.child_page_number = c.name('child_page_number') { c.read_uint32 } unless leaf?
+            this_record.child_page_number = c.name("child_page_number") { c.read_uint32 } unless leaf?
 
             this_record.length = c.position - offset
 
             # Add system field accessors for convenience.
             this_record.sys.each do |f|
               case f[:name]
-              when 'DB_TRX_ID'
+              when "DB_TRX_ID"
                 this_record.transaction_id = f[:value]
-              when 'DB_ROLL_PTR'
+              when "DB_ROLL_PTR"
                 this_record.roll_pointer = f[:value]
               end
             end
@@ -659,7 +659,7 @@ module Innodb
 
       # Return an array of row offsets for all entries in the page directory.
       def directory
-        @directory ||= cursor(pos_directory).backward.name('page_directory') do |c|
+        @directory ||= cursor(pos_directory).backward.name("page_directory") do |c|
           directory_slots.times.map { |n| c.name("slot[#{n}]") { c.read_uint16 } }
         end
       end
@@ -684,7 +684,7 @@ module Innodb
         return slot if slot
 
         search_cursor = record_cursor(this_record.next)
-        raise 'Could not position cursor' unless search_cursor
+        raise "Could not position cursor" unless search_cursor
 
         while (rec = search_cursor.record)
           slot = record_directory_slot(rec)
@@ -756,10 +756,10 @@ module Innodb
           Innodb::Stats.increment :page_record_cursor_prev_record
 
           slot = @page.directory_slot_for_record(@record)
-          raise 'Could not find slot for record' unless slot
+          raise "Could not find slot for record" unless slot
 
           search_cursor = @page.record_cursor(@page.directory[slot - 1])
-          raise 'Could not position search cursor' unless search_cursor
+          raise "Could not position search cursor" unless search_cursor
 
           while (rec = search_cursor.record) && rec.offset != @record.offset
             next unless rec.next == @record.offset
@@ -818,7 +818,7 @@ module Innodb
         # order to do find the last record, we must create a cursor and walk
         # backwards one step.
         max_cursor = record_cursor(supremum.offset, :backward)
-        raise 'Could not position cursor' unless max_cursor
+        raise "Could not position cursor" unless max_cursor
 
         # Note the deliberate use of prev_record rather than record; we want
         # to skip over supremum itself.
@@ -837,7 +837,7 @@ module Innodb
         this_rec = search_cursor.record
 
         if Innodb.debug?
-          puts 'linear_search_from_cursor: page=%i, level=%i, start=(%s)' % [
+          puts "linear_search_from_cursor: page=%i, level=%i, start=(%s)" % [
             offset,
             level,
             this_rec && this_rec.key_string,
@@ -850,7 +850,7 @@ module Innodb
           Innodb::Stats.increment :linear_search_from_cursor_record_scans
 
           if Innodb.debug?
-            puts 'linear_search_from_cursor: page=%i, level=%i, current=(%s)' % [
+            puts "linear_search_from_cursor: page=%i, level=%i, current=(%s)" % [
               offset,
               level,
               this_rec.key_string,
@@ -893,7 +893,7 @@ module Innodb
         return unless rec
 
         if Innodb.debug?
-          puts 'binary_search_by_directory: page=%i, level=%i, dir.size=%i, dir[%i]=(%s)' % [
+          puts "binary_search_by_directory: page=%i, level=%i, dir.size=%i, dir[%i]=(%s)" % [
             offset,
             level,
             dir.size,
@@ -1004,28 +1004,28 @@ module Innodb
           offset: pos_index_header,
           length: size_index_header,
           name: :index_header,
-          info: 'Index Header'
+          info: "Index Header"
         )
 
         yield Region.new(
           offset: pos_fseg_header,
           length: size_fseg_header,
           name: :fseg_header,
-          info: 'File Segment Header'
+          info: "File Segment Header"
         )
 
         yield Region.new(
           offset: pos_infimum - 5,
           length: size_mum_record + 5,
           name: :infimum,
-          info: 'Infimum'
+          info: "Infimum"
         )
 
         yield Region.new(
           offset: pos_supremum - 5,
           length: size_mum_record + 5,
           name: :supremum,
-          info: 'Supremum'
+          info: "Supremum"
         )
 
         directory_slots.times do |n|
@@ -1033,7 +1033,7 @@ module Innodb
             offset: pos_directory - (n * 2),
             length: 2,
             name: :directory,
-            info: 'Page Directory'
+            info: "Page Directory"
           )
         end
 
@@ -1042,7 +1042,7 @@ module Innodb
             offset: record.offset - record.header.length,
             length: record.length + record.header.length,
             name: :garbage,
-            info: 'Garbage'
+            info: "Garbage"
           )
         end
 
@@ -1051,14 +1051,14 @@ module Innodb
             offset: record.offset - record.header.length,
             length: record.header.length,
             name: :record_header,
-            info: 'Record Header'
+            info: "Record Header"
           )
 
           yield Region.new(
             offset: record.offset,
             length: record.length || 1,
             name: :record_data,
-            info: 'Record Data'
+            info: "Record Data"
           )
         end
 
@@ -1069,41 +1069,41 @@ module Innodb
       def dump
         super
 
-        puts 'page header:'
+        puts "page header:"
         pp page_header
         puts
 
-        puts 'fseg header:'
+        puts "fseg header:"
         pp fseg_header
         puts
 
-        puts 'sizes:'
-        puts '  %-15s%5i' % ['header', header_space]
-        puts '  %-15s%5i' % ['trailer', trailer_space]
-        puts '  %-15s%5i' % ['directory', directory_space]
-        puts '  %-15s%5i' % ['free', free_space]
-        puts '  %-15s%5i' % ['used', used_space]
-        puts '  %-15s%5i' % ['record', record_space]
-        puts '  %-15s%5.2f' % ['per record', space_per_record]
+        puts "sizes:"
+        puts "  %-15s%5i" % ["header", header_space]
+        puts "  %-15s%5i" % ["trailer", trailer_space]
+        puts "  %-15s%5i" % ["directory", directory_space]
+        puts "  %-15s%5i" % ["free", free_space]
+        puts "  %-15s%5i" % ["used", used_space]
+        puts "  %-15s%5i" % ["record", record_space]
+        puts "  %-15s%5.2f" % ["per record", space_per_record]
         puts
 
-        puts 'page directory:'
+        puts "page directory:"
         pp directory
         puts
 
-        puts 'system records:'
+        puts "system records:"
         pp infimum.record
         pp supremum.record
         puts
 
-        puts 'garbage records:'
+        puts "garbage records:"
         each_garbage_record do |rec|
           pp rec.record
           puts
         end
         puts
 
-        puts 'records:'
+        puts "records:"
         each_record do |rec|
           pp rec.record
           puts

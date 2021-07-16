@@ -179,10 +179,10 @@ module Innodb
       page = @root
 
       if Innodb.debug?
-        puts 'linear_search: root=%i, level=%i, key=(%s)' % [
+        puts "linear_search: root=%i, level=%i, key=(%s)" % [
           page.offset,
           page.level,
-          key.join(', '),
+          key.join(", "),
         ]
       end
 
@@ -211,10 +211,10 @@ module Innodb
       page = @root
 
       if Innodb.debug?
-        puts 'binary_search: root=%i, level=%i, key=(%s)' % [
+        puts "binary_search: root=%i, level=%i, key=(%s)" % [
           page.offset,
           page.level,
-          key.join(', '),
+          key.join(", "),
         ]
       end
 
@@ -287,8 +287,8 @@ module Innodb
 
       # Move the cursor to a new starting position in a given page.
       def move_cursor(page, record)
-        raise 'Failed to load page' unless (@page = @index.page(page))
-        raise 'Failed to position cursor' unless (@page_cursor = @page.record_cursor(record, @direction))
+        raise "Failed to load page" unless (@page = @index.page(page))
+        raise "Failed to position cursor" unless (@page_cursor = @page.record_cursor(record, @direction))
       end
 
       # Move to the next record in the forward direction and return it.

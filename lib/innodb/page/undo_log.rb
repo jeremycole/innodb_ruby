@@ -55,12 +55,12 @@ module Innodb
       }.freeze
 
       def undo_page_header
-        @undo_page_header ||= cursor(pos_undo_page_header).name('undo_page_header') do |c|
+        @undo_page_header ||= cursor(pos_undo_page_header).name("undo_page_header") do |c|
           PageHeader.new(
-            type: c.name('type') { UNDO_PAGE_TYPES[c.read_uint16] },
-            latest_log_record_offset: c.name('latest_log_record_offset') { c.read_uint16 },
-            free_offset: c.name('free_offset') { c.read_uint16 },
-            page_list_node: c.name('page_list') { Innodb::List.get_node(c) }
+            type: c.name("type") { UNDO_PAGE_TYPES[c.read_uint16] },
+            latest_log_record_offset: c.name("latest_log_record_offset") { c.read_uint16 },
+            free_offset: c.name("free_offset") { c.read_uint16 },
+            page_list_node: c.name("page_list") { Innodb::List.get_node(c) }
           )
         end
       end
@@ -74,12 +74,12 @@ module Innodb
       end
 
       def undo_segment_header
-        @undo_segment_header ||= cursor(pos_undo_segment_header).name('undo_segment_header') do |c|
+        @undo_segment_header ||= cursor(pos_undo_segment_header).name("undo_segment_header") do |c|
           SegmentHeader.new(
-            state: c.name('state') { UNDO_SEGMENT_STATES[c.read_uint16] },
-            last_log_offset: c.name('last_log_offset') { c.read_uint16 },
-            fseg: c.name('fseg') { Innodb::FsegEntry.get_inode(@space, c) },
-            page_list: c.name('page_list') { Innodb::List::UndoPage.new(@space, Innodb::List.get_base_node(c)) }
+            state: c.name("state") { UNDO_SEGMENT_STATES[c.read_uint16] },
+            last_log_offset: c.name("last_log_offset") { c.read_uint16 },
+            fseg: c.name("fseg") { Innodb::FsegEntry.get_inode(@space, c) },
+            page_list: c.name("page_list") { Innodb::List::UndoPage.new(@space, Innodb::List.get_base_node(c)) }
           )
         end
       end
@@ -92,15 +92,15 @@ module Innodb
       def dump
         super
 
-        puts 'undo page header:'
+        puts "undo page header:"
         pp undo_page_header
         puts
 
-        puts 'undo segment header:'
+        puts "undo segment header:"
         pp undo_segment_header
         puts
 
-        puts 'last undo log:'
+        puts "last undo log:"
         undo_log(undo_segment_header[:last_log_offset]).dump unless undo_segment_header[:last_log_offset].zero?
         puts
       end

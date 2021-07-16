@@ -6,7 +6,7 @@ module Innodb
     # Initialize group given a set of sorted log files.
     def initialize(log_files)
       @logs = log_files.map { |fn| Innodb::Log.new(fn) }
-      raise 'Log file sizes do not match' unless @logs.map(&:size).uniq.size == 1
+      raise "Log file sizes do not match" unless @logs.map(&:size).uniq.size == 1
     end
 
     # Iterate through all logs.

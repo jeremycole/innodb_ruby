@@ -1,45 +1,45 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
-require 'stringio'
+require "spec_helper"
+require "stringio"
 
 describe Innodb::DataType do
-  it 'makes proper data type names' do
-    Innodb::DataType.make_name('BIGINT', [], %i[UNSIGNED]).should eql 'BIGINT UNSIGNED'
-    Innodb::DataType.make_name('SMALLINT', [], []).should eql 'SMALLINT'
-    Innodb::DataType.make_name('VARCHAR', [32], []).should eql 'VARCHAR(32)'
-    Innodb::DataType.make_name('CHAR', [16], []).should eql 'CHAR(16)'
-    Innodb::DataType.make_name('CHAR', [], []).should eql 'CHAR'
-    Innodb::DataType.make_name('VARBINARY', [48], []).should eql 'VARBINARY(48)'
-    Innodb::DataType.make_name('BINARY', [64], []).should eql 'BINARY(64)'
-    Innodb::DataType.make_name('BINARY', [], []).should eql 'BINARY'
+  it "makes proper data type names" do
+    Innodb::DataType.make_name("BIGINT", [], %i[UNSIGNED]).should eql "BIGINT UNSIGNED"
+    Innodb::DataType.make_name("SMALLINT", [], []).should eql "SMALLINT"
+    Innodb::DataType.make_name("VARCHAR", [32], []).should eql "VARCHAR(32)"
+    Innodb::DataType.make_name("CHAR", [16], []).should eql "CHAR(16)"
+    Innodb::DataType.make_name("CHAR", [], []).should eql "CHAR"
+    Innodb::DataType.make_name("VARBINARY", [48], []).should eql "VARBINARY(48)"
+    Innodb::DataType.make_name("BINARY", [64], []).should eql "BINARY(64)"
+    Innodb::DataType.make_name("BINARY", [], []).should eql "BINARY"
   end
 
   describe Innodb::DataType::CharacterType do
-    it 'handles optional width' do
+    it "handles optional width" do
       Innodb::DataType.new(:CHAR, [], []).width.should eql 1
       Innodb::DataType.new(:CHAR, [16], []).width.should eql 16
     end
   end
 
   describe Innodb::DataType::VariableCharacterType do
-    it 'throws an error on invalid modifiers' do
-      expect { Innodb::DataType.new(:VARCHAR, [], []) }.to raise_error 'Invalid width specification'
-      expect { Innodb::DataType.new(:VARCHAR, [1, 1], []) }.to raise_error 'Invalid width specification'
+    it "throws an error on invalid modifiers" do
+      expect { Innodb::DataType.new(:VARCHAR, [], []) }.to raise_error "Invalid width specification"
+      expect { Innodb::DataType.new(:VARCHAR, [1, 1], []) }.to raise_error "Invalid width specification"
     end
   end
 
   describe Innodb::DataType::BinaryType do
-    it 'handles optional width' do
+    it "handles optional width" do
       Innodb::DataType.new(:BINARY, [], []).width.should eql 1
       Innodb::DataType.new(:BINARY, [16], []).width.should eql 16
     end
   end
 
   describe Innodb::DataType::VariableBinaryType do
-    it 'throws an error on invalid modifiers' do
-      expect { Innodb::DataType.new(:VARBINARY, [], []) }.to raise_error 'Invalid width specification'
-      expect { Innodb::DataType.new(:VARBINARY, [1, 1], []) }.to raise_error 'Invalid width specification'
+    it "throws an error on invalid modifiers" do
+      expect { Innodb::DataType.new(:VARBINARY, [], []) }.to raise_error "Invalid width specification"
+      expect { Innodb::DataType.new(:VARBINARY, [1, 1], []) }.to raise_error "Invalid width specification"
     end
   end
 
@@ -47,7 +47,7 @@ describe Innodb::DataType do
     before :all do
       @data = {
         offset: {},
-        buffer: ''.dup,
+        buffer: "".dup,
       }
 
       # Bytes 0x00 through 0x0f at offset 0.
@@ -73,7 +73,7 @@ describe Innodb::DataType do
       @buffer.seek(@data[:offset][:bytes_00_0f])
     end
 
-    it 'returns a TINYINT value correctly' do
+    it "returns a TINYINT value correctly" do
       data_type = Innodb::DataType.new(:TINYINT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
@@ -82,7 +82,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(1)).should eql -128
     end
 
-    it 'returns a TINYINT UNSIGNED value correctly' do
+    it "returns a TINYINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new(:TINYINT, [], %i[UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(1)).should eql 0x00
@@ -93,7 +93,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(1)).should eql 0xff
     end
 
-    it 'returns a SMALLINT value correctly' do
+    it "returns a SMALLINT value correctly" do
       data_type = Innodb::DataType.new(:SMALLINT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
@@ -102,7 +102,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(2)).should eql -32_767
     end
 
-    it 'returns a SMALLINT UNSIGNED value correctly' do
+    it "returns a SMALLINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new(:SMALLINT, [], %i[UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(2)).should eql 0x0001
@@ -113,7 +113,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(2)).should eql 0xffff
     end
 
-    it 'returns a MEDIUMINT value correctly' do
+    it "returns a MEDIUMINT value correctly" do
       data_type = Innodb::DataType.new(:MEDIUMINT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
@@ -122,7 +122,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(3)).should eql -8_388_350
     end
 
-    it 'returns a MEDIUMINT UNSIGNED value correctly' do
+    it "returns a MEDIUMINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new(:MEDIUMINT, [], %i[UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(3)).should eql 0x000102
@@ -133,7 +133,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(3)).should eql 0xffffff
     end
 
-    it 'returns an INT value correctly' do
+    it "returns an INT value correctly" do
       data_type = Innodb::DataType.new(:INT, [], [])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       @buffer.seek(@data[:offset][:innodb_sint_pos])
@@ -142,7 +142,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(4)).should eql -2_147_417_597
     end
 
-    it 'returns an INT UNSIGNED value correctly' do
+    it "returns an INT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new(:INT, [], %i[UNSIGNED])
       data_type.should be_an_instance_of Innodb::DataType::IntegerType
       data_type.value(@buffer.read(4)).should eql 0x00010203
@@ -153,7 +153,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(4)).should eql 0xffffffff
     end
 
-    it 'returns a BIGINT value correctly' do
+    it "returns a BIGINT value correctly" do
       data_type = Innodb::DataType.new(:BIGINT, [], [])
       @buffer.seek(@data[:offset][:innodb_sint_pos])
       data_type.value(@buffer.read(8)).should eql 0x0001020304050607
@@ -161,7 +161,7 @@ describe Innodb::DataType do
       data_type.value(@buffer.read(8)).should eql -9_223_088_349_902_469_625
     end
 
-    it 'returns a BIGINT UNSIGNED value correctly' do
+    it "returns a BIGINT UNSIGNED value correctly" do
       data_type = Innodb::DataType.new(:BIGINT, [], %i[UNSIGNED])
       data_type.value(@buffer.read(8)).should eql 0x0001020304050607
       data_type.value(@buffer.read(8)).should eql 0x08090a0b0c0d0e0f

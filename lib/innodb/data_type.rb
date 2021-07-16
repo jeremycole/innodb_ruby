@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'stringio'
-require 'bigdecimal'
-require 'date'
+require "stringio"
+require "bigdecimal"
+require "date"
 
 module Innodb
   class DataType
@@ -13,14 +13,14 @@ module Innodb
 
       def initialize(base_type, modifiers, properties)
         nbits = modifiers.fetch(0, 1)
-        raise 'Unsupported width for BIT type.' unless nbits >= 0 && nbits <= 64
+        raise "Unsupported width for BIT type." unless nbits >= 0 && nbits <= 64
 
         @width = (nbits + 7) / 8
         @name = Innodb::DataType.make_name(base_type, modifiers, properties)
       end
 
       def value(data)
-        '0b%b' % BinData.const_get('Uint%dbe' % (@width * 8)).read(data)
+        "0b%b" % BinData.const_get("Uint%dbe" % (@width * 8)).read(data)
       end
     end
 
@@ -53,11 +53,11 @@ module Innodb
       end
 
       def get_uint(data, nbits)
-        BinData.const_get('Uint%dbe' % nbits).read(data)
+        BinData.const_get("Uint%dbe" % nbits).read(data)
       end
 
       def get_int(data, nbits)
-        BinData.const_get('Int%dbe' % nbits).read(data) ^ (-1 << (nbits - 1))
+        BinData.const_get("Int%dbe" % nbits).read(data) ^ (-1 << (nbits - 1))
       end
     end
 
@@ -119,8 +119,8 @@ module Innodb
 
       def value(data)
         # Strings representing the integral and fractional parts.
-        intg = ''.dup
-        frac = ''.dup
+        intg = "".dup
+        frac = "".dup
 
         stream = StringIO.new(data)
         mask = sign_mask(stream)
@@ -136,25 +136,25 @@ module Innodb
         end
 
         frac << get_digits(stream, mask, @comp_fractional)
-        frac = '0' if frac.empty?
+        frac = "0" if frac.empty?
 
         # Convert to something resembling a string representation.
         str = "#{mask.to_s.chop}#{intg}.#{frac}"
 
-        BigDecimal(str).to_s('F')
+        BigDecimal(str).to_s("F")
       end
 
       private
 
       # Ensure width specification (if any) is compliant.
       def sanity_check(modifiers)
-        raise 'Invalid width specification' unless modifiers.size <= 2
+        raise "Invalid width specification" unless modifiers.size <= 2
 
         precision = modifiers.fetch(0, 10)
-        raise 'Unsupported precision for DECIMAL type' unless precision >= 1 && precision <= 65
+        raise "Unsupported precision for DECIMAL type" unless precision >= 1 && precision <= 65
 
         scale = modifiers.fetch(1, 0)
-        raise 'Unsupported scale for DECIMAL type' unless scale >= 0 && scale <= 30 && scale <= precision
+        raise "Unsupported scale for DECIMAL type" unless scale >= 0 && scale <= 30 && scale <= precision
 
         [precision, scale]
       end
@@ -175,9 +175,9 @@ module Innodb
       # Return a string representing an integer with a specific number of digits.
       def get_digits(stream, mask, digits)
         nbits = BYTES_PER_DIGIT[digits] * 8
-        return '' unless nbits.positive?
+        return "" unless nbits.positive?
 
-        value = (BinData.const_get('Int%dbe' % nbits).read(stream) ^ mask)
+        value = (BinData.const_get("Int%dbe" % nbits).read(stream) ^ mask)
         # Preserve leading zeros.
         "%0#{digits}d" % value
       end
@@ -196,7 +196,7 @@ module Innodb
       def value(data)
         # The SQL standard defines that CHAR fields should have end-spaces
         # stripped off.
-        data.sub(/ +$/, '')
+        data.sub(/ +$/, "")
       end
     end
 
@@ -206,7 +206,7 @@ module Innodb
 
       def initialize(base_type, modifiers, properties)
         @width = modifiers[0]
-        raise 'Invalid width specification' unless modifiers.size == 1
+        raise "Invalid width specification" unless modifiers.size == 1
 
         @name = Innodb::DataType.make_name(base_type, modifiers, properties)
       end
@@ -214,7 +214,7 @@ module Innodb
       def value(data)
         # The SQL standard defines that VARCHAR fields should have end-spaces
         # stripped off.
-        data.sub(/ +$/, '')
+        data.sub(/ +$/, "")
       end
     end
 
@@ -235,7 +235,7 @@ module Innodb
 
       def initialize(base_type, modifiers, properties)
         @width = modifiers[0]
-        raise 'Invalid width specification' unless modifiers.size == 1
+        raise "Invalid width specification" unless modifiers.size == 1
 
         @name = Innodb::DataType.make_name(base_type, modifiers, properties)
       end
@@ -264,7 +264,7 @@ module Innodb
         return (year % 100).to_s if @display_width != 4
         return (year + 1900).to_s if year != 0
 
-        '0000'
+        "0000"
       end
     end
 
@@ -279,9 +279,9 @@ module Innodb
 
       def value(data)
         time = BinData::Int24be.read(data) ^ (-1 << 23)
-        sign = '-' if time.negative?
+        sign = "-" if time.negative?
         time = time.abs
-        '%s%02d:%02d:%02d' % [sign, time / 10_000, (time / 100) % 100, time % 100]
+        "%s%02d:%02d:%02d" % [sign, time / 10_000, (time / 100) % 100, time % 100]
       end
     end
 
@@ -299,7 +299,7 @@ module Innodb
         day = date & 0x1f
         month = (date >> 5) & 0xf
         year = date >> 9
-        '%04d-%02d-%02d' % [year, month, day]
+        "%04d-%02d-%02d" % [year, month, day]
       end
     end
 
@@ -322,7 +322,7 @@ module Innodb
         hour = time / 10_000
         min = (time / 100) % 100
         sec = time % 100
-        '%04d-%02d-%02d %02d:%02d:%02d' % [year, month, day, hour, min, sec]
+        "%04d-%02d-%02d %02d:%02d:%02d" % [year, month, day, hour, min, sec]
       end
     end
 
@@ -338,9 +338,9 @@ module Innodb
       # Returns the UTC timestamp as a value in 'YYYY-MM-DD HH:MM:SS' format.
       def value(data)
         timestamp = BinData::Uint32be.read(data)
-        return '0000-00-00 00:00:00' if timestamp.zero?
+        return "0000-00-00 00:00:00" if timestamp.zero?
 
-        DateTime.strptime(timestamp.to_s, '%s').strftime '%Y-%m-%d %H:%M:%S'
+        DateTime.strptime(timestamp.to_s, "%s").strftime "%Y-%m-%d %H:%M:%S"
       end
     end
 
@@ -359,7 +359,7 @@ module Innodb
       end
 
       def read(cursor)
-        cursor.name('transaction_id') { cursor.read_uint48 }
+        cursor.name("transaction_id") { cursor.read_uint48 }
       end
     end
 
@@ -438,8 +438,8 @@ module Innodb
     def self.make_name(base_type, modifiers, properties)
       name = base_type.to_s.dup
       name << "(#{modifiers.join(',')})" unless modifiers.empty?
-      name << ' '
-      name << properties.join(' ')
+      name << " "
+      name << properties.join(" ")
       name.strip
     end
 

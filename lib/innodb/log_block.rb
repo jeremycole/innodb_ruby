@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'forwardable'
+require "forwardable"
 
 # An InnoDB transaction log block.
 module Innodb
@@ -60,13 +60,13 @@ module Innodb
 
     # Return the log block header.
     def header
-      @header ||= cursor(HEADER_OFFSET).name('header') do |c|
+      @header ||= cursor(HEADER_OFFSET).name("header") do |c|
         Header.new(
-          flush: c.name('flush') { c.peek { (c.read_uint32 & HEADER_FLUSH_BIT_MASK).positive? } },
-          block_number: c.name('block_number') { c.read_uint32 & ~HEADER_FLUSH_BIT_MASK },
-          data_length: c.name('data_length') { c.read_uint16 },
-          first_rec_group: c.name('first_rec_group') { c.read_uint16 },
-          checkpoint_no: c.name('checkpoint_no') { c.read_uint32 }
+          flush: c.name("flush") { c.peek { (c.read_uint32 & HEADER_FLUSH_BIT_MASK).positive? } },
+          block_number: c.name("block_number") { c.read_uint32 & ~HEADER_FLUSH_BIT_MASK },
+          data_length: c.name("data_length") { c.read_uint16 },
+          first_rec_group: c.name("first_rec_group") { c.read_uint16 },
+          checkpoint_no: c.name("checkpoint_no") { c.read_uint32 }
         )
       end
     end
@@ -83,15 +83,15 @@ module Innodb
       length = data_length
       length -= TRAILER_SIZE if length == BLOCK_SIZE
 
-      raise 'Invalid block data offset' if offset < DATA_OFFSET || offset > length
+      raise "Invalid block data offset" if offset < DATA_OFFSET || offset > length
 
       @buffer.slice(offset, length - offset)
     end
 
     # Return the log block trailer.
     def trailer
-      @trailer ||= cursor(TRAILER_OFFSET).name('trailer') do |c|
-        Trailer.new(checksum: c.name('checksum') { c.read_uint32 })
+      @trailer ||= cursor(TRAILER_OFFSET).name("trailer") do |c|
+        Trailer.new(checksum: c.name("checksum") { c.read_uint32 })
       end
     end
 
@@ -118,11 +118,11 @@ module Innodb
     # Dump the contents of a log block for debugging purposes.
     def dump
       puts
-      puts 'header:'
+      puts "header:"
       pp header
 
       puts
-      puts 'trailer:'
+      puts "trailer:"
       pp trailer
     end
   end

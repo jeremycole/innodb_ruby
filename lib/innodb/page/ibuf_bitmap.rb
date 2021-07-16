@@ -28,7 +28,7 @@ module Innodb
           offset: pos_ibuf_bitmap,
           length: size_ibuf_bitmap,
           name: :ibuf_bitmap,
-          info: 'Insert Buffer Bitmap'
+          info: "Insert Buffer Bitmap"
         )
 
         nil
@@ -37,9 +37,9 @@ module Innodb
       def dump
         super
 
-        puts 'ibuf bitmap:'
+        puts "ibuf bitmap:"
         ibuf_bitmap.each_page_status do |page_number, page_status|
-          puts '  Page %i: %s' % [page_number, page_status.inspect]
+          puts "  Page %i: %s" % [page_number, page_status.inspect]
         end
       end
     end

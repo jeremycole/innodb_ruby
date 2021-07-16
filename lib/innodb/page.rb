@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'forwardable'
+require "forwardable"
 
 # A generic class for any type of page, which handles reading the common
 # FIL header and trailer, and can handle (via #parse) dispatching to a more
@@ -129,7 +129,7 @@ module Innodb
     def name
       page_offset = BinData::Uint32be.read(@buffer.slice(4, 4))
       page_type = BinData::Uint16be.read(@buffer.slice(24, 2))
-      '%i,%s' % [
+      "%i,%s" % [
         page_offset,
         PAGE_TYPE_BY_VALUE[page_type],
       ]
@@ -204,68 +204,68 @@ module Innodb
     PAGE_TYPE = {
       ALLOCATED: {
         value: 0,
-        description: 'Freshly allocated',
-        usage: 'page type field has not been initialized',
+        description: "Freshly allocated",
+        usage: "page type field has not been initialized",
       },
       UNDO_LOG: {
         value: 2,
-        description: 'Undo log',
-        usage: 'stores previous values of modified records',
+        description: "Undo log",
+        usage: "stores previous values of modified records",
       },
       INODE: {
         value: 3,
-        description: 'File segment inode',
-        usage: 'bookkeeping for file segments',
+        description: "File segment inode",
+        usage: "bookkeeping for file segments",
       },
       IBUF_FREE_LIST: {
         value: 4,
-        description: 'Insert buffer free list',
-        usage: 'bookkeeping for insert buffer free space management',
+        description: "Insert buffer free list",
+        usage: "bookkeeping for insert buffer free space management",
       },
       IBUF_BITMAP: {
         value: 5,
-        description: 'Insert buffer bitmap',
-        usage: 'bookkeeping for insert buffer writes to be merged',
+        description: "Insert buffer bitmap",
+        usage: "bookkeeping for insert buffer writes to be merged",
       },
       SYS: {
         value: 6,
-        description: 'System internal',
-        usage: 'used for various purposes in the system tablespace',
+        description: "System internal",
+        usage: "used for various purposes in the system tablespace",
       },
       TRX_SYS: {
         value: 7,
-        description: 'Transaction system header',
-        usage: 'bookkeeping for the transaction system in system tablespace',
+        description: "Transaction system header",
+        usage: "bookkeeping for the transaction system in system tablespace",
       },
       FSP_HDR: {
         value: 8,
-        description: 'File space header',
-        usage: 'header page (page 0) for each tablespace file',
+        description: "File space header",
+        usage: "header page (page 0) for each tablespace file",
       },
       XDES: {
         value: 9,
-        description: 'Extent descriptor',
-        usage: 'header page for subsequent blocks of 16,384 pages',
+        description: "Extent descriptor",
+        usage: "header page for subsequent blocks of 16,384 pages",
       },
       BLOB: {
         value: 10,
-        description: 'Uncompressed BLOB',
-        usage: 'externally-stored uncompressed BLOB column data',
+        description: "Uncompressed BLOB",
+        usage: "externally-stored uncompressed BLOB column data",
       },
       ZBLOB: {
         value: 11,
-        description: 'First compressed BLOB',
-        usage: 'externally-stored compressed BLOB column data, first page',
+        description: "First compressed BLOB",
+        usage: "externally-stored compressed BLOB column data, first page",
       },
       ZBLOB2: {
         value: 12,
-        description: 'Subsequent compressed BLOB',
-        usage: 'externally-stored compressed BLOB column data, subsequent page',
+        description: "Subsequent compressed BLOB",
+        usage: "externally-stored compressed BLOB column data, subsequent page",
       },
       INDEX: {
         value: 17_855,
-        description: 'B+Tree index',
-        usage: 'table and index data stored in B+Tree structure',
+        description: "B+Tree index",
+        usage: "table and index data stored in B+Tree structure",
       },
     }.freeze
 
@@ -287,26 +287,26 @@ module Innodb
 
     # Return the "fil" header from the page, which is common for all page types.
     def fil_header
-      @fil_header ||= cursor(pos_fil_header).name('fil_header') do |c|
+      @fil_header ||= cursor(pos_fil_header).name("fil_header") do |c|
         FilHeader.new(
-          checksum: c.name('checksum') { c.read_uint32 },
-          offset: c.name('offset') { c.read_uint32 },
-          prev: c.name('prev') { Innodb::Page.maybe_undefined(c.read_uint32) },
-          next: c.name('next') { Innodb::Page.maybe_undefined(c.read_uint32) },
-          lsn: c.name('lsn') { c.read_uint64 },
-          type: c.name('type') { PAGE_TYPE_BY_VALUE[c.read_uint16] },
-          flush_lsn: c.name('flush_lsn') { c.read_uint64 },
-          space_id: c.name('space_id') { c.read_uint32 }
+          checksum: c.name("checksum") { c.read_uint32 },
+          offset: c.name("offset") { c.read_uint32 },
+          prev: c.name("prev") { Innodb::Page.maybe_undefined(c.read_uint32) },
+          next: c.name("next") { Innodb::Page.maybe_undefined(c.read_uint32) },
+          lsn: c.name("lsn") { c.read_uint64 },
+          type: c.name("type") { PAGE_TYPE_BY_VALUE[c.read_uint16] },
+          flush_lsn: c.name("flush_lsn") { c.read_uint64 },
+          space_id: c.name("space_id") { c.read_uint32 }
         )
       end
     end
 
     # Return the "fil" trailer from the page, which is common for all page types.
     def fil_trailer
-      @fil_trailer ||= cursor(pos_fil_trailer).name('fil_trailer') do |c|
+      @fil_trailer ||= cursor(pos_fil_trailer).name("fil_trailer") do |c|
         FilTrailer.new(
-          checksum: c.name('checksum') { c.read_uint32 },
-          lsn_low32: c.name('lsn_low32') { c.read_uint32 }
+          checksum: c.name("checksum") { c.read_uint32 },
+          lsn_low32: c.name("lsn_low32") { c.read_uint32 }
         )
       end
     end
@@ -336,7 +336,7 @@ module Innodb
 
     # Calculate the checksum of the page using InnoDB's algorithm.
     def checksum_innodb
-      raise 'Checksum calculation is only supported for 16 KiB pages' unless default_page_size?
+      raise "Checksum calculation is only supported for 16 KiB pages" unless default_page_size?
 
       @checksum_innodb ||= begin
         # Calculate the InnoDB checksum of the page header.
@@ -356,7 +356,7 @@ module Innodb
 
     # Calculate the checksum of the page using the CRC32c algorithm.
     def checksum_crc32
-      raise 'Checksum calculation is only supported for 16 KiB pages' unless default_page_size?
+      raise "Checksum calculation is only supported for 16 KiB pages" unless default_page_size?
 
       @checksum_crc32 ||= begin
         # Calculate the CRC32c of the page header.
@@ -443,14 +443,14 @@ module Innodb
         offset: pos_fil_header,
         length: size_fil_header,
         name: :fil_header,
-        info: 'FIL Header'
+        info: "FIL Header"
       )
 
       yield Region.new(
         offset: pos_fil_trailer,
         length: size_fil_trailer,
         name: :fil_trailer,
-        info: 'FIL Trailer'
+        info: "FIL Trailer"
       )
 
       nil
@@ -470,7 +470,7 @@ module Innodb
         checksum_type
         torn?
         misplaced?
-      ].map { |m| "#{m}=#{send(m).inspect}" }.join(', ')
+      ].map { |m| "#{m}=#{send(m).inspect}" }.join(", ")
     end
 
     # Implement a custom inspect method to avoid irb printing the contents of
@@ -484,11 +484,11 @@ module Innodb
       puts "#{self}:"
       puts
 
-      puts 'fil header:'
+      puts "fil header:"
       pp fil_header
       puts
 
-      puts 'fil trailer:'
+      puts "fil trailer:"
       pp fil_trailer
       puts
     end

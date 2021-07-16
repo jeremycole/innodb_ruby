@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'forwardable'
+require "forwardable"
 
 # A single undo log record.
 module Innodb
@@ -111,13 +111,13 @@ module Innodb
     EXTERN_FLAG = 0x80
 
     def header
-      @header ||= cursor(pos_header).name('header') do |c|
+      @header ||= cursor(pos_header).name("header") do |c|
         header = Header.new(
-          prev: c.name('prev') { c.read_uint16 },
-          next: c.name('next') { c.read_uint16 }
+          prev: c.name("prev") { c.read_uint16 },
+          next: c.name("next") { c.read_uint16 }
         )
 
-        info = c.name('info') { c.read_uint8 }
+        info = c.name("info") { c.read_uint8 }
         cmpl = (info & COMPILATION_INFO_MASK) >> COMPILATION_INFO_SHIFT
         header.type = TYPE[info & TYPE_MASK]
         header.extern_flag = (info & EXTERN_FLAG) != 0
@@ -156,19 +156,19 @@ module Innodb
     end
 
     def read_record
-      cursor(pos_record).name('record') do |c|
+      cursor(pos_record).name("record") do |c|
         this_record = Record.new(
           page: undo_page.offset,
           offset: position,
           header: header,
-          undo_no: c.name('undo_no') { c.read_imc_uint64 },
-          table_id: c.name('table_id') { c.read_imc_uint64 }
+          undo_no: c.name("undo_no") { c.read_imc_uint64 },
+          table_id: c.name("table_id") { c.read_imc_uint64 }
         )
 
         if previous_version?
-          this_record.info_bits = c.name('info_bits') { c.read_uint8 }
-          this_record.trx_id = c.name('trx_id') { c.read_ic_uint64 }
-          this_record.roll_ptr = c.name('roll_ptr') do
+          this_record.info_bits = c.name("info_bits") { c.read_uint8 }
+          this_record.trx_id = c.name("trx_id") { c.read_ic_uint64 }
+          this_record.roll_ptr = c.name("roll_ptr") do
             Innodb::DataType::RollPointerType.parse_roll_pointer(c.read_ic_uint64)
           end
         end
@@ -187,7 +187,7 @@ module Innodb
     def read_record_fields(this_record, cursor)
       this_record.key = []
       index_page.record_format[:key].each do |field|
-        length = cursor.name('field_length') { cursor.read_ic_uint32 }
+        length = cursor.name("field_length") { cursor.read_ic_uint32 }
         value = cursor.name(field.name) { field.value_by_length(cursor, length) }
 
         this_record.key[field.position] = Field.new(name: field.name, type: field.data_type.name, value: value)
@@ -195,7 +195,7 @@ module Innodb
 
       return unless previous_version?
 
-      field_count = cursor.name('field_count') { cursor.read_ic_uint32 }
+      field_count = cursor.name("field_count") { cursor.read_ic_uint32 }
       this_record.row = Array.new(index_page.record_format[:row].size)
       field_count.times do
         field_number = cursor.name("field_number[#{field_count}]") { cursor.read_ic_uint32 }
@@ -210,7 +210,7 @@ module Innodb
 
         raise "Unknown field #{field_number}" unless field
 
-        length = cursor.name('field_length') { cursor.read_ic_uint32 }
+        length = cursor.name("field_length") { cursor.read_ic_uint32 }
         value = cursor.name(field.name) { field.value_by_length(cursor, length) }
 
         this_record.row[field_index] = Field.new(name: field.name, type: field.data_type.name, value: value)
@@ -230,7 +230,7 @@ module Innodb
     def_delegator :undo_record, :offset
 
     def key_string
-      key&.map { |r| '%s=%s' % [r[:name], r[:value].inspect] }&.join(', ')
+      key&.map { |r| "%s=%s" % [r[:name], r[:value].inspect] }&.join(", ")
     end
 
     def row
@@ -238,11 +238,11 @@ module Innodb
     end
 
     def row_string
-      row&.reject(&:nil?)&.map { |r| r && '%s=%s' % [r[:name], r[:value].inspect] }&.join(', ')
+      row&.reject(&:nil?)&.map { |r| r && "%s=%s" % [r[:name], r[:value].inspect] }&.join(", ")
     end
 
     def string
-      '(%s) → (%s)' % [key_string, row_string]
+      "(%s) → (%s)" % [key_string, row_string]
     end
 
     # Find the previous row version by following the roll_ptr from one undo
@@ -272,39 +272,39 @@ module Innodb
     end
 
     def dump
-      puts 'Undo record at offset %i' % offset
+      puts "Undo record at offset %i" % offset
       puts
 
-      puts 'Header:'
-      puts '  %-25s: %i' % ['Previous record offset', header[:prev]]
-      puts '  %-25s: %i' % ['Next record offset', header[:next]]
-      puts '  %-25s: %s' % ['Type', header[:type]]
+      puts "Header:"
+      puts "  %-25s: %i" % ["Previous record offset", header[:prev]]
+      puts "  %-25s: %i" % ["Next record offset", header[:next]]
+      puts "  %-25s: %s" % ["Type", header[:type]]
       puts
 
-      puts 'System fields:'
-      puts '  Transaction ID: %s' % trx_id
-      puts '  Roll Pointer:'
-      puts '    Undo Log: page %i, offset %i' % [
+      puts "System fields:"
+      puts "  Transaction ID: %s" % trx_id
+      puts "  Roll Pointer:"
+      puts "    Undo Log: page %i, offset %i" % [
         roll_ptr[:undo_log][:page],
         roll_ptr[:undo_log][:offset],
       ]
-      puts '    Rollback Segment ID: %i' % roll_ptr[:rseg_id]
+      puts "    Rollback Segment ID: %i" % roll_ptr[:rseg_id]
       puts
 
-      puts 'Key fields:'
+      puts "Key fields:"
       key.each do |field|
-        puts '  %s: %s' % [
+        puts "  %s: %s" % [
           field[:name],
           field[:value].inspect,
         ]
       end
       puts
 
-      puts 'Non-key fields:'
+      puts "Non-key fields:"
       row.each do |field|
         next unless field
 
-        puts '  %s: %s' % [
+        puts "  %s: %s" % [
           field[:name],
           field[:value].inspect,
         ]
