@@ -319,7 +319,7 @@ module Innodb
     # Iterate through records from a data dictionary index yielding each record
     # as a Innodb::Record object.
     def each_record_from_data_dictionary_index(table, index, &block)
-      return enum_for(:each_index, table, index) unless block_given?
+      return enum_for(:each_record_from_data_dictionary_index, table, index) unless block_given?
 
       data_dictionary_index(table, index).each_record(&block)
 
@@ -465,7 +465,7 @@ module Innodb
 
     # Iterate through all fields in an index by index name.
     def each_field_by_index_name(table_name, index_name, &block)
-      return enum_for(:each_field_by_name, table_name, index_name) unless block_given?
+      return enum_for(:each_field_by_index_name, table_name, index_name) unless block_given?
 
       index = index_by_name(table_name, index_name)
       raise "Index #{index_name} for table #{table_name} not found" unless index

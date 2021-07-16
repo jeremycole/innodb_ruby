@@ -444,7 +444,7 @@ module Innodb
     # Iterate through all pages, yielding the page number, page object,
     # and page status.
     def each_page_status(start_page = 0)
-      return enum_for(:each_page_with_status, start_page) unless block_given?
+      return enum_for(:each_page_status, start_page) unless block_given?
 
       each_xdes do |xdes|
         xdes.each_page_status do |page_number, page_status|
