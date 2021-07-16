@@ -124,12 +124,10 @@ module Innodb
     end
 
     # Iterate through all lists in a given fseg.
-    def each_fseg_list(fseg)
+    def each_fseg_list(fseg, &block)
       return enum_for(:each_fseg_list, fseg) unless block_given?
 
-      fseg.each_list do |list_name, list|
-        yield list_name, list
-      end
+      fseg.each_list(&block)
     end
 
     # Iterate through all frag pages in a given fseg.
@@ -155,20 +153,18 @@ module Innodb
 
     # Iterate through all pages at the given level by finding the first page
     # and following the next pointers in each page.
-    def each_page_at_level(level)
+    def each_page_at_level(level, &block)
       return enum_for(:each_page_at_level, level) unless block_given?
 
-      each_page_from(min_page_at_level(level)) { |page| yield page }
+      each_page_from(min_page_at_level(level), &block)
     end
 
     # Iterate through all records on all leaf pages in ascending order.
-    def each_record
+    def each_record(&block)
       return enum_for(:each_record) unless block_given?
 
       each_page_at_level(0) do |page|
-        page.each_record do |record|
-          yield record
-        end
+        page.each_record(&block)
       end
     end
 

@@ -93,12 +93,10 @@ module Innodb
       UndoRecordCursor.new(self, undo_record, direction)
     end
 
-    def each_undo_record
+    def each_undo_record(&block)
       return enum_for(:each_undo_record) unless block_given?
 
-      undo_record_cursor.each_undo_record do |rec|
-        yield rec
-      end
+      undo_record_cursor.each_undo_record(&block)
     end
   end
 end

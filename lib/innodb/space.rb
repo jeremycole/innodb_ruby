@@ -49,7 +49,7 @@ module Innodb
 
       def name
         prefix = ''
-        prefix = File.basename(File.dirname(file.path)) + '/' if File.extname(file.path) == '.ibd'
+        prefix = "#{File.basename(File.dirname(file.path))}/" if File.extname(file.path) == '.ibd'
 
         prefix + File.basename(file.path)
       end
@@ -355,14 +355,12 @@ module Innodb
     end
 
     # Iterate through Innodb::Inode objects in the space.
-    def each_inode
+    def each_inode(&block)
       return enum_for(:each_inode) unless block_given?
 
       each_inode_list.each do |_name, list|
         list.each do |page|
-          page.each_allocated_inode do |inode|
-            yield inode
-          end
+          page.each_allocated_inode(&block)
         end
       end
     end
@@ -374,14 +372,12 @@ module Innodb
     end
 
     # Iterate through the page numbers in the doublewrite buffer.
-    def each_doublewrite_page_number
+    def each_doublewrite_page_number(&block)
       return nil unless system_space?
       return enum_for(:each_doublewrite_page_number) unless block_given?
 
       trx_sys.doublewrite[:page_info][0][:page_number].each do |start_page|
-        (start_page...(start_page + pages_per_extent)).each do |page_number|
-          yield page_number
-        end
+        (start_page...(start_page + pages_per_extent)).each(&block)
       end
     end
 
@@ -414,12 +410,10 @@ module Innodb
     end
 
     # An array of all FSP/XDES page numbers for the space.
-    def each_xdes_page_number
+    def each_xdes_page_number(&block)
       return enum_for(:each_xdes_page_number) unless block_given?
 
-      0.step(pages - 1, pages_per_bookkeeping_page).each do |n|
-        yield n
-      end
+      0.step(pages - 1, pages_per_bookkeeping_page).each(&block)
     end
 
     # Iterate through all extent descriptor pages, returning an Innodb::Page object

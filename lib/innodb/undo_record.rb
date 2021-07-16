@@ -258,7 +258,7 @@ module Innodb
       older_undo_page = @undo_page.space.page(undo_log[:page])
 
       # The page was probably re-used for something else.
-      return unless older_undo_page&.is_a?(Innodb::Page::UndoLog)
+      return unless older_undo_page.is_a?(Innodb::Page::UndoLog)
 
       older_undo_record = new_subordinate(older_undo_page, undo_log[:offset])
 

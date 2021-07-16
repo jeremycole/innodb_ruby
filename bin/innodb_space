@@ -59,8 +59,8 @@ def ansi_color(color, text)
 end
 
 # Zero and 1/8 through 8/8 illustrations.
-BLOCK_CHARS_V = '░▁▂▃▄▅▆▇█'.split('').freeze
-BLOCK_CHARS_H = '░▏▎▍▌▋▊▉█'.split('').freeze
+BLOCK_CHARS_V = '░▁▂▃▄▅▆▇█'.chars.freeze
+BLOCK_CHARS_H = '░▏▎▍▌▋▊▉█'.chars.freeze
 
 # A reasonably large prime number to multiply identifiers by in order to
 # space out the colors used for similar identifiers.
@@ -367,7 +367,7 @@ end
 def space_list_iterate(space, list_name)
   fsp = space.page(0).fsp_header
 
-  raise "List '#{list_name}' doesn't exist" unless fsp[list_name]&.is_a?(Innodb::List)
+  raise "List '#{list_name}' doesn't exist" unless fsp[list_name].is_a?(Innodb::List)
 
   case fsp[list_name]
   when Innodb::List::Xdes
@@ -429,7 +429,7 @@ def space_index_pages_free_plot(space, image, start_page)
     end
   end
 
-  image_file = image + '_free.png'
+  image_file = "#{image}_free.png"
   # Aim for one horizontal pixel per extent, but min 1k and max 10k width.
   image_width = [10_000, [1_000, space.pages / space.pages_per_extent].max].min
 
@@ -489,10 +489,10 @@ def space_extents_illustrate_page_status(space, entry, count_by_identifier, iden
 
     bitmap << filled_block(used_fraction, identifier)
 
-    if used_fraction != 0.0
-      count_by_identifier[identifier] += 1
-    else
+    if used_fraction == 0.0
       count_by_identifier[:free] += 1
+    else
+      count_by_identifier[identifier] += 1
     end
   end
 end
@@ -1586,7 +1586,7 @@ if /^space-/.match(mode) && !space
   usage(
     1,
     'Tablespace must be specified using either -f/--space-file ' \
-      'or a combination of -s/--system-space-file and -T/--table'
+    'or a combination of -s/--system-space-file and -T/--table'
   )
 end
 
@@ -1594,7 +1594,7 @@ if /^index-/.match(mode) && !index
   usage(
     1,
     'Index must be specified using a combination of either -f/--space-file and -p/--page ' \
-      'or -s/--system-space-file, -T/--table-name, and -I/--index-name'
+    'or -s/--system-space-file, -T/--table-name, and -I/--index-name'
   )
 end
 

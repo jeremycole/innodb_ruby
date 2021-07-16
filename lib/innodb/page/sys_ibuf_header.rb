@@ -24,12 +24,10 @@ module Innodb
         end
       end
 
-      def each_region
+      def each_region(&block)
         return enum_for(:each_region) unless block_given?
 
-        super do |region|
-          yield region
-        end
+        super(&block)
 
         yield Region.new(
           offset: pos_ibuf_header,

@@ -8,7 +8,8 @@ module Innodb
   class DataType
     # MySQL's Bit-Value Type (BIT).
     class BitType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         nbits = modifiers.fetch(0, 1)
@@ -24,7 +25,8 @@ module Innodb
     end
 
     class IntegerType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = base_type_width_map[base_type]
@@ -60,7 +62,8 @@ module Innodb
     end
 
     class FloatType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 4
@@ -74,7 +77,8 @@ module Innodb
     end
 
     class DoubleType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 8
@@ -89,7 +93,8 @@ module Innodb
 
     # MySQL's Fixed-Point Type (DECIMAL), stored in InnoDB as a binary string.
     class DecimalType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       # The value is stored as a sequence of signed big-endian integers, each
       # representing up to 9 digits of the integral and fractional parts. The
@@ -134,7 +139,7 @@ module Innodb
         frac = '0' if frac.empty?
 
         # Convert to something resembling a string representation.
-        str = mask.to_s.chop + intg + '.' + frac
+        str = "#{mask.to_s.chop}#{intg}.#{frac}"
 
         BigDecimal(str).to_s('F')
       end
@@ -174,13 +179,14 @@ module Innodb
 
         value = (BinData.const_get('Int%dbe' % nbits).read(stream) ^ mask)
         # Preserve leading zeros.
-        ('%0' + digits.to_s + 'd') % value
+        "%0#{digits}d" % value
       end
     end
 
     # Fixed-length character type.
     class CharacterType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = modifiers.fetch(0, 1)
@@ -190,12 +196,13 @@ module Innodb
       def value(data)
         # The SQL standard defines that CHAR fields should have end-spaces
         # stripped off.
-        data.sub(/[ ]+$/, '')
+        data.sub(/ +$/, '')
       end
     end
 
     class VariableCharacterType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = modifiers[0]
@@ -207,13 +214,14 @@ module Innodb
       def value(data)
         # The SQL standard defines that VARCHAR fields should have end-spaces
         # stripped off.
-        data.sub(/[ ]+$/, '')
+        data.sub(/ +$/, '')
       end
     end
 
     # Fixed-length binary type.
     class BinaryType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = modifiers.fetch(0, 1)
@@ -222,7 +230,8 @@ module Innodb
     end
 
     class VariableBinaryType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = modifiers[0]
@@ -241,7 +250,8 @@ module Innodb
     end
 
     class YearType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 1
@@ -259,7 +269,8 @@ module Innodb
     end
 
     class TimeType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 3
@@ -275,7 +286,8 @@ module Innodb
     end
 
     class DateType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 3
@@ -292,7 +304,8 @@ module Innodb
     end
 
     class DatetimeType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 8
@@ -314,7 +327,8 @@ module Innodb
     end
 
     class TimestampType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 4
@@ -336,7 +350,8 @@ module Innodb
 
     # Transaction ID.
     class TransactionIdType
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 6
@@ -359,7 +374,8 @@ module Innodb
         keyword_init: true
       )
 
-      attr_reader :name, :width
+      attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 7
@@ -421,7 +437,7 @@ module Innodb
 
     def self.make_name(base_type, modifiers, properties)
       name = base_type.to_s.dup
-      name << '(' + modifiers.join(',') + ')' unless modifiers.empty?
+      name << "(#{modifiers.join(',')})" unless modifiers.empty?
       name << ' '
       name << properties.join(' ')
       name.strip

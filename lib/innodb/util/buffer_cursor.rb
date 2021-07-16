@@ -55,7 +55,7 @@ class BufferCursor
 
     trace false
     trace_with :print_trace
-    trace_to STDOUT
+    trace_to $stdout
   end
 
   def inspect
@@ -96,9 +96,9 @@ class BufferCursor
   def trace_with(arg = nil)
     if arg.nil?
       @trace_proc = nil
-    elsif arg.class == Proc
+    elsif arg.instance_of?(Proc)
       @trace_proc = arg
-    elsif arg.class == Symbol
+    elsif arg.instance_of?(Symbol)
       @trace_proc = ->(cursor, position, bytes, name) { send(arg, cursor, position, bytes, name) }
     else
       raise "Don't know how to trace with #{arg}"
@@ -237,12 +237,10 @@ class BufferCursor
   end
 
   # Iterate through length bytes returning each as an unsigned 8-bit integer.
-  def each_byte_as_uint8(length)
+  def each_byte_as_uint8(length, &block)
     return enum_for(:each_byte_as_uint8, length) unless block_given?
 
-    read_and_advance(length).bytes.each do |byte|
-      yield byte
-    end
+    read_and_advance(length).bytes.each(&block)
 
     nil
   end

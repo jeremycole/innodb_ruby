@@ -136,7 +136,7 @@ module Innodb
         info = cursor.name('field_info') { cursor.read_uint16 }
         IndexFieldInfo.new(
           mtype: ((info + 1) & 0x7fff) <= 1 ? :BINARY : :FIXBINARY,
-          prtype: (info & 0x8000) != 0 ? :NOT_NULL : nil,
+          prtype: (info & 0x8000).zero? ? nil : :NOT_NULL,
           length: info & 0x7fff
         )
       end
@@ -191,7 +191,7 @@ module Innodb
         {
           field_no: cursor.name('field_no') { cursor.read_ic_uint32 },
           len: len = cursor.name('len') { cursor.read_ic_uint32 },
-          data: cursor.name('data') { len != LENGTH_NULL ? cursor.read_bytes(len) : :NULL },
+          data: cursor.name('data') { len == LENGTH_NULL ? :NULL : cursor.read_bytes(len) },
         }
       end
       {
