@@ -11,8 +11,8 @@ Naming/VariableNumber:
   Enabled: false
 Style/AccessorGrouping:
   EnforcedStyle: separated
-#Style/StringLiterals:
-#  EnforcedStyle: double_quotes
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
 Style/TrailingCommaInArrayLiteral:
   EnforcedStyleForMultiline: consistent_comma
 Style/TrailingCommaInHashLiteral:

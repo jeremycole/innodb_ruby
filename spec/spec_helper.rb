@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require File.join(File.dirname(__FILE__), '..', 'lib', 'innodb')
+require File.join(File.dirname(__FILE__), "..", "lib", "innodb")
 
 RSpec.configure do |config|
   # Enable the below to allow easier fixing of deprecated RSpec syntax.

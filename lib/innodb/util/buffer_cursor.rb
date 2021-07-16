@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'bindata'
+require "bindata"
 
 # A cursor to walk through data structures to read fields. The cursor can move
 # forwards, backwards, is seekable, and supports peeking without moving the
 # cursor. The BinData module is used for interpreting bytes as desired.
 class BufferCursor
-  VERSION = '0.9.0'
+  VERSION = "0.9.0"
 
   # An entry in a stack of cursors. The cursor position, direction, and
   # name array are each attributes of the current cursor stack and are
@@ -25,7 +25,7 @@ class BufferCursor
     end
 
     def inspect
-      '<%s direction=%s position=%s>' % [
+      "<%s direction=%s position=%s>" % [
         self.class.name,
         @direction.inspect,
         @position,
@@ -59,7 +59,7 @@ class BufferCursor
   end
 
   def inspect
-    '<%s size=%i current=%s>' % [
+    "<%s size=%i current=%s>" % [
       self.class.name,
       @buffer.size,
       current.inspect,
@@ -77,11 +77,11 @@ class BufferCursor
   def print_trace(_cursor, position, bytes, name)
     slice_size = 16
     bytes.each_slice(slice_size).each_with_index do |slice_bytes, slice_count|
-      @trace_io.puts '%06i %s %-32s  %s' % [
+      @trace_io.puts "%06i %s %-32s  %s" % [
         position + (slice_count * slice_size),
-        direction == :backward ? '←' : '→',
-        slice_bytes.map { |n| '%02x' % n }.join,
-        slice_count.zero? ? name.join('.') : '↵',
+        direction == :backward ? "←" : "→",
+        slice_bytes.map { |n| "%02x" % n }.join,
+        slice_count.zero? ? name.join(".") : "↵",
       ]
     end
   end
@@ -133,7 +133,7 @@ class BufferCursor
   def name(name_arg = nil)
     return current.name if name_arg.nil?
 
-    raise 'No block given' unless block_given?
+    raise "No block given" unless block_given?
 
     current.name.push name_arg
     ret = yield(self)
@@ -189,7 +189,7 @@ class BufferCursor
 
   # Restore the last cursor position.
   def pop
-    raise 'No cursors to pop' unless @stack.size > 1
+    raise "No cursors to pop" unless @stack.size > 1
 
     @stack.pop
 
@@ -200,7 +200,7 @@ class BufferCursor
   # the block returns. Return the block's return value after restoring the
   # cursor. Optionally seek to provided position before executing block.
   def peek(position = nil)
-    raise 'No block given' unless block_given?
+    raise "No block given" unless block_given?
 
     push(position)
     result = yield(self)
@@ -247,7 +247,7 @@ class BufferCursor
 
   # Return raw bytes as hex.
   def read_hex(length)
-    read_and_advance(length).bytes.map { |c| '%02x' % c }.join
+    read_and_advance(length).bytes.map { |c| "%02x" % c }.join
   end
 
   # Read an unsigned 8-bit integer.
@@ -333,22 +333,22 @@ class BufferCursor
   # Optionally accept a flag (first byte) if it has already been read (as is
   # the case in read_imc_uint64).
   def read_ic_uint32(flag = nil)
-    name('ic_uint32') do
-      flag ||= peek { name('uint8_or_flag') { read_uint8 } }
+    name("ic_uint32") do
+      flag ||= peek { name("uint8_or_flag") { read_uint8 } }
 
       case
       when flag < 0x80
         adjust(+1)
         flag
       when flag < 0xc0
-        name('uint16') { read_uint16 } & 0x7fff
+        name("uint16") { read_uint16 } & 0x7fff
       when flag < 0xe0
-        name('uint24') { read_uint24 } & 0x3fffff
+        name("uint24") { read_uint24 } & 0x3fffff
       when flag < 0xf0
-        name('uint32') { read_uint32 } & 0x1fffffff
+        name("uint32") { read_uint32 } & 0x1fffffff
       when flag == 0xf0
         adjust(+1) # Skip the flag byte.
-        name('uint32+1') { read_uint32 }
+        name("uint32+1") { read_uint32 }
       else
         raise "Invalid flag #{flag} seen"
       end
@@ -362,9 +362,9 @@ class BufferCursor
   # big-endian 32-bit integer (4 bytes). This makes a combined size of
   # between 5 and 9 bytes.
   def read_ic_uint64
-    name('ic_uint64') do
-      high = name('high') { read_ic_uint32 }
-      low = name('low') { name('uint32') { read_uint32 } }
+    name("ic_uint64") do
+      high = name("high") { read_ic_uint32 }
+      low = name("low") { name("uint32") { read_uint32 } }
 
       (high << 32) | low
     end
@@ -379,20 +379,20 @@ class BufferCursor
   # compressed 32-bit unsigned integer. This makes for a combined size
   # of between 1 and 11 bytes.
   def read_imc_uint64
-    name('imc_uint64') do
+    name("imc_uint64") do
       high = 0
-      flag = peek { name('uint8_or_flag') { read_uint8 } }
+      flag = peek { name("uint8_or_flag") { read_uint8 } }
 
       if flag == 0xff
         # The high 32-bits are stored first as an ic_uint32.
         adjust(+1) # Skip the flag byte.
-        high = name('high') { read_ic_uint32 }
+        high = name("high") { read_ic_uint32 }
         flag = nil
       end
 
       # The low 32-bits are stored as an ic_uint32; pass the flag we already
       # read, so we don't have to read it again.
-      low = name('low') { read_ic_uint32(flag) }
+      low = name("low") { read_ic_uint32(flag) }
 
       (high << 32) | low
     end

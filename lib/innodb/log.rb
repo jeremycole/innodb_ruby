@@ -73,7 +73,7 @@ module Innodb
 
     # Get the raw byte buffer for a specific block by block offset.
     def block_data(offset)
-      raise 'Invalid block offset' unless (offset % Innodb::LogBlock::BLOCK_SIZE).zero?
+      raise "Invalid block offset" unless (offset % Innodb::LogBlock::BLOCK_SIZE).zero?
 
       @file.sysseek(offset)
       @file.sysread(Innodb::LogBlock::BLOCK_SIZE)
@@ -87,12 +87,12 @@ module Innodb
     # Return the log header.
     def header
       offset = LOG_HEADER_BLOCK_MAP[:LOG_FILE_HEADER] * Innodb::LogBlock::BLOCK_SIZE
-      @header ||= block_cursor(offset).name('header') do |c|
+      @header ||= block_cursor(offset).name("header") do |c|
         Header.new(
-          group_id: c.name('group_id') { c.read_uint32 },
-          start_lsn: c.name('start_lsn') { c.read_uint64 },
-          file_no: c.name('file_no') { c.read_uint32 },
-          created_by: c.name('created_by') { c.read_string(32) }
+          group_id: c.name("group_id") { c.read_uint32 },
+          start_lsn: c.name("start_lsn") { c.read_uint64 },
+          file_no: c.name("file_no") { c.read_uint32 },
+          created_by: c.name("created_by") { c.read_string(32) }
         )
       end
     end
@@ -103,24 +103,24 @@ module Innodb
       # use or even read by InnoDB. However, for the sake of completeness,
       # they are included.
       Checkpoint.new(
-        number: cursor.name('number') { cursor.read_uint64 },
-        lsn: cursor.name('lsn') { cursor.read_uint64 },
-        lsn_offset: cursor.name('lsn_offset') { cursor.read_uint32 },
-        buffer_size: cursor.name('buffer_size') { cursor.read_uint32 },
-        archived_lsn: cursor.name('archived_lsn') { cursor.read_uint64 },
+        number: cursor.name("number") { cursor.read_uint64 },
+        lsn: cursor.name("lsn") { cursor.read_uint64 },
+        lsn_offset: cursor.name("lsn_offset") { cursor.read_uint32 },
+        buffer_size: cursor.name("buffer_size") { cursor.read_uint32 },
+        archived_lsn: cursor.name("archived_lsn") { cursor.read_uint64 },
         group_array:
           (0..(LOG_CHECKPOINT_GROUPS - 1)).map do |n|
             cursor.name("group_array[#{n}]") do
               CheckpointGroup.new(
-                archived_file_no: cursor.name('archived_file_no') { cursor.read_uint32 },
-                archived_offset: cursor.name('archived_offset') { cursor.read_uint32 }
+                archived_file_no: cursor.name("archived_file_no") { cursor.read_uint32 },
+                archived_offset: cursor.name("archived_offset") { cursor.read_uint32 }
               )
             end
           end,
-        checksum_1: cursor.name('checksum_1') { cursor.read_uint32 },
-        checksum_2: cursor.name('checksum_2') { cursor.read_uint32 },
-        fsp_free_limit: cursor.name('fsp_free_limit') { cursor.read_uint32 },
-        fsp_magic: cursor.name('fsp_magic') { cursor.read_uint32 }
+        checksum_1: cursor.name("checksum_1") { cursor.read_uint32 },
+        checksum_2: cursor.name("checksum_2") { cursor.read_uint32 },
+        fsp_free_limit: cursor.name("fsp_free_limit") { cursor.read_uint32 },
+        fsp_magic: cursor.name("fsp_magic") { cursor.read_uint32 }
       )
     end
 
@@ -129,8 +129,8 @@ module Innodb
       offset1 = LOG_HEADER_BLOCK_MAP[:LOG_CHECKPOINT_1] * Innodb::LogBlock::BLOCK_SIZE
       offset2 = LOG_HEADER_BLOCK_MAP[:LOG_CHECKPOINT_2] * Innodb::LogBlock::BLOCK_SIZE
       @checkpoint ||= CheckpointSet.new(
-        checkpoint_1: block_cursor(offset1).name('checkpoint_1') { |c| read_checkpoint(c) },
-        checkpoint_2: block_cursor(offset2).name('checkpoint_2') { |c| read_checkpoint(c) }
+        checkpoint_1: block_cursor(offset1).name("checkpoint_1") { |c| read_checkpoint(c) },
+        checkpoint_2: block_cursor(offset2).name("checkpoint_2") { |c| read_checkpoint(c) }
       )
     end
 

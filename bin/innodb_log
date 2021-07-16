@@ -1,17 +1,17 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'getoptlong'
-require 'ostruct'
-require 'set'
-require 'innodb'
+require "getoptlong"
+require "ostruct"
+require "set"
+require "innodb"
 
 def log_summary(log_group)
-  puts '%-20s%-15s%-10s%-12s%-10s' % %w[lsn block length first_rec checkpoint]
+  puts "%-20s%-15s%-10s%-12s%-10s" % %w[lsn block length first_rec checkpoint]
   lsn = log_group.start_lsn.first
   log_group.each_block do |_block_index, block|
     header = block.header
-    puts '%-20i%-15i%-10i%-12i%-10i' % [
+    puts "%-20i%-15i%-10i%-12i%-10i" % [
       lsn,
       header[:block_number],
       header[:data_length],
@@ -24,13 +24,13 @@ def log_summary(log_group)
 end
 
 def log_reader_record_summary(reader, follow)
-  puts '%-10s%-10s%-20s%-10s%-10s%-10s' % %w[time lsn type size space page]
+  puts "%-10s%-10s%-20s%-10s%-10s%-10s" % %w[time lsn type size space page]
 
   reader.each_record(follow) do |rec|
     preamble = rec.preamble.dup
-    preamble.default = ''
-    puts '%-10s%-10i%-20s%-10i%-10s%-10s' % [
-      (Time.now.strftime '%H:%M:%S'),
+    preamble.default = ""
+    puts "%-10s%-10i%-20s%-10i%-10s%-10s" % [
+      (Time.now.strftime "%H:%M:%S"),
       rec.lsn.first,
       preamble[:type].to_s,
       rec.size,
@@ -103,10 +103,10 @@ end
 
 # rubocop:disable Layout/SpaceInsideArrayLiteralBrackets
 getopt_options = [
-  [ '--help',                   '-?',     GetoptLong::NO_ARGUMENT ],
-  [ '--log-file',               '-f',     GetoptLong::REQUIRED_ARGUMENT ],
-  [ '--dump-blocks',            '-d',     GetoptLong::NO_ARGUMENT ],
-  [ '--lsn',                    '-l',     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--help",                   "-?",     GetoptLong::NO_ARGUMENT ],
+  [ "--log-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--dump-blocks",            "-d",     GetoptLong::NO_ARGUMENT ],
+  [ "--lsn",                    "-l",     GetoptLong::REQUIRED_ARGUMENT ],
 ]
 # rubocop:enable Layout/SpaceInsideArrayLiteralBrackets
 
@@ -114,13 +114,13 @@ getopt = GetoptLong.new(*getopt_options)
 
 getopt.each do |opt, arg|
   case opt
-  when '--help'
+  when "--help"
     usage 0
-  when '--log-file'
+  when "--log-file"
     @options.log_files << arg
-  when '--dump-blocks'
+  when "--dump-blocks"
     @options.dump = true
-  when '--lsn'
+  when "--lsn"
     @options.lsn = arg.to_i
   end
 end
@@ -130,15 +130,15 @@ mode = ARGV.shift
 # rubocop:disable Style/IfUnlessModifier
 
 unless mode
-  usage 1, 'At least one mode must be provided'
+  usage 1, "At least one mode must be provided"
 end
 
 if @options.log_files.empty?
-  usage 1, 'At least one log file (-f) must be specified'
+  usage 1, "At least one log file (-f) must be specified"
 end
 
 if /^(log-)?record-/.match(mode) && !@options.lsn
-  usage 1, 'LSN must be specified using -l/--lsn'
+  usage 1, "LSN must be specified using -l/--lsn"
 end
 
 # rubocop:enable Style/IfUnlessModifier
@@ -146,13 +146,13 @@ end
 log_group = Innodb::LogGroup.new(@options.log_files.sort)
 
 case mode
-when 'log-summary'
+when "log-summary"
   log_summary(log_group)
-when 'log-follow-tail-summary'
+when "log-follow-tail-summary"
   log_follow_tail_summary(log_group)
-when 'log-record-summary'
+when "log-record-summary"
   log_record_summary(log_group, @options.lsn)
-when 'record-dump'
+when "record-dump"
   record_dump(log_group, @options.lsn)
 else
   usage 1, "Unknown mode: #{mode}"

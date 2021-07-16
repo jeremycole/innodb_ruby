@@ -1,37 +1,37 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require "spec_helper"
 
 describe Innodb::Space do
   before :all do
-    @space = Innodb::Space.new('spec/data/ibdata1')
-    @space_ibd = Innodb::Space.new('spec/data/t_empty.ibd')
+    @space = Innodb::Space.new("spec/data/ibdata1")
+    @space_ibd = Innodb::Space.new("spec/data/t_empty.ibd")
   end
 
-  describe 'DEFAULT_PAGE_SIZE' do
-    it 'is a Integer' do
+  describe "DEFAULT_PAGE_SIZE" do
+    it "is a Integer" do
       Innodb::Space::DEFAULT_PAGE_SIZE.should be_an_instance_of Integer
     end
   end
 
-  describe 'SYSTEM_SPACE_PAGE_MAP' do
-    it 'is a Hash' do
+  describe "SYSTEM_SPACE_PAGE_MAP" do
+    it "is a Hash" do
       Innodb::Space::SYSTEM_SPACE_PAGE_MAP.should be_an_instance_of Hash
     end
   end
 
-  describe '#new' do
-    it 'defines a class' do
+  describe "#new" do
+    it "defines a class" do
       Innodb::Space.should be_an_instance_of Class
     end
 
-    it 'returns an Innodb::Space' do
+    it "returns an Innodb::Space" do
       @space.should be_an_instance_of Innodb::Space
     end
   end
 
-  describe '#read_at_offset' do
-    it 'can read bytes from the file' do
+  describe "#read_at_offset" do
+    it "can read bytes from the file" do
       # This will read the page number from page 0, which should be 0.
       @space.read_at_offset(4, 4).should eql "\x00\x00\x00\x00"
       # This will read the page number from page 1, which should be 1.
@@ -39,38 +39,38 @@ describe Innodb::Space do
     end
   end
 
-  describe '#page_size' do
-    it 'finds a 16 KiB page size' do
+  describe "#page_size" do
+    it "finds a 16 KiB page size" do
       @space.page_size.should eql 16_384
     end
   end
 
-  describe '#pages' do
-    it 'returns 1,152 pages' do
+  describe "#pages" do
+    it "returns 1,152 pages" do
       @space.pages.should eql 1_152
     end
   end
 
-  describe '#size' do
-    it 'returns 18,874,368 bytes' do
+  describe "#size" do
+    it "returns 18,874,368 bytes" do
       @space.size.should eql 18_874_368
     end
   end
 
-  describe '#pages_per_extent' do
-    it 'returns 64 pages per extent' do
+  describe "#pages_per_extent" do
+    it "returns 64 pages per extent" do
       @space.pages_per_extent.should eql 64
     end
   end
 
-  describe '#page_data' do
-    it 'returns 16 KiB of data' do
+  describe "#page_data" do
+    it "returns 16 KiB of data" do
       @space.page_data(0).size.should eql 16_384
     end
   end
 
-  describe '#page' do
-    it 'reads and delegates pages correctly' do
+  describe "#page" do
+    it "reads and delegates pages correctly" do
       @space.page(0).should be_an_instance_of Innodb::Page::FspHdrXdes
       @space.page(1).should be_an_instance_of Innodb::Page::IbufBitmap
       @space.page(2).should be_an_instance_of Innodb::Page::Inode
@@ -81,77 +81,77 @@ describe Innodb::Space do
       @space.page(7).should be_an_instance_of Innodb::Page::SysDataDictionaryHeader
     end
 
-    it 'should return nil for a page that does not exist' do
+    it "should return nil for a page that does not exist" do
       @space.page(2_000).should eql nil
     end
   end
 
-  describe '#fsp' do
-    it 'is a Innodb::Page::FspHdrXdes::Header' do
+  describe "#fsp" do
+    it "is a Innodb::Page::FspHdrXdes::Header" do
       @space.fsp.should be_an_instance_of Innodb::Page::FspHdrXdes::Header
     end
   end
 
-  describe '#system_space?' do
-    it 'can identify a system space' do
+  describe "#system_space?" do
+    it "can identify a system space" do
       @space.system_space?.should eql true
     end
 
-    it 'can identify a non-system space' do
+    it "can identify a non-system space" do
       @space_ibd.system_space?.should eql false
     end
   end
 
-  describe '#trx_sys' do
-    it 'should return a page for a system space' do
+  describe "#trx_sys" do
+    it "should return a page for a system space" do
       @space.trx_sys.should be_an_instance_of Innodb::Page::TrxSys
     end
 
-    it 'should return nil for a non-system space' do
+    it "should return nil for a non-system space" do
       @space_ibd.trx_sys.should eql nil
     end
   end
 
-  describe '#data_dictionary_page' do
-    it 'should return a page for a system space' do
+  describe "#data_dictionary_page" do
+    it "should return a page for a system space" do
       @space.data_dictionary_page.should be_an_instance_of Innodb::Page::SysDataDictionaryHeader
     end
 
-    it 'should return nil for a non-system space' do
+    it "should return nil for a non-system space" do
       @space_ibd.data_dictionary_page.should eql nil
     end
   end
 
-  describe '#index' do
-    it 'is an Innodb::Index' do
+  describe "#index" do
+    it "is an Innodb::Index" do
       @space_ibd.index(3).should be_an_instance_of Innodb::Index
     end
   end
 
-  describe '#each_index' do
-    it 'is an enumerator' do
+  describe "#each_index" do
+    it "is an enumerator" do
       is_enumerator?(@space_ibd.each_index).should be_truthy
     end
 
-    it 'iterates through indexes' do
+    it "iterates through indexes" do
       @space_ibd.each_index.to_a.size.should eql 1
     end
 
-    it 'yields an Innodb::Index' do
+    it "yields an Innodb::Index" do
       @space_ibd.each_index.to_a.first.should be_an_instance_of Innodb::Index
     end
   end
 
-  describe '#each_page' do
-    it 'is an enumerator' do
+  describe "#each_page" do
+    it "is an enumerator" do
       is_enumerator?(@space_ibd.each_page).should be_truthy
     end
 
-    it 'iterates through pages' do
+    it "iterates through pages" do
       @space_ibd.each_page.to_a.size.should eql 6
     end
 
-    it 'yields an Array of [page_number, page]' do
+    it "yields an Array of [page_number, page]" do
       first_page = @space_ibd.each_page.to_a.first
       first_page.should be_an_instance_of Array
       first_page[0].should eql 0
@@ -159,18 +159,18 @@ describe Innodb::Space do
     end
   end
 
-  describe '#each_xdes_page_number' do
-    it 'is an enumerator' do
+  describe "#each_xdes_page_number" do
+    it "is an enumerator" do
       is_enumerator?(@space.each_xdes_page_number).should be_truthy
     end
   end
 
-  describe '#xdes_page_for_page' do
-    it 'is a Integer' do
+  describe "#xdes_page_for_page" do
+    it "is a Integer" do
       @space.xdes_page_for_page(0).should be_an_instance_of Integer
     end
 
-    it 'calculates the correct page number' do
+    it "calculates the correct page number" do
       @space.xdes_page_for_page(0).should eql 0
       @space.xdes_page_for_page(1).should eql 0
       @space.xdes_page_for_page(63).should eql 0
@@ -182,12 +182,12 @@ describe Innodb::Space do
     end
   end
 
-  describe '#xdes_entry_for_page' do
-    it 'is a Integer' do
+  describe "#xdes_entry_for_page" do
+    it "is a Integer" do
       @space.xdes_entry_for_page(0).should be_an_instance_of Integer
     end
 
-    it 'calculates the correct entry number' do
+    it "calculates the correct entry number" do
       @space.xdes_entry_for_page(0).should eql 0
       @space.xdes_entry_for_page(1).should eql 0
       @space.xdes_entry_for_page(63).should eql 0
@@ -206,56 +206,56 @@ describe Innodb::Space do
     end
   end
 
-  describe '#xdes_for_page' do
-    it 'is an Innodb::Xdes' do
+  describe "#xdes_for_page" do
+    it "is an Innodb::Xdes" do
       @space.xdes_for_page(0).should be_an_instance_of Innodb::Xdes
     end
 
-    it 'returns the correct XDES entry' do
+    it "returns the correct XDES entry" do
       xdes = @space.xdes_for_page(0)
       (xdes.start_page <= 0).should eql true
       (xdes.end_page >= 0).should eql true
     end
   end
 
-  describe '#each_xdes_page' do
-    it 'is an enumerator' do
+  describe "#each_xdes_page" do
+    it "is an enumerator" do
       is_enumerator?(@space_ibd.each_xdes_page).should be_truthy
     end
 
-    it 'iterates through extent descriptor pages' do
+    it "iterates through extent descriptor pages" do
       @space_ibd.each_xdes_page.to_a.size.should eql 1
     end
 
-    it 'yields an Innodb::Page::FspHdrXdes' do
+    it "yields an Innodb::Page::FspHdrXdes" do
       @space_ibd.each_xdes_page.to_a.first.should be_an_instance_of Innodb::Page::FspHdrXdes
     end
   end
 
-  describe '#each_xdes' do
-    it 'is an enumerator' do
+  describe "#each_xdes" do
+    it "is an enumerator" do
       is_enumerator?(@space_ibd.each_xdes).should be_truthy
     end
 
-    it 'iterates through extent descriptor entries' do
+    it "iterates through extent descriptor entries" do
       @space_ibd.each_xdes.to_a.size.should eql 1
     end
 
-    it 'yields an Innodb::Xdes' do
+    it "yields an Innodb::Xdes" do
       @space_ibd.each_xdes.to_a.first.should be_an_instance_of Innodb::Xdes
     end
   end
 
-  describe '#each_page_type_region' do
-    it 'is an enumerator' do
+  describe "#each_page_type_region" do
+    it "is an enumerator" do
       is_enumerator?(@space_ibd.each_page_type_region).should be_truthy
     end
 
-    it 'iterates through page type regions' do
+    it "iterates through page type regions" do
       @space_ibd.each_page_type_region.to_a.size.should eql 5
     end
 
-    it 'yields a Hash with the right keys and values' do
+    it "yields a Hash with the right keys and values" do
       page_type_regions = @space_ibd.each_page_type_region.to_a
 
       page_type_regions[0].should be_an_instance_of Hash

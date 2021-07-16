@@ -12,15 +12,15 @@ module Innodb
     # Return the FSEG entry address, which points to an entry on an INODE page.
     def self.get_entry_address(cursor)
       {
-        space_id: cursor.name('space_id') { cursor.read_uint32 },
-        page_number: cursor.name('page_number') { Innodb::Page.maybe_undefined(cursor.read_uint32) },
-        offset: cursor.name('offset') { cursor.read_uint16 },
+        space_id: cursor.name("space_id") { cursor.read_uint32 },
+        page_number: cursor.name("page_number") { Innodb::Page.maybe_undefined(cursor.read_uint32) },
+        offset: cursor.name("offset") { cursor.read_uint16 },
       }
     end
 
     # Return an INODE entry which represents this file segment.
     def self.get_inode(space, cursor)
-      address = cursor.name('address') { get_entry_address(cursor) }
+      address = cursor.name("address") { get_entry_address(cursor) }
       return nil if address[:offset].zero?
 
       page = space.page(address[:page_number])

@@ -50,7 +50,7 @@ module Innodb
 
     # Add an already-constructed Innodb::Space object.
     def add_space(space)
-      raise 'Object was not an Innodb::Space' unless space.is_a?(Innodb::Space)
+      raise "Object was not an Innodb::Space" unless space.is_a?(Innodb::Space)
 
       spaces[space.space_id.to_i] = space
     end
@@ -70,7 +70,7 @@ module Innodb
     # Add a space by table name, constructing an appropriate filename
     # from the provided table name.
     def add_table(table_name)
-      space_file = '%s/%s.ibd' % [config[:datadir], table_name]
+      space_file = "%s/%s.ibd" % [config[:datadir], table_name]
       if File.exist?(space_file)
         add_space_file(space_file)
       else
@@ -87,7 +87,7 @@ module Innodb
         raise "Table with space ID #{space_id} not found"
       end
 
-      add_table(table_record['NAME'])
+      add_table(table_record["NAME"])
 
       spaces[space_id]
     end
@@ -98,9 +98,9 @@ module Innodb
         raise "Table #{table_name} not found"
       end
 
-      return if table_record['SPACE'].zero?
+      return if table_record["SPACE"].zero?
 
-      space(table_record['SPACE'])
+      space(table_record["SPACE"])
     end
 
     # Iterate through all table names.
@@ -108,7 +108,7 @@ module Innodb
       return enum_for(:each_table_name) unless block_given?
 
       data_dictionary.each_table do |record|
-        yield record['NAME']
+        yield record["NAME"]
       end
 
       nil
@@ -128,7 +128,7 @@ module Innodb
       return enum_for(:each_column_name_by_table_name, table_name) unless block_given?
 
       data_dictionary.each_column_by_table_name(table_name) do |record|
-        yield record['NAME']
+        yield record["NAME"]
       end
 
       nil
@@ -139,7 +139,7 @@ module Innodb
       return enum_for(:each_index_name_by_table_name, table_name) unless block_given?
 
       data_dictionary.each_index_by_table_name(table_name) do |record|
-        yield record['NAME']
+        yield record["NAME"]
       end
 
       nil
@@ -151,7 +151,7 @@ module Innodb
       return enum_for(:each_index_field_name_by_index_name, table_name, index_name) unless block_given?
 
       data_dictionary.each_field_by_index_name(table_name, index_name) do |record|
-        yield record['COL_NAME']
+        yield record["COL_NAME"]
       end
 
       nil
@@ -159,12 +159,12 @@ module Innodb
 
     # Return the table name given a table ID.
     def table_name_by_id(table_id)
-      data_dictionary.table_by_id(table_id).fetch('NAME', nil)
+      data_dictionary.table_by_id(table_id).fetch("NAME", nil)
     end
 
     # Return the index name given an index ID.
     def index_name_by_id(index_id)
-      data_dictionary.index_by_id(index_id).fetch('NAME', nil)
+      data_dictionary.index_by_id(index_id).fetch("NAME", nil)
     end
 
     # Return the clustered index name given a table name.
@@ -180,7 +180,7 @@ module Innodb
         [dd_index[:table], dd_index[:index]]
       elsif (index_record = data_dictionary.index_by_id(index_id))
         # This is a system or user index.
-        [table_name_by_id(index_record['TABLE_ID']), index_record['NAME']]
+        [table_name_by_id(index_record["TABLE_ID"]), index_record["NAME"]]
       end
     end
 
@@ -188,9 +188,9 @@ module Innodb
     def index_by_name(table_name, index_name)
       index_record = data_dictionary.index_by_name(table_name, index_name)
 
-      index_space = space(index_record['SPACE'])
+      index_space = space(index_record["SPACE"])
       describer = data_dictionary.record_describer_by_index_name(table_name, index_name)
-      index_space.index(index_record['PAGE_NO'], describer)
+      index_space.index(index_record["PAGE_NO"], describer)
     end
 
     # Return the clustered index given a table ID.

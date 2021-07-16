@@ -17,9 +17,9 @@ module Innodb
       end
 
       def ibuf_header
-        cursor(pos_ibuf_header).name('ibuf_header') do |c|
+        cursor(pos_ibuf_header).name("ibuf_header") do |c|
           Header.new(
-            fseg: c.name('fseg') { Innodb::FsegEntry.get_inode(space, c) }
+            fseg: c.name("fseg") { Innodb::FsegEntry.get_inode(space, c) }
           )
         end
       end
@@ -33,14 +33,14 @@ module Innodb
           offset: pos_ibuf_header,
           length: size_ibuf_header,
           name: :ibuf_header,
-          info: 'Insert Buffer Header'
+          info: "Insert Buffer Header"
         )
       end
 
       def dump
         super
 
-        puts 'ibuf header:'
+        puts "ibuf header:"
         pp ibuf_header
       end
     end

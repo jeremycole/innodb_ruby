@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'forwardable'
+require "forwardable"
 
 # A specialized class for TRX_SYS pages, which contain various information
 # about the transaction system within InnoDB. Only one TRX_SYS page exists in
@@ -113,8 +113,8 @@ module Innodb
           cursor.name("slot[#{n}]") do |c|
             slot = RsegSlot.new(
               offset: c.position,
-              space_id: c.name('space_id') { Innodb::Page.maybe_undefined(c.read_uint32) },
-              page_number: c.name('page_number') { Innodb::Page.maybe_undefined(c.read_uint32) }
+              space_id: c.name("space_id") { Innodb::Page.maybe_undefined(c.read_uint32) },
+              page_number: c.name("page_number") { Innodb::Page.maybe_undefined(c.read_uint32) }
             )
             a << slot if slot.space_id && slot.page_number
           end
@@ -124,20 +124,20 @@ module Innodb
       # Read a MySQL binary log information structure from a given position.
       def mysql_log_info(cursor, offset)
         cursor.peek(offset) do |c|
-          magic_n = c.name('magic_n') { c.read_uint32 } == MYSQL_LOG_MAGIC_N
+          magic_n = c.name("magic_n") { c.read_uint32 } == MYSQL_LOG_MAGIC_N
           break unless magic_n
 
           MysqlLogInfo.new(
             magic_n: magic_n,
-            offset: c.name('offset') { c.read_uint64 },
-            name: c.name('name') { c.read_bytes(100) }
+            offset: c.name("offset") { c.read_uint64 },
+            name: c.name("name") { c.read_bytes(100) }
           )
         end
       end
 
       # Read a single doublewrite buffer information structure from a given cursor.
       def doublewrite_page_info(cursor)
-        magic_n = cursor.name('magic_n') { cursor.read_uint32 }
+        magic_n = cursor.name("magic_n") { cursor.read_uint32 }
 
         DoublewritePageInfo.new(
           magic_n: magic_n,
@@ -148,11 +148,11 @@ module Innodb
       # Read the overall doublewrite buffer structures
       def doublewrite_info(cursor)
         cursor.peek(pos_doublewrite_info) do |c_doublewrite|
-          c_doublewrite.name('doublewrite') do |c|
+          c_doublewrite.name("doublewrite") do |c|
             DoublewriteInfo.new(
-              fseg: c.name('fseg') { Innodb::FsegEntry.get_inode(@space, c) },
+              fseg: c.name("fseg") { Innodb::FsegEntry.get_inode(@space, c) },
               page_info: [0, 1].map { |n| c.name("group[#{n}]") { doublewrite_page_info(c) } },
-              space_id_stored: (c.name('space_id_stored') { c.read_uint32 } == DOUBLEWRITE_SPACE_ID_STORED_MAGIC_N)
+              space_id_stored: (c.name("space_id_stored") { c.read_uint32 } == DOUBLEWRITE_SPACE_ID_STORED_MAGIC_N)
             )
           end
         end
@@ -160,13 +160,13 @@ module Innodb
 
       # Read the TRX_SYS headers and other information.
       def trx_sys
-        @trx_sys ||= cursor(pos_trx_sys_header).name('trx_sys') do |c|
+        @trx_sys ||= cursor(pos_trx_sys_header).name("trx_sys") do |c|
           Header.new(
-            trx_id: c.name('trx_id') { c.read_uint64 },
-            fseg: c.name('fseg') { Innodb::FsegEntry.get_inode(@space, c) },
-            rsegs: c.name('rsegs') { rsegs_array(c) },
-            binary_log: c.name('binary_log') { mysql_log_info(c, pos_mysql_binary_log_info) },
-            master_log: c.name('master_log') { mysql_log_info(c, pos_mysql_master_log_info) },
+            trx_id: c.name("trx_id") { c.read_uint64 },
+            fseg: c.name("fseg") { Innodb::FsegEntry.get_inode(@space, c) },
+            rsegs: c.name("rsegs") { rsegs_array(c) },
+            binary_log: c.name("binary_log") { mysql_log_info(c, pos_mysql_binary_log_info) },
+            master_log: c.name("master_log") { mysql_log_info(c, pos_mysql_master_log_info) },
             doublewrite: doublewrite_info(c)
           )
         end
@@ -188,7 +188,7 @@ module Innodb
           offset: pos_trx_sys_header,
           length: size_trx_sys_header,
           name: :trx_sys_header,
-          info: 'Transaction System Header'
+          info: "Transaction System Header"
         )
 
         rsegs.each do |rseg|
@@ -196,7 +196,7 @@ module Innodb
             offset: rseg[:offset],
             length: 4 + 4,
             name: :rseg,
-            info: 'Rollback Segment'
+            info: "Rollback Segment"
           )
         end
 
@@ -204,21 +204,21 @@ module Innodb
           offset: pos_mysql_binary_log_info,
           length: size_mysql_log_info,
           name: :mysql_binary_log_info,
-          info: 'Binary Log Info'
+          info: "Binary Log Info"
         )
 
         yield Region.new(
           offset: pos_mysql_master_log_info,
           length: size_mysql_log_info,
           name: :mysql_master_log_info,
-          info: 'Master Log Info'
+          info: "Master Log Info"
         )
 
         yield Region.new(
           offset: pos_doublewrite_info,
           length: size_doublewrite_info,
           name: :doublewrite_info,
-          info: 'Double Write Buffer Info'
+          info: "Double Write Buffer Info"
         )
 
         nil
@@ -228,7 +228,7 @@ module Innodb
       def dump
         super
 
-        puts 'trx_sys:'
+        puts "trx_sys:"
         pp trx_sys
         puts
       end

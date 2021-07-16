@@ -29,7 +29,7 @@ module Innodb
             @undo_record_cursor = @undo_log.undo_record_cursor(:max, direction)
           end
         else
-          raise 'Not implemented'
+          raise "Not implemented"
         end
         # rubocop:enable Style/IfUnlessModifier
       end

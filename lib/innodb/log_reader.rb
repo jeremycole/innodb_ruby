@@ -110,8 +110,8 @@ module Innodb
         break if data_length < Innodb::LogBlock::BLOCK_SIZE
       end
 
-      raise ChecksumError, 'Block is corrupted' if corrupt
-      raise EOFError, 'End of log reached' if buffer.size < size
+      raise ChecksumError, "Block is corrupted" if corrupt
+      raise EOFError, "End of log reached" if buffer.size < size
     end
   end
 end

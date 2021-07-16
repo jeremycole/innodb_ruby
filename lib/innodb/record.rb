@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'forwardable'
+require "forwardable"
 
 module Innodb
   class Record
@@ -32,11 +32,11 @@ module Innodb
     def_delegator :header, :min_rec?
 
     def key_string
-      key&.map { |r| '%s=%s' % [r.name, r.value.inspect] }&.join(', ')
+      key&.map { |r| "%s=%s" % [r.name, r.value.inspect] }&.join(", ")
     end
 
     def row_string
-      row&.map { |r| '%s=%s' % [r.name, r.value.inspect] }&.join(', ')
+      row&.map { |r| "%s=%s" % [r.name, r.value.inspect] }&.join(", ")
     end
 
     def undo
@@ -65,9 +65,9 @@ module Innodb
 
     def string
       if child_page_number
-        '(%s) → #%s' % [key_string, child_page_number]
+        "(%s) → #%s" % [key_string, child_page_number]
       else
-        '(%s) → (%s)' % [key_string, row_string]
+        "(%s) → (%s)" % [key_string, row_string]
       end
     end
 
@@ -107,33 +107,33 @@ module Innodb
     end
 
     def dump
-      puts 'Record at offset %i' % offset
+      puts "Record at offset %i" % offset
       puts
 
-      puts 'Header:'
-      puts '  %-20s: %i' % ['Next record offset', header.next]
-      puts '  %-20s: %i' % ['Heap number', header.heap_number]
-      puts '  %-20s: %s' % ['Type', header.type]
-      puts '  %-20s: %s' % ['Deleted', header.deleted?]
-      puts '  %-20s: %s' % ['Length', header.length]
+      puts "Header:"
+      puts "  %-20s: %i" % ["Next record offset", header.next]
+      puts "  %-20s: %i" % ["Heap number", header.heap_number]
+      puts "  %-20s: %s" % ["Type", header.type]
+      puts "  %-20s: %s" % ["Deleted", header.deleted?]
+      puts "  %-20s: %s" % ["Length", header.length]
       puts
 
       if page.leaf?
-        puts 'System fields:'
-        puts '  Transaction ID: %s' % transaction_id
-        puts '  Roll Pointer:'
-        puts '    Undo Log: page %i, offset %i' % [
+        puts "System fields:"
+        puts "  Transaction ID: %s" % transaction_id
+        puts "  Roll Pointer:"
+        puts "    Undo Log: page %i, offset %i" % [
           roll_pointer.undo_log.page,
           roll_pointer.undo_log.offset,
         ]
-        puts '    Rollback Segment ID: %i' % roll_pointer.rseg_id
-        puts '    Insert: %s' % roll_pointer.is_insert
+        puts "    Rollback Segment ID: %i" % roll_pointer.rseg_id
+        puts "    Insert: %s" % roll_pointer.is_insert
         puts
       end
 
-      puts 'Key fields:'
+      puts "Key fields:"
       key.each do |field|
-        puts '  %s: %s' % [
+        puts "  %s: %s" % [
           field.name,
           field.value.inspect,
         ]
@@ -141,15 +141,15 @@ module Innodb
       puts
 
       if page.leaf?
-        puts 'Non-key fields:'
+        puts "Non-key fields:"
         row.each do |field|
-          puts '  %s: %s' % [
+          puts "  %s: %s" % [
             field.name,
             field.value.inspect,
           ]
         end
       else
-        puts 'Child page number: %i' % child_page_number
+        puts "Child page number: %i" % child_page_number
       end
       puts
     end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'forwardable'
+require "forwardable"
 
 module Innodb
   class Inode
@@ -55,13 +55,13 @@ module Innodb
         space,
         Header.new(
           offset: cursor.position,
-          fseg_id: cursor.name('fseg_id') { cursor.read_uint64 },
-          not_full_n_used: cursor.name('not_full_n_used') { cursor.read_uint32 },
-          free: cursor.name('list[free]') { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
-          not_full: cursor.name('list[not_full]') { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
-          full: cursor.name('list[full]') { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
-          magic_n: cursor.name('magic_n') { cursor.read_uint32 },
-          frag_array: cursor.name('frag_array') { page_number_array(FRAG_ARRAY_N_SLOTS, cursor) }
+          fseg_id: cursor.name("fseg_id") { cursor.read_uint64 },
+          not_full_n_used: cursor.name("not_full_n_used") { cursor.read_uint32 },
+          free: cursor.name("list[free]") { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
+          not_full: cursor.name("list[not_full]") { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
+          full: cursor.name("list[full]") { Innodb::List::Xdes.new(space, Innodb::List.get_base_node(cursor)) },
+          magic_n: cursor.name("magic_n") { cursor.read_uint32 },
+          frag_array: cursor.name("frag_array") { page_number_array(FRAG_ARRAY_N_SLOTS, cursor) }
         )
       )
     end
@@ -84,7 +84,7 @@ module Innodb
     def_delegator :header, :frag_array
 
     def inspect
-      '<%s space=%s, fseg=%i>' % [
+      "<%s space=%s, fseg=%i>" % [
         self.class.name,
         space.inspect,
         fseg_id,

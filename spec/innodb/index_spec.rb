@@ -1,31 +1,31 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require "spec_helper"
 
 class TTenKRowsDescriber < Innodb::RecordDescriber
   type :clustered
-  key 'i', :INT, :UNSIGNED, :NOT_NULL
+  key "i", :INT, :UNSIGNED, :NOT_NULL
 end
 
 describe Innodb::Index do
   before :all do
-    @space = Innodb::Space.new('spec/data/t_10k_rows.ibd')
+    @space = Innodb::Space.new("spec/data/t_10k_rows.ibd")
     @space.record_describer = TTenKRowsDescriber.new
     @index = @space.index(3)
   end
 
-  describe '#linear_search' do
-    it 'finds the correct row' do
+  describe "#linear_search" do
+    it "finds the correct row" do
       rec = @index.linear_search([500])
       rec.key[0][:value].should eql 500
     end
 
-    it 'handles failed searches' do
+    it "handles failed searches" do
       rec = @index.linear_search([999_999])
       rec.should be_nil
     end
 
-    it 'can find boundary rows' do
+    it "can find boundary rows" do
       rec = @index.linear_search([1])
       rec.key[0][:value].should eql 1
 
@@ -40,18 +40,18 @@ describe Innodb::Index do
     end
   end
 
-  describe '#binary_search' do
-    it 'finds the correct row' do
+  describe "#binary_search" do
+    it "finds the correct row" do
       rec = @index.binary_search([500])
       rec.key[0][:value].should eql 500
     end
 
-    it 'handles failed searches' do
+    it "handles failed searches" do
       rec = @index.binary_search([999_999])
       rec.should be_nil
     end
 
-    it 'can find boundary rows' do
+    it "can find boundary rows" do
       rec = @index.binary_search([1])
       rec.key[0][:value].should eql 1
 
@@ -65,7 +65,7 @@ describe Innodb::Index do
       rec.should be_nil
     end
 
-    it 'is much more efficient than linear_search' do
+    it "is much more efficient than linear_search" do
       Innodb::Stats.reset
       @index.linear_search([5_000])
       linear_compares = Innodb::Stats.get(:compare_key)
@@ -77,7 +77,7 @@ describe Innodb::Index do
       ((linear_compares.to_f / binary_compares) > 10).should be_truthy
     end
 
-    it 'can find 200 random rows' do
+    it "can find 200 random rows" do
       missing_keys = {}
       (200.times.map { (rand * 10_000 + 1).floor }).map do |i|
         rec = @index.binary_search([i])
@@ -91,8 +91,8 @@ describe Innodb::Index do
     end
   end
 
-  describe '#min_page_at_level' do
-    it 'returns the min page' do
+  describe "#min_page_at_level" do
+    it "returns the min page" do
       page = @index.min_page_at_level(0)
       page.level.should eql 0
       rec = page.min_record
@@ -100,15 +100,15 @@ describe Innodb::Index do
     end
   end
 
-  describe '#min_record' do
-    it 'returns the min record' do
+  describe "#min_record" do
+    it "returns the min record" do
       rec = @index.min_record
       rec.key[0][:value].should eql 1
     end
   end
 
-  describe '#max_page_at_level' do
-    it 'returns the max page' do
+  describe "#max_page_at_level" do
+    it "returns the max page" do
       page = @index.max_page_at_level(0)
       page.level.should eql 0
       rec = page.max_record
@@ -116,22 +116,22 @@ describe Innodb::Index do
     end
   end
 
-  describe '#max_record' do
-    it 'returns the max record' do
+  describe "#max_record" do
+    it "returns the max record" do
       rec = @index.max_record
       rec.key[0][:value].should eql 10_000
     end
   end
 
-  describe '#cursor' do
-    it 'returns an Innodb::Index::IndexCursor' do
+  describe "#cursor" do
+    it "returns an Innodb::Index::IndexCursor" do
       @index.cursor.should be_an_instance_of Innodb::Index::IndexCursor
     end
   end
 
   describe Innodb::Index::IndexCursor do
-    describe '#record' do
-      it 'iterates in forward order' do
+    describe "#record" do
+      it "iterates in forward order" do
         cursor = @index.cursor(:min, :forward)
 
         previous = cursor.record
@@ -142,7 +142,7 @@ describe Innodb::Index do
         end
       end
 
-      it 'iterates in backward order' do
+      it "iterates in backward order" do
         cursor = @index.cursor(:max, :backward)
 
         previous = cursor.record
@@ -153,7 +153,7 @@ describe Innodb::Index do
         end
       end
 
-      it 'iterates across page boundaries' do
+      it "iterates across page boundaries" do
         cursor = @index.cursor
 
         # This will be the first record, from page 4.
@@ -168,7 +168,7 @@ describe Innodb::Index do
         rec.page.offset.should_not eql 4
       end
 
-      it 'iterates back and forth' do
+      it "iterates back and forth" do
         cursor = @index.cursor(:min, :forward)
 
         1.upto(900) do |v|
@@ -184,7 +184,7 @@ describe Innodb::Index do
         cursor.record.should be_nil
       end
 
-      it 'handles index bounds' do
+      it "handles index bounds" do
         cursor = @index.cursor(:min, :backward)
         cursor.record.key[0][:value].to_i.should eql 1
         cursor.record.should be_nil
@@ -195,8 +195,8 @@ describe Innodb::Index do
       end
     end
 
-    describe '#each_record' do
-      it 'is an enumerator' do
+    describe "#each_record" do
+      it "is an enumerator" do
         is_enumerator?(@index.cursor.each_record).should be_truthy
       end
     end

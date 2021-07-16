@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'innodb/page/sys_rseg_header'
-require 'innodb/page/sys_data_dictionary_header'
-require 'innodb/page/sys_ibuf_header'
+require "innodb/page/sys_rseg_header"
+require "innodb/page/sys_data_dictionary_header"
+require "innodb/page/sys_ibuf_header"
 
 # Another layer of indirection for pages of type SYS, as they have multiple
 # uses within InnoDB. We'll override the self.handle method and check the

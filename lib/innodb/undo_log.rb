@@ -42,27 +42,27 @@ module Innodb
     end
 
     def header
-      @header ||= page.cursor(@position).name('header') do |c|
+      @header ||= page.cursor(@position).name("header") do |c|
         header = Header.new(
-          trx_id: c.name('trx_id') { c.read_uint64 },
-          trx_no: c.name('trx_no') { c.read_uint64 },
-          delete_mark_flag: c.name('delete_mark_flag') { (c.read_uint16 != 0) },
-          log_start_offset: c.name('log_start_offset') { c.read_uint16 },
-          xid_flag: c.name('xid_flag') { (c.read_uint8 != 0) },
-          ddl_flag: c.name('ddl_flag') { (c.read_uint8 != 0) },
-          ddl_table_id: c.name('ddl_table_id') { c.read_uint64 },
-          next_log_offset: c.name('next_log_offset') { c.read_uint16 },
-          prev_log_offset: c.name('prev_log_offset') { c.read_uint16 },
-          history_list_node: c.name('history_list_node') { Innodb::List.get_node(c) }
+          trx_id: c.name("trx_id") { c.read_uint64 },
+          trx_no: c.name("trx_no") { c.read_uint64 },
+          delete_mark_flag: c.name("delete_mark_flag") { (c.read_uint16 != 0) },
+          log_start_offset: c.name("log_start_offset") { c.read_uint16 },
+          xid_flag: c.name("xid_flag") { (c.read_uint8 != 0) },
+          ddl_flag: c.name("ddl_flag") { (c.read_uint8 != 0) },
+          ddl_table_id: c.name("ddl_table_id") { c.read_uint64 },
+          next_log_offset: c.name("next_log_offset") { c.read_uint16 },
+          prev_log_offset: c.name("prev_log_offset") { c.read_uint16 },
+          history_list_node: c.name("history_list_node") { Innodb::List.get_node(c) }
         )
 
         if header.xid_flag
-          header.xid = c.name('xid') do
+          header.xid = c.name("xid") do
             HeaderXid.new(
-              format: c.name('format') { c.read_uint32 },
-              trid_len: c.name('trid_len') { c.read_uint32 },
-              bqual_len: c.name('bqual_len') { c.read_uint32 },
-              data: c.name('data') { c.read_bytes(128) }
+              format: c.name("format") { c.read_uint32 },
+              trid_len: c.name("trid_len") { c.read_uint32 },
+              bqual_len: c.name("bqual_len") { c.read_uint32 },
+              data: c.name("data") { c.read_bytes(128) }
             )
           end
         end
@@ -100,7 +100,7 @@ module Innodb
         when :min
           @undo_record = @undo_log.min_undo_record
         when :max
-          raise 'Not implemented'
+          raise "Not implemented"
         else
           @undo_record = @undo_log.undo_record(offset)
         end
@@ -148,7 +148,7 @@ module Innodb
     end
 
     def dump
-      puts 'header:'
+      puts "header:"
       pp header
       puts
     end

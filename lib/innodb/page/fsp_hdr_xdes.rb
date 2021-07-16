@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'innodb/list'
-require 'innodb/xdes'
+require "innodb/list"
+require "innodb/xdes"
 
 # A specialized class for FSP_HDR (filespace header) and XDES (extent
 # descriptor) page types. Each tablespace always has an FSP_HDR page as
@@ -121,20 +121,20 @@ module Innodb
       # Read the FSP (filespace) header, which contains a few counters and flags,
       # as well as list base nodes for each list maintained in the filespace.
       def fsp_header
-        @fsp_header ||= cursor(pos_fsp_header).name('fsp') do |c|
+        @fsp_header ||= cursor(pos_fsp_header).name("fsp") do |c|
           Header.new(
-            space_id: c.name('space_id') { c.read_uint32 },
-            unused: c.name('unused') { c.read_uint32 },
-            size: c.name('size') { c.read_uint32 },
-            free_limit: c.name('free_limit') { c.read_uint32 },
-            flags: c.name('flags') { self.class.decode_flags(c.read_uint32) },
-            frag_n_used: c.name('frag_n_used') { c.read_uint32 },
-            free: c.name('list[free]') { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
-            free_frag: c.name('list[free_frag]') { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
-            full_frag: c.name('list[full_frag]') { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
-            first_unused_seg: c.name('first_unused_seg') { c.read_uint64 },
-            full_inodes: c.name('list[full_inodes]') { Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c)) },
-            free_inodes: c.name('list[free_inodes]') { Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c)) }
+            space_id: c.name("space_id") { c.read_uint32 },
+            unused: c.name("unused") { c.read_uint32 },
+            size: c.name("size") { c.read_uint32 },
+            free_limit: c.name("free_limit") { c.read_uint32 },
+            flags: c.name("flags") { self.class.decode_flags(c.read_uint32) },
+            frag_n_used: c.name("frag_n_used") { c.read_uint32 },
+            free: c.name("list[free]") { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
+            free_frag: c.name("list[free_frag]") { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
+            full_frag: c.name("list[full_frag]") { Innodb::List::Xdes.new(@space, Innodb::List.get_base_node(c)) },
+            first_unused_seg: c.name("first_unused_seg") { c.read_uint64 },
+            full_inodes: c.name("list[full_inodes]") { Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c)) },
+            free_inodes: c.name("list[free_inodes]") { Innodb::List::Inode.new(@space, Innodb::List.get_base_node(c)) }
           )
         end
       end
@@ -155,7 +155,7 @@ module Innodb
       def each_xdes
         return enum_for(:each_xdes) unless block_given?
 
-        cursor(pos_xdes_array).name('xdes_array') do |c|
+        cursor(pos_xdes_array).name("xdes_array") do |c|
           entries_in_xdes_array.times do
             yield Innodb::Xdes.new(self, c)
           end
@@ -171,11 +171,11 @@ module Innodb
           offset: pos_fsp_header,
           length: size_fsp_header,
           name: :fsp_header,
-          info: 'FSP Header'
+          info: "FSP Header"
         )
 
         each_xdes do |xdes|
-          state = xdes.state || 'unused'
+          state = xdes.state || "unused"
           yield Region.new(
             offset: xdes.offset,
             length: size_xdes_entry,
@@ -191,11 +191,11 @@ module Innodb
       def dump
         super
 
-        puts 'fsp header:'
+        puts "fsp header:"
         pp fsp_header
         puts
 
-        puts 'xdes entries:'
+        puts "xdes entries:"
         each_xdes do |xdes|
           pp xdes
         end

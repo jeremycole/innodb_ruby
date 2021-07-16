@@ -30,9 +30,9 @@ module Innodb
     # Print a simple report of collected statistics, optionally to the IO object
     # provided, or by default to STDOUT.
     def self.print_report(io = $stdout)
-      io.puts '%-50s%10s' % %w[Statistic Count]
+      io.puts "%-50s%10s" % %w[Statistic Count]
       @data.sort.each do |name, count|
-        io.puts '%-50s%10i' % [
+        io.puts "%-50s%10i" % [
           name,
           count,
         ]

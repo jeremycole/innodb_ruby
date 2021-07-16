@@ -127,7 +127,7 @@ module Innodb
           str << "  %s %s, %s\n" % [
             group,
             item[:name].inspect,
-            item[:type].map(&:inspect).join(', '),
+            item[:type].map(&:inspect).join(", "),
           ]
         end
       end
