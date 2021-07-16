@@ -5,3 +5,7 @@
 *.page_info
 ._*
 tags
+vendor
+.bundle
+.idea
+.byebug_history

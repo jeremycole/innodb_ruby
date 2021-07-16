@@ -25,7 +25,7 @@ module Innodb
       else
         arg = arg.first if arg.is_a?(Array)
         if File.directory?(arg)
-          data_filenames = Dir.glob(arg + '/ibdata?').sort
+          data_filenames = Dir.glob("#{arg}/ibdata?").sort
           raise "Couldn't find any ibdata files in #{arg}" if data_filenames.empty?
         else
           data_filenames = [arg]
@@ -115,12 +115,10 @@ module Innodb
     end
 
     # Iterate throught all orphaned spaces.
-    def each_orphan
+    def each_orphan(&block)
       return enum_for(:each_orphan) unless block_given?
 
-      orphans.each do |space_name|
-        yield space_name
-      end
+      orphans.each(&block)
 
       nil
     end
@@ -192,9 +190,7 @@ module Innodb
 
       index_space = space(index_record['SPACE'])
       describer = data_dictionary.record_describer_by_index_name(table_name, index_name)
-      index = index_space.index(index_record['PAGE_NO'], describer)
-
-      index
+      index_space.index(index_record['PAGE_NO'], describer)
     end
 
     # Return the clustered index given a table ID.

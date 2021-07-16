@@ -318,12 +318,10 @@ module Innodb
 
     # Iterate through records from a data dictionary index yielding each record
     # as a Innodb::Record object.
-    def each_record_from_data_dictionary_index(table, index)
+    def each_record_from_data_dictionary_index(table, index, &block)
       return enum_for(:each_index, table, index) unless block_given?
 
-      data_dictionary_index(table, index).each_record do |record|
-        yield record
-      end
+      data_dictionary_index(table, index).each_record(&block)
 
       nil
     end
@@ -443,15 +441,13 @@ module Innodb
     end
 
     # Iterate through all indexes in a table by table name.
-    def each_index_by_table_name(table_name)
+    def each_index_by_table_name(table_name, &block)
       return enum_for(:each_index_by_table_name, table_name) unless block_given?
 
       table = table_by_name(table_name)
       raise "Table #{table_name} not found" unless table
 
-      each_index_by_table_id(table['ID']) do |record|
-        yield record
-      end
+      each_index_by_table_id(table['ID'], &block)
 
       nil
     end
@@ -468,15 +464,13 @@ module Innodb
     end
 
     # Iterate through all fields in an index by index name.
-    def each_field_by_index_name(table_name, index_name)
+    def each_field_by_index_name(table_name, index_name, &block)
       return enum_for(:each_field_by_name, table_name, index_name) unless block_given?
 
       index = index_by_name(table_name, index_name)
       raise "Index #{index_name} for table #{table_name} not found" unless index
 
-      each_field_by_index_id(index['ID']) do |record|
-        yield record
-      end
+      each_field_by_index_id(index['ID'], &block)
 
       nil
     end
@@ -493,13 +487,11 @@ module Innodb
     end
 
     # Iterate through all columns in a table by table name.
-    def each_column_by_table_name(table_name)
+    def each_column_by_table_name(table_name, &block)
       return enum_for(:each_column_by_table_name, table_name) unless block_given?
       raise "Table #{table_name} not found" unless (table = table_by_name(table_name))
 
-      each_column_by_table_id(table['ID']) do |record|
-        yield record
-      end
+      each_column_by_table_id(table['ID'], &block)
 
       nil
     end
@@ -572,15 +564,15 @@ module Innodb
         yield _make_column_description(:key, record)
       end
 
-      if index['TYPE'] & INDEX_TYPE_FLAG[:CLUSTERED] != 0
-        each_column_by_table_name(table_name) do |record|
-          yield _make_column_description(:row, record) unless columns_in_index.include?(record['NAME'])
-        end
-      else
+      if (index['TYPE'] & INDEX_TYPE_FLAG[:CLUSTERED]).zero?
         clustered_index_name = clustered_index_name_by_table_name(table_name)
 
         each_column_in_index_by_name(table_name, clustered_index_name) do |record|
           yield _make_column_description(:row, record)
+        end
+      else
+        each_column_by_table_name(table_name) do |record|
+          yield _make_column_description(:row, record) unless columns_in_index.include?(record['NAME'])
         end
       end
 
@@ -598,10 +590,10 @@ module Innodb
 
       describer = Innodb::RecordDescriber.new
 
-      if index['TYPE'] & INDEX_TYPE_FLAG[:CLUSTERED] != 0
-        describer.type :clustered
-      else
+      if (index['TYPE'] & INDEX_TYPE_FLAG[:CLUSTERED]).zero?
         describer.type :secondary
+      else
+        describer.type :clustered
       end
 
       each_column_description_by_index_name(table_name, index_name) do |column|

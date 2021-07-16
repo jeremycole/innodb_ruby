@@ -116,12 +116,10 @@ module Innodb
     end
 
     # Iterate through all nodes in the list.
-    def each
+    def each(&block)
       return enum_for(:each) unless block_given?
 
-      list_cursor.each_node do |node|
-        yield node
-      end
+      list_cursor.each_node(&block)
     end
 
     # A list iteration cursor used primarily by the Innodb::List #cursor method

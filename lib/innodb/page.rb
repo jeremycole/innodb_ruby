@@ -320,22 +320,18 @@ module Innodb
     def_delegator :fil_header, :space_id
 
     # Iterate each byte of the FIL header.
-    def each_page_header_byte_as_uint8
+    def each_page_header_byte_as_uint8(&block)
       return enum_for(:each_page_header_byte_as_uint8) unless block_given?
 
-      cursor(pos_partial_page_header).each_byte_as_uint8(size_partial_page_header) do |byte|
-        yield byte
-      end
+      cursor(pos_partial_page_header).each_byte_as_uint8(size_partial_page_header, &block)
     end
 
     # Iterate each byte of the page body, except for the FIL header and
     # the FIL trailer.
-    def each_page_body_byte_as_uint8
+    def each_page_body_byte_as_uint8(&block)
       return enum_for(:each_page_body_byte_as_uint8) unless block_given?
 
-      cursor(pos_page_body).each_byte_as_uint8(size_page_body) do |byte|
-        yield byte
-      end
+      cursor(pos_page_body).each_byte_as_uint8(size_page_body, &block)
     end
 
     # Calculate the checksum of the page using InnoDB's algorithm.

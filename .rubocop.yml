@@ -1,11 +1,18 @@
 AllCops:
   TargetRubyVersion: 2.6
+  NewCops: enable
 Lint/AmbiguousOperator:
   Enabled: false
 Layout/LineLength:
   Max: 120
 Metrics/BlockLength:
   Max: 400
+Naming/VariableNumber:
+  Enabled: false
+Style/AccessorGrouping:
+  EnforcedStyle: separated
+#Style/StringLiterals:
+#  EnforcedStyle: double_quotes
 Style/TrailingCommaInArrayLiteral:
   EnforcedStyleForMultiline: consistent_comma
 Style/TrailingCommaInHashLiteral:

@@ -147,18 +147,14 @@ module Innodb
     # Iterate through the fragment array followed by all lists, yielding the
     # page number. This allows a convenient way to identify all pages that are
     # part of this inode.
-    def each_page_number
+    def each_page_number(&block)
       return enum_for(:each_page_number) unless block_given?
 
-      frag_array_pages.each do |page_number|
-        yield page_number
-      end
+      frag_array_pages.each(&block)
 
       each_list do |_fseg_name, fseg_list|
         fseg_list.each do |xdes|
-          xdes.each_page_status do |page_number|
-            yield page_number
-          end
+          xdes.each_page_status(&block)
         end
       end
 

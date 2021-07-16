@@ -10,22 +10,18 @@ module Innodb
     end
 
     # Iterate through all logs.
-    def each_log
+    def each_log(&block)
       return enum_for(:each_log) unless block_given?
 
-      @logs.each do |log|
-        yield log
-      end
+      @logs.each(&block)
     end
 
     # Iterate through all blocks.
-    def each_block
+    def each_block(&block)
       return enum_for(:each_block) unless block_given?
 
       each_log do |log|
-        log.each_block do |block_index, block|
-          yield block_index, block
-        end
+        log.each_block(&block)
       end
     end
 
