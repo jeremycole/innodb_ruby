@@ -1651,7 +1651,7 @@ when "space-index-pages-summary"
 when "space-index-fseg-pages-summary"
   space_index_fseg_pages_summary(space, @options.fseg_id)
 when "space-index-pages-free-plot"
-  file_name = space.name.sub(".ibd", "").sub(/[^a-zA-Z0-9_]/, "_")
+  file_name = space.name.sub(".ibd", "").delete_prefix("./").sub(/[^a-zA-Z0-9_]/, "_")
   space_index_pages_free_plot(space, file_name, @options.page || 0)
 when "space-page-type-regions"
   space_page_type_regions(space, @options.page || 0)
