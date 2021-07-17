@@ -3,5 +3,3 @@
 source "https://rubygems.org"
 
 gemspec
-
-gem "rubocop-rspec", "~> 2.4"
