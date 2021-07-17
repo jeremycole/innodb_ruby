@@ -412,7 +412,7 @@ def space_indexes(innodb_system, space)
   end
 end
 
-def space_index_pages_free_plot(space, image, start_page)
+def space_index_pages_free_plot(space, start_page)
   raise "Could not load gnuplot. Is it installed?" unless require "gnuplot"
 
   index_data = { 0 => { x: [], y: [] } }
@@ -429,7 +429,9 @@ def space_index_pages_free_plot(space, image, start_page)
     end
   end
 
-  image_file = "#{image}_free.png"
+  image_name = space.name.sub(".ibd", "").gsub(/[^a-zA-Z0-9_]/, "_").sub(/\A_+/, "")
+  image_file = "#{image_name}_free.png"
+
   # Aim for one horizontal pixel per extent, but min 1k and max 10k width.
   image_width = [10_000, [1_000, space.pages / space.pages_per_extent].max].min
 
@@ -437,7 +439,7 @@ def space_index_pages_free_plot(space, image, start_page)
     Gnuplot::Plot.new(gp) do |plot|
       plot.terminal "png size #{image_width}, 800"
       plot.output image_file
-      plot.title image
+      plot.title image_name.gsub("_", " ")
       plot.key "reverse left top box horizontal Left textcolor variable"
       plot.ylabel "free space per page"
       plot.xlabel "page number"
@@ -1651,8 +1653,7 @@ when "space-index-pages-summary"
 when "space-index-fseg-pages-summary"
   space_index_fseg_pages_summary(space, @options.fseg_id)
 when "space-index-pages-free-plot"
-  file_name = space.name.sub(".ibd", "").sub(/[^a-zA-Z0-9_]/, "_")
-  space_index_pages_free_plot(space, file_name, @options.page || 0)
+  space_index_pages_free_plot(space, @options.page || 0)
 when "space-page-type-regions"
   space_page_type_regions(space, @options.page || 0)
 when "space-page-type-summary"
