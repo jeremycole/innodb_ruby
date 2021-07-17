@@ -949,7 +949,6 @@ def page_records(_space, page)
       record.offset,
       record.string,
     ]
-    puts if record.header[:type] == :conventional
   end
 end
 
