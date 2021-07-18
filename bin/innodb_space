@@ -1293,6 +1293,10 @@ The following options are supported:
     --index-name, -I <name>
       Use the index name <name>.
 
+    --system-space-tables
+      Allow opening tables from the system space to support system spaces with
+      tables created without innodb-file-per-table enabled.
+
   --space-file, -f <file>
     Load the tablespace file <file>.
 
@@ -1479,6 +1483,7 @@ end
 @options = OpenStruct.new
 @options.trace                    = 0
 @options.system_space_file        = nil
+@options.system_space_tables      = false
 @options.space_file               = nil
 @options.table_name               = nil
 @options.index_name               = nil
@@ -1496,6 +1501,7 @@ getopt_options = [
   [ "--help",                     "-?",     GetoptLong::NO_ARGUMENT ],
   [ "--trace",                    "-t",     GetoptLong::NO_ARGUMENT ],
   [ "--system-space-file",        "-s",     GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--system-space-tables",      "-x",     GetoptLong::NO_ARGUMENT ],
   [ "--space-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--table-name",               "-T",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--index-name",               "-I",     GetoptLong::REQUIRED_ARGUMENT ],
@@ -1521,6 +1527,8 @@ getopt.each do |opt, arg|
     @options.trace += 1
   when "--system-space-file"
     @options.system_space_file = arg.split(",")
+  when "--system-space-tables"
+    @options.system_space_tables = true
   when "--space-file"
     @options.space_file = arg.split(",")
   when "--table-name"
@@ -1558,12 +1566,12 @@ if @options.system_space_file && @options.space_file
   usage(1, "Only one of --system-space-file (-s) or --space-file (-f) may be specified")
 end
 
-if !@options.system_space_file && (@options.table_name || @options.index_name)
+if !@options.system_space_file && (@options.table_name || @options.index_name || @options.system_space_tables)
   usage(
     1,
     %{
-      The --table-name (-T) and --index-name (-I) options can only be used
-      with the --system-space-file (-s) option
+      The --table-name (-T), --index-name (-I), and --system-space-tables (-x) options can
+      only be used with the --system-space-file (-s) option
     }.squish
   )
 end
@@ -1582,7 +1590,13 @@ end
 
 if innodb_system && @options.table_name
   table_tablespace = innodb_system.space_by_table_name(@options.table_name)
-  space = table_tablespace || innodb_system.system_space
+  if table_tablespace
+    space = table_tablespace
+  elsif @options.system_space_tables
+    space = innodb_system.system_space
+  else
+    raise "Tablespace file not found and --system-space-tables (-x) is not enabled"
+  end
 elsif @options.space_file
   space = Innodb::Space.new(@options.space_file)
 else
