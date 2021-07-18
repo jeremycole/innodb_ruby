@@ -6,6 +6,18 @@ require "ostruct"
 require "histogram/array"
 require "innodb"
 
+class String
+  def squish!
+    gsub!(/[[:space:]]+/, " ")
+    strip!
+    self
+  end
+
+  def squish
+    dup.squish!
+  end
+end
+
 # Convert a floating point RGB array into an ANSI color number approximating it.
 def rgb_to_ansi(rgb)
   rgb_n = rgb.map { |c| (c * 5.0).round }
@@ -1245,14 +1257,15 @@ Usage: innodb_space <options> <mode>
 
 Invocation examples:
 
-  innodb_space -s ibdata1 [-T tname [-I iname]] [options] <mode>
-    Use ibdata1 as the system tablespace and load the tname table (and the
-    iname index for modes that require it) from data located in the system
-    tablespace data dictionary. This will automatically generate a record
-    describer for any indexes.
+  innodb_space -s ibdata1 [-T table-name [-I index-name [-R record-offset]]] [options] <mode>
+    Use ibdata1 as the system tablespace and load the table-name table (and
+    the index-name index for modes that require it) from data located in the
+    system tablespace data dictionary. This will automatically generate a
+    record describer for any indexes using the data dictionary.
 
-  innodb_space -f tname.ibd [-r ./desc.rb -d DescClass] [options] <mode>
-    Use the tname.ibd table (and the DescClass describer where required).
+  innodb_space -f file-name.ibd [-r ./describer.rb -d DescriberClass] [options] <mode>
+    Use the file-name.ibd tablespace file (and the DescriberClass describer
+    where required) to read the tablespace structures or indexes.
 
 The following options are supported:
 
@@ -1271,17 +1284,23 @@ The following options are supported:
     files named 'ibdata?' which will then be sorted alphabetically and used to
     load the system tablespace.
 
-  --table-name, -T <name>
-    Use the table name <name>.
+  If using the --system-space-file option, the following options may also
+  be used:
 
-  --index-name, -I <name>
-    Use the index name <name>.
+    --table-name, -T <name>
+      Use the table name <name>.
+
+    --index-name, -I <name>
+      Use the index name <name>.
 
   --space-file, -f <file>
     Load the tablespace file <file>.
 
   --page, -p <page>
     Operate on the page <page>.
+
+  --record, -R <offset>
+    Operate on the record located at <offset> within the index page.
 
   --level, -l <level>
     Operate on the level <level>.
@@ -1532,11 +1551,21 @@ end
 # rubocop:disable Style/IfUnlessModifier
 
 unless @options.system_space_file || @options.space_file
-  usage 1, "System space file (-s) or space file (-f) must be specified"
+  usage(1, "Either the --system-space-file (-s) or --space-file (-f) must be specified")
 end
 
 if @options.system_space_file && @options.space_file
-  usage 1, "Only one of system space or space file may be specified"
+  usage(1, "Only one of --system-space-file (-s) or --space-file (-f) may be specified")
+end
+
+if !@options.system_space_file && (@options.table_name || @options.index_name)
+  usage(
+    1,
+    %{
+      The --table-name (-T) and --index-name (-I) options can only be used
+      with the --system-space-file (-s) option
+    }.squish
+  )
 end
 
 BufferCursor.trace! if @options.trace > 1
@@ -1583,31 +1612,45 @@ unless mode
 end
 
 if /^(system-|data-dictionary-)/.match(mode) && !innodb_system
-  usage(1, "System tablespace must be specified using -s/--system-space-file")
+  usage(1, "System tablespace must be specified using --system-space-file (-s)")
 end
 
 if /^space-/.match(mode) && !space
   usage(
     1,
-    "Tablespace must be specified using either -f/--space-file " \
-    "or a combination of -s/--system-space-file and -T/--table"
+    %{
+      Tablespace must be specified using either --space-file (-f)
+      or a combination of --system-space-file (-s) and --table (-T)
+    }.squish
   )
 end
 
 if /^index-/.match(mode) && !index
   usage(
     1,
-    "Index must be specified using a combination of either -f/--space-file and -p/--page " \
-    "or -s/--system-space-file, -T/--table-name, and -I/--index-name"
+    %{
+      Index must be specified using a combination of either --space-file (-f) and --page (-p)
+      or --system-space-file (-s), --table-name (-T), and --index-name (-I)
+    }.squish
   )
 end
 
 if /^page-/.match(mode) && !page
-  usage(1, "Page number must be specified using -p/--page")
+  usage(1, "Page number must be specified using --page (-p)")
 end
 
 if /^record-/.match(mode) && !@options.record
-  usage(1, "Record offset must be specified using -R/--record")
+  usage(1, "Record offset must be specified using --record (-R)")
+end
+
+if /^record-/.match(mode) && !page
+  usage(
+    1,
+    %{
+      An index page must be available when using --record (-R); specify either
+      --page (-p) or --table-name (-T) and --index-name (-I) for the index root page.
+    }
+  )
 end
 
 if /^record-/.match(mode) && page.type != :INDEX
@@ -1615,11 +1658,11 @@ if /^record-/.match(mode) && page.type != :INDEX
 end
 
 if /-list-iterate$/.match(mode) && !@options.list
-  usage(1, "List name must be specified using -L/--list")
+  usage(1, "List name must be specified using --list (-L)")
 end
 
 if /-level-/.match(mode) && !@options.level
-  usage(1, "Level must be specified using -l/--level")
+  usage(1, "Level must be specified using --level (-l)")
 end
 
 if %w[
@@ -1628,13 +1671,13 @@ if %w[
   index-digraph
   index-level-summary
 ].include?(mode) && !index.record_describer
-  usage(1, "Record describer must be specified using -d/--describer")
+  usage(1, "Record describer must be specified using --describer (-d)")
 end
 
 if %w[
   space-index-fseg-pages-summary
 ].include?(mode) && !@options.fseg_id
-  usage(1, "File segment id must be specified using -F/--fseg-id")
+  usage(1, "File segment id must be specified using --fseg-id (-F)")
 end
 
 # rubocop:enable Style/IfUnlessModifier
