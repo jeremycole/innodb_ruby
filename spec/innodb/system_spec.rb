@@ -7,6 +7,25 @@ describe Innodb::System do
     @system = Innodb::System.new("spec/data/sakila/compact/ibdata1")
   end
 
+  describe "data_directory" do
+    it "cannot find tablespace files when the data directory is wrong" do
+      broken_system = Innodb::System.new("spec/data/sakila/compact/ibdata1", data_directory: "foo/bar")
+      space = broken_system.space_by_table_name("sakila/film")
+      space.should be_nil
+    end
+  end
+
+  describe "data_directory" do
+    it "can find tablespace files using a specified data directory" do
+      working_system = Innodb::System.new(
+        "spec/data/sakila/compact/ibdata1",
+        data_directory: "spec/data/sakila/compact"
+      )
+      space = working_system.space_by_table_name("sakila/film")
+      space.should be_an_instance_of(Innodb::Space)
+    end
+  end
+
   describe "#system_space" do
     it "returns an Innodb::Space" do
       @system.system_space.should be_an_instance_of Innodb::Space
