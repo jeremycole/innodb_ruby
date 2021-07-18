@@ -19,7 +19,7 @@ module Innodb
     # The space ID of the system space, always 0.
     SYSTEM_SPACE_ID = 0
 
-    def initialize(arg)
+    def initialize(arg, data_directory: nil)
       if arg.is_a?(Array) && arg.size > 1
         data_filenames = arg
       else
@@ -35,7 +35,7 @@ module Innodb
       @spaces = {}
       @orphans = []
       @config = {
-        datadir: File.dirname(data_filenames.first),
+        data_directory: data_directory || File.dirname(data_filenames.first),
       }
 
       add_space_file(data_filenames)
@@ -70,7 +70,7 @@ module Innodb
     # Add a space by table name, constructing an appropriate filename
     # from the provided table name.
     def add_table(table_name)
-      space_file = "%s/%s.ibd" % [config[:datadir], table_name]
+      space_file = "%s/%s.ibd" % [config[:data_directory], table_name]
       if File.exist?(space_file)
         add_space_file(space_file)
       else

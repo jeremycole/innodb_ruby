@@ -1293,9 +1293,13 @@ The following options are supported:
     --index-name, -I <name>
       Use the index name <name>.
 
-    --system-space-tables
+    --system-space-tables, -x
       Allow opening tables from the system space to support system spaces with
       tables created without innodb-file-per-table enabled.
+
+    --data-directory, -D <directory>
+      Open per-table tablespace files from <directory> rather than from the
+      directory where the system-space-file is located.
 
   --space-file, -f <file>
     Load the tablespace file <file>.
@@ -1484,6 +1488,7 @@ end
 @options.trace                    = 0
 @options.system_space_file        = nil
 @options.system_space_tables      = false
+@options.data_directory           = nil
 @options.space_file               = nil
 @options.table_name               = nil
 @options.index_name               = nil
@@ -1502,6 +1507,7 @@ getopt_options = [
   [ "--trace",                    "-t",     GetoptLong::NO_ARGUMENT ],
   [ "--system-space-file",        "-s",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--system-space-tables",      "-x",     GetoptLong::NO_ARGUMENT ],
+  [ "--data-directory",           "-D",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--space-file",               "-f",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--table-name",               "-T",     GetoptLong::REQUIRED_ARGUMENT ],
   [ "--index-name",               "-I",     GetoptLong::REQUIRED_ARGUMENT ],
@@ -1529,6 +1535,8 @@ getopt.each do |opt, arg|
     @options.system_space_file = arg.split(",")
   when "--system-space-tables"
     @options.system_space_tables = true
+  when "--data-directory"
+    @options.data_directory = arg
   when "--space-file"
     @options.space_file = arg.split(",")
   when "--table-name"
@@ -1566,12 +1574,15 @@ if @options.system_space_file && @options.space_file
   usage(1, "Only one of --system-space-file (-s) or --space-file (-f) may be specified")
 end
 
-if !@options.system_space_file && (@options.table_name || @options.index_name || @options.system_space_tables)
+system_space_options =
+  @options.table_name || @options.index_name || @options.system_space_tables || @options.data_directory
+
+if !@options.system_space_file && system_space_options
   usage(
     1,
     %{
-      The --table-name (-T), --index-name (-I), and --system-space-tables (-x) options can
-      only be used with the --system-space-file (-s) option
+      The --table-name (-T), --index-name (-I), --system-space-tables (-x), and --data-directory (-D)
+      options can only be used with the --system-space-file (-s) option
     }.squish
   )
 end
@@ -1585,7 +1596,7 @@ index = nil
 page = nil
 
 if @options.system_space_file
-  innodb_system = Innodb::System.new(@options.system_space_file)
+  innodb_system = Innodb::System.new(@options.system_space_file, data_directory: @options.data_directory)
 end
 
 if innodb_system && @options.table_name
