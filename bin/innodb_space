@@ -1045,6 +1045,8 @@ def record_dump(page, record_offset)
   raise "Record at offset #{record_offset} not found" unless record
 
   record.dump
+rescue IOError
+  raise "Record could not be read at offset #{record_offset}; is it a valid record offset?"
 end
 
 def record_history(page, record_offset)
@@ -1606,6 +1608,10 @@ end
 
 if /^record-/.match(mode) && !@options.record
   usage(1, "Record offset must be specified using -R/--record")
+end
+
+if /^record-/.match(mode) && page.type != :INDEX
+  usage(1, "Mode #{mode} may be used only with index pages")
 end
 
 if /-list-iterate$/.match(mode) && !@options.list
