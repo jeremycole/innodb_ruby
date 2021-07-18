@@ -1451,8 +1451,9 @@ END_OF_USAGE
   exit exit_code
 end
 
-Signal.trap("INT")  { exit }
-Signal.trap("PIPE") { exit }
+%w[INT PIPE].each do |name|
+  Signal.trap(name) { exit } if Signal.list.include?(name)
+end
 
 @options = OpenStruct.new
 @options.trace                    = 0
