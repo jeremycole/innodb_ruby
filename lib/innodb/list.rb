@@ -100,6 +100,11 @@ module Innodb
       @base.length
     end
 
+    # Is the list currently empty?
+    def empty?
+      length.zero?
+    end
+
     # Return the first object in the list using the list base node "first"
     # address pointer.
     def first
