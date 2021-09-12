@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    innodb_ruby (0.11.0)
+    innodb_ruby (0.12.0)
       bindata (>= 1.4.5, < 3.0)
       digest-crc (~> 0.4, >= 0.4.1)
       histogram (~> 0.2)
