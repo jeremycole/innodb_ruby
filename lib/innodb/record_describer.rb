@@ -119,16 +119,15 @@ module Innodb
 
     def generate_class(name = "Describer_#{object_id}")
       str = "class #{name}\n".dup
-      str << "  type %s\n" % [
-        description[:type].inspect,
-      ]
+      str << format("  type %s\n", description[:type].inspect)
       %i[key row].each do |group|
         description[group].each do |item|
-          str << "  %s %s, %s\n" % [
+          str << format(
+            "  %s %s, %s\n",
             group,
             item[:name].inspect,
-            item[:type].map(&:inspect).join(", "),
-          ]
+            item[:type].map(&:inspect).join(", ")
+          )
         end
       end
       str << "end\n"

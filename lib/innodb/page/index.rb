@@ -130,7 +130,7 @@ module Innodb
       # Maximum number of fields.
       RECORD_MAX_N_SYSTEM_FIELDS  = 3
       RECORD_MAX_N_FIELDS         = 1024 - 1
-      RECORD_MAX_N_USER_FIELDS    = RECORD_MAX_N_FIELDS - RECORD_MAX_N_SYSTEM_FIELDS * 2
+      RECORD_MAX_N_USER_FIELDS    = RECORD_MAX_N_FIELDS - (RECORD_MAX_N_SYSTEM_FIELDS * 2)
 
       # Page direction values possible in the page_header's :direction field.
       PAGE_DIRECTION = {
@@ -314,8 +314,8 @@ module Innodb
             index_id: c.name("index_id") { c.read_uint64 }
           )
 
-          index.n_heap = index.n_heap_format & (2**15 - 1)
-          index.format = (index.n_heap_format & 1 << 15).zero? ? :redundant : :compact
+          index.n_heap = index.n_heap_format & ((2**15) - 1)
+          index.format = (index.n_heap_format & (1 << 15)).zero? ? :redundant : :compact
 
           index
         end
