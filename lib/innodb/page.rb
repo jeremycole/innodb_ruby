@@ -272,7 +272,7 @@ module Innodb
     PAGE_TYPE_BY_VALUE = PAGE_TYPE.each_with_object({}) { |(k, v), h| h[v[:value]] = k }
 
     # A page number representing "undefined" values, (4294967295).
-    UNDEFINED_PAGE_NUMBER = 2**32 - 1
+    UNDEFINED_PAGE_NUMBER = (2**32) - 1
 
     # A helper to check if a page number is the undefined page number.
     def self.undefined?(page_number)

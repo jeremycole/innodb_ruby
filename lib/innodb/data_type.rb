@@ -112,8 +112,8 @@ module Innodb
         @uncomp_fractional = scale / MAX_DIGITS_PER_INTEGER
         @comp_integral = integral - (@uncomp_integral * MAX_DIGITS_PER_INTEGER)
         @comp_fractional = scale - (@uncomp_fractional * MAX_DIGITS_PER_INTEGER)
-        @width = @uncomp_integral * 4 + BYTES_PER_DIGIT[@comp_integral] +
-                 @comp_fractional * 4 + BYTES_PER_DIGIT[@comp_fractional]
+        @width = (@uncomp_integral * 4) + BYTES_PER_DIGIT[@comp_integral] +
+                 (@comp_fractional * 4) + BYTES_PER_DIGIT[@comp_fractional]
         @name = Innodb::DataType.make_name(base_type, modifiers, properties)
       end
 

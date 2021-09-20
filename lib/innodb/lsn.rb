@@ -40,7 +40,7 @@ module Innodb
       fragment = (@lsn_no % LOG_BLOCK_SIZE) - LOG_BLOCK_HEADER_SIZE
       raise "Invalid fragment #{fragment} for LSN #{@lsn_no}" unless fragment.between?(0, LOG_BLOCK_DATA_SIZE - 1)
 
-      length + (fragment + length) / LOG_BLOCK_DATA_SIZE * LOG_BLOCK_FRAME_SIZE
+      length + ((fragment + length) / LOG_BLOCK_DATA_SIZE * LOG_BLOCK_FRAME_SIZE)
     end
 
     # Whether LSN might point to log record data.
@@ -82,12 +82,12 @@ module Innodb
       end
 
       # Transpose group size offset to a group capacity offset.
-      group_offset = offset - (LOG_HEADER_SIZE * (1 + offset / log_size))
+      group_offset = offset - (LOG_HEADER_SIZE * (1 + (offset / log_size)))
 
       offset = (lsn_offset + group_offset) % group_capacity
 
       # Transpose group capacity offset to a group size offset.
-      offset + LOG_HEADER_SIZE * (1 + offset / (log_size - LOG_HEADER_SIZE))
+      offset + (LOG_HEADER_SIZE * (1 + (offset / (log_size - LOG_HEADER_SIZE))))
     end
 
     # Whether offset points to the data area of an existing log block.

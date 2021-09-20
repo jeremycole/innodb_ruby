@@ -238,7 +238,7 @@ module Innodb
     end
 
     def row_string
-      row&.reject(&:nil?)&.map { |r| r && "%s=%s" % [r[:name], r[:value].inspect] }&.join(", ")
+      row&.reject(&:nil?)&.map { |r| r && format("%s=%s", r[:name], r[:value].inspect) }&.join(", ")
     end
 
     def string
