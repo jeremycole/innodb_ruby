@@ -26,7 +26,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency("histogram", "~> 0.2")
 
   s.add_development_dependency("gnuplot", "~> 2.6.0")
-  s.add_development_dependency("rspec", "~> 3.10.0")
+  s.add_development_dependency("rspec", "~> 3.11.0")
   s.add_development_dependency("rubocop", "~> 1.18")
   s.add_development_dependency("rubocop-rspec", "~> 2.4")
 end
