@@ -1,6 +1,8 @@
 AllCops:
   TargetRubyVersion: 2.6
   NewCops: enable
+Gemspec/RequireMFA:
+  Enabled: false
 Lint/AmbiguousOperator:
   Enabled: false
 Layout/LineLength:
