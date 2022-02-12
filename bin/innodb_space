@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require "getoptlong"
-require "ostruct"
 require "histogram/array"
 require "innodb"
 
@@ -606,7 +605,7 @@ def space_lsn_age_illustrate(space)
 
   puts "%12s ╰%-#{width}s╯" % ["", "─" * width]
 
-  _, lsn_freq = page_lsn.reject(&:nil?).histogram(colors.size, min: lsn_min, max: lsn_max)
+  _, lsn_freq = page_lsn.compact.histogram(colors.size, min: lsn_min, max: lsn_max)
   lsn_freq_delta = lsn_freq.max - lsn_freq.min
 
   lsn_age_histogram = "".dup
@@ -1484,7 +1483,26 @@ end
   Signal.trap(name) { exit } if Signal.list.include?(name)
 end
 
-@options = OpenStruct.new
+InnodbSpaceOptions = Struct.new(
+  :trace,
+  :system_space_file,
+  :system_space_tables,
+  :data_directory,
+  :space_file,
+  :table_name,
+  :index_name,
+  :page,
+  :record,
+  :level,
+  :list,
+  :fseg_id,
+  :describer,
+  :illustration_line_width,
+  :illustration_block_size,
+  keyword_init: true
+)
+
+@options = InnodbSpaceOptions.new
 @options.trace                    = 0
 @options.system_space_file        = nil
 @options.system_space_tables      = false
