@@ -99,7 +99,7 @@ module Innodb
 
     # Helper method to return an array of only non-nil fragment pages.
     def frag_array_pages
-      frag_array.reject(&:nil?)
+      frag_array.compact
     end
 
     # Helper method to count non-nil fragment pages.

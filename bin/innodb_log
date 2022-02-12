@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require "getoptlong"
-require "ostruct"
 require "set"
 require "innodb"
 
@@ -96,7 +95,14 @@ END_OF_USAGE
   exit exit_code
 end
 
-@options = OpenStruct.new
+InnodbLogOptions = Struct.new(
+  :log_files,
+  :dump,
+  :lsn,
+  keyword_init: true
+)
+
+@options = InnodbLogOptions.new
 @options.log_files = []
 @options.dump = false
 @options.lsn = nil
