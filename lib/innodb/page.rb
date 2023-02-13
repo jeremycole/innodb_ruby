@@ -101,11 +101,8 @@ module Innodb
     # Initialize a page by passing in a buffer containing the raw page contents.
     # The buffer size should match the space's page size.
     def initialize(space, buffer, page_number = nil)
-      unless space && buffer
-        raise "Page can't be initialized from nil space or buffer (space: #{space}, buffer: #{buffer})"
-      end
-
-      raise "Buffer size #{buffer.size} is different than space page size" unless space.page_size == buffer.size
+      raise "Page can't be initialized from nil space or buffer (space: #{space}, buffer: #{buffer})" unless buffer
+      raise "Buffer size #{buffer.size} is different than space page size" if space && space.page_size != buffer.size
 
       @space  = space
       @buffer = buffer
@@ -141,7 +138,7 @@ module Innodb
     # return value of the block.
     def cursor(buffer_offset)
       new_cursor = BufferCursor.new(@buffer, buffer_offset)
-      new_cursor.push_name("space[#{space.name}]")
+      new_cursor.push_name("space[#{space&.name || 'unknown'}]")
       new_cursor.push_name("page[#{name}]")
 
       if block_given?
