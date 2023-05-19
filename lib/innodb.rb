@@ -18,6 +18,7 @@ require "pp"
 require "digest/crc32c"
 require "innodb/util/buffer_cursor"
 require "innodb/util/read_bits_at_offset"
+require "innodb/util/hex_format"
 
 require "innodb/version"
 require "innodb/stats"
