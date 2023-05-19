@@ -32,18 +32,6 @@ module Innodb
         end
       end
 
-      def dump_hex(string)
-        slice_size = 16
-        string.chars.each_slice(slice_size).each_with_index do |slice_bytes, slice_count|
-          puts "%08i  %-23s  %-23s  |%-16s|" % [
-            (slice_count * slice_size),
-            slice_bytes[0..8].map { |n| "%02x" % n.ord }.join(" "),
-            slice_bytes[8..16].map { |n| "%02x" % n.ord }.join(" "),
-            slice_bytes.join,
-          ]
-        end
-      end
-
       def each_region(&block)
         return enum_for(:each_region) unless block_given?
 
@@ -75,7 +63,7 @@ module Innodb
         puts
 
         puts "blob data:"
-        dump_hex(blob_data)
+        HexFormat.puts(blob_data)
         puts
 
         puts
