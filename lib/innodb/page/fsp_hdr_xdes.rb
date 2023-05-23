@@ -47,6 +47,22 @@ module Innodb
         keyword_init: true
       )
 
+      EncryptionHeader = Struct.new(
+        :magic,
+        :master_key_id,
+        :key,
+        :iv,
+        :server_uuid,
+        :checksum,
+        keyword_init: true
+      )
+
+      SdiHeader = Struct.new(
+        :version,
+        :root_page_number,
+        keyword_init: true
+      )
+
       # A value added to the adjusted exponent stored in the page size field of
       # the flags in the FSP header.
       FLAGS_PAGE_SIZE_SHIFT = 9
@@ -118,6 +134,22 @@ module Innodb
         entries_in_xdes_array * size_xdes_entry
       end
 
+      def pos_encryption_header
+        pos_xdes_array + size_xdes_array
+      end
+
+      def size_encryption_header
+        3 + 4 + (32 * 2) + 36 + 4 + 4
+      end
+
+      def pos_sdi_header
+        pos_encryption_header + size_encryption_header
+      end
+
+      def size_sdi_header
+        8
+      end
+
       # Read the FSP (filespace) header, which contains a few counters and flags,
       # as well as list base nodes for each list maintained in the filespace.
       def fsp_header
@@ -162,6 +194,28 @@ module Innodb
         end
       end
 
+      def encryption_header
+        @encryption_header ||= cursor(pos_encryption_header).name("encryption_header") do |c|
+          EncryptionHeader.new(
+            magic: c.name("magic") { c.read_bytes(3) },
+            master_key_id: c.name("master_key_id") { c.read_uint32 },
+            key: c.name("key") { c.read_bytes(32) },
+            iv: c.name("iv") { c.read_bytes(32) },
+            server_uuid: c.name("server_uuid") { c.read_string(36) },
+            checksum: c.name("checksum") { c.read_uint32 }
+          )
+        end
+      end
+
+      def sdi_header
+        @sdi_header ||= cursor(pos_sdi_header).name("sdi_header") do |c|
+          SdiHeader.new(
+            version: c.name("version") { c.read_uint32 },
+            root_page_number: c.name("root_page_number") { c.read_uint32 }
+          )
+        end
+      end
+
       def each_region(&block)
         return enum_for(:each_region) unless block_given?
 
@@ -184,6 +238,20 @@ module Innodb
           )
         end
 
+        yield Region.new(
+          offset: pos_encryption_header,
+          length: size_encryption_header,
+          name: :encryption_header,
+          info: "Encryption Header"
+        )
+
+        yield Region.new(
+          offset: pos_sdi_header,
+          length: size_sdi_header,
+          name: :sdi_header,
+          info: "SDI Header"
+        )
+
         nil
       end
 
@@ -199,6 +267,14 @@ module Innodb
         each_xdes do |xdes|
           pp xdes
         end
+        puts
+
+        puts "encryption header:"
+        pp encryption_header
+        puts
+
+        puts "serialized dictionary information header:"
+        pp sdi_header
         puts
       end
     end
