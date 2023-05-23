@@ -317,6 +317,14 @@ module Innodb
       fsp[name] if XDES_LISTS.include?(name) || INODE_LISTS.include?(name)
     end
 
+    def sdi
+      @sdi ||= Innodb::Sdi.new(self)
+    end
+
+    def sdi?
+      sdi.valid?
+    end
+
     # Get an Innodb::Index object for a specific index by root page number.
     def index(root_page_number, record_describer = nil)
       Innodb::Index.new(self, root_page_number, record_describer || @record_describer)

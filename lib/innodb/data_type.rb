@@ -344,6 +344,20 @@ module Innodb
       end
     end
 
+    class EnumType
+      attr_reader :name
+
+      def initialize(base_type, modifiers, properties)
+        @width = 1
+        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+      end
+
+      def value(data)
+        nbits = @width * 8
+        BinData.const_get("Int%dbe" % nbits).read(data) ^ (-1 << (nbits - 1))
+      end
+    end
+
     #
     # Data types for InnoDB system columns.
     #
@@ -433,6 +447,7 @@ module Innodb
       TIMESTAMP: TimestampType,
       TRX_ID: TransactionIdType,
       ROLL_PTR: RollPointerType,
+      ENUM: EnumType,
     }.freeze
 
     def self.make_name(base_type, modifiers, properties)
