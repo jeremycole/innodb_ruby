@@ -4,12 +4,6 @@
 # tables, columns, and indexes.
 module Innodb
   class DataDictionary
-    MysqlType = Struct.new(
-      :value,
-      :type,
-      keyword_init: true
-    )
-
     # rubocop:disable Layout/ExtraSpacing
 
     # A record describer for SYS_TABLES clustered records.
@@ -78,45 +72,6 @@ module Innodb
       SYS_FIELDS: { PRIMARY: SysFieldsPrimary }.freeze,
     }.freeze
 
-    # A hash of MySQL's internal type system to the stored
-    # values for those types, and the 'external' SQL type.
-    # rubocop:disable Layout/HashAlignment
-    # rubocop:disable Layout/CommentIndentation
-    MYSQL_TYPE = {
-    # DECIMAL:      MysqlType.new(value: 0,   type: :DECIMAL),
-      TINY:         MysqlType.new(value: 1,   type: :TINYINT),
-      SHORT:        MysqlType.new(value: 2,   type: :SMALLINT),
-      LONG:         MysqlType.new(value: 3,   type: :INT),
-      FLOAT:        MysqlType.new(value: 4,   type: :FLOAT),
-      DOUBLE:       MysqlType.new(value: 5,   type: :DOUBLE),
-    # NULL:         MysqlType.new(value: 6,   type: nil),
-      TIMESTAMP:    MysqlType.new(value: 7,   type: :TIMESTAMP),
-      LONGLONG:     MysqlType.new(value: 8,   type: :BIGINT),
-      INT24:        MysqlType.new(value: 9,   type: :MEDIUMINT),
-    # DATE:         MysqlType.new(value: 10,  type: :DATE),
-      TIME:         MysqlType.new(value: 11,  type: :TIME),
-      DATETIME:     MysqlType.new(value: 12,  type: :DATETIME),
-      YEAR:         MysqlType.new(value: 13,  type: :YEAR),
-      NEWDATE:      MysqlType.new(value: 14,  type: :DATE),
-      VARCHAR:      MysqlType.new(value: 15,  type: :VARCHAR),
-      BIT:          MysqlType.new(value: 16,  type: :BIT),
-      NEWDECIMAL:   MysqlType.new(value: 246, type: :CHAR),
-    # ENUM:         MysqlType.new(value: 247, type: :ENUM),
-    # SET:          MysqlType.new(value: 248, type: :SET),
-      TINY_BLOB:    MysqlType.new(value: 249, type: :TINYBLOB),
-      MEDIUM_BLOB:  MysqlType.new(value: 250, type: :MEDIUMBLOB),
-      LONG_BLOB:    MysqlType.new(value: 251, type: :LONGBLOB),
-      BLOB:         MysqlType.new(value: 252, type: :BLOB),
-    # VAR_STRING:   MysqlType.new(value: 253, type: :VARCHAR),
-      STRING:       MysqlType.new(value: 254, type: :CHAR),
-      GEOMETRY:     MysqlType.new(value: 255, type: :GEOMETRY),
-    }.freeze
-    # rubocop:enable Layout/CommentIndentation
-    # rubocop:enable Layout/HashAlignment
-
-    # A hash of MYSQL_TYPE keys by value :value key.
-    MYSQL_TYPE_BY_VALUE = MYSQL_TYPE.transform_values(&:value).invert.freeze
-
     # A hash of InnoDB's internal type system to the values
     # stored for each type.
     COLUMN_MTYPE = {
@@ -173,8 +128,8 @@ module Innodb
     # the MySQL-to-InnoDB interface regarding types.
     def self.mtype_prtype_to_type_string(mtype, prtype, len, prec)
       mysql_type = prtype & COLUMN_PRTYPE_MYSQL_TYPE_MASK
-      internal_type = MYSQL_TYPE_BY_VALUE[mysql_type]
-      external_type = MYSQL_TYPE[internal_type].type
+      internal_type = Innodb::MysqlType.by_mysql_field_type(mysql_type)
+      external_type = internal_type.handle_as
 
       case external_type
       when :VARCHAR

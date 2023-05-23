@@ -115,8 +115,8 @@ module Innodb
 
     # Parse a data type definition and extract the base type and any modifiers.
     def parse_type_definition(type_string)
-      matches = /^([a-zA-Z0-9_]+)(\(([0-9, ]+)\))?$/.match(type_string)
-      return unless matches
+      matches = /^([a-zA-Z0-9_]+)(\((.+)\))?(\s+unsigned)?$/.match(type_string)
+      raise "Unparseable type #{type_string}" unless matches
 
       base_type = matches[1].upcase.to_sym
       return [base_type, []] unless matches[3]

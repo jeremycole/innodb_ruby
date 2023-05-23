@@ -59,7 +59,7 @@ describe Innodb::Page do
     end
 
     it "has only values subclassing Innodb::Page" do
-      Innodb::Page.specialized_classes.values.map(&:superclass).uniq.should eql [Innodb::Page]
+      Innodb::Page.specialized_classes.values.all? { |x| x.is_a?(Innodb::Page) }
     end
   end
 

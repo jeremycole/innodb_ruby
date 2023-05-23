@@ -679,6 +679,16 @@ def space_inodes_detail(space)
   end
 end
 
+def space_sdi_construct_json(space)
+  space.sdi.each_object.map do |object|
+    { type: object.dd_object_type, id: object.id, object: object.data }
+  end
+end
+
+def space_sdi_json_dump(space)
+  puts JSON.pretty_generate(space_sdi_construct_json(space))
+end
+
 def page_account(innodb_system, space, page_number)
   puts "Accounting for page #{page_number}:"
 
@@ -1403,6 +1413,10 @@ The following modes are supported:
   space-inodes-detail
     Iterate through all inodes, printing a detailed report of each FSEG.
 
+  space-sdi-json-dump
+    Dump the contents of any SDI (serialized dictionary information) from a
+    space, in JSON format, similar to ibd2sdi.
+
   index-recurse
     Recurse an index, starting at the root (which must be provided in the first
     --page/-p argument), printing the node pages, node pointers (links), leaf
@@ -1767,6 +1781,8 @@ when "space-inodes-summary"
   space_inodes_summary(space)
 when "space-inodes-detail"
   space_inodes_detail(space)
+when "space-sdi-json-dump"
+  space_sdi_json_dump(space)
 when "index-recurse"
   index_recurse(index)
 when "index-record-offsets"
