@@ -202,67 +202,130 @@ module Innodb
       ALLOCATED: {
         value: 0,
         description: "Freshly allocated",
-        usage: "page type field has not been initialized",
       },
       UNDO_LOG: {
         value: 2,
         description: "Undo log",
-        usage: "stores previous values of modified records",
       },
       INODE: {
         value: 3,
         description: "File segment inode",
-        usage: "bookkeeping for file segments",
       },
       IBUF_FREE_LIST: {
         value: 4,
         description: "Insert buffer free list",
-        usage: "bookkeeping for insert buffer free space management",
       },
       IBUF_BITMAP: {
         value: 5,
         description: "Insert buffer bitmap",
-        usage: "bookkeeping for insert buffer writes to be merged",
       },
       SYS: {
         value: 6,
         description: "System internal",
-        usage: "used for various purposes in the system tablespace",
       },
       TRX_SYS: {
         value: 7,
         description: "Transaction system header",
-        usage: "bookkeeping for the transaction system in system tablespace",
       },
       FSP_HDR: {
         value: 8,
         description: "File space header",
-        usage: "header page (page 0) for each tablespace file",
       },
       XDES: {
         value: 9,
         description: "Extent descriptor",
-        usage: "header page for subsequent blocks of 16,384 pages",
       },
       BLOB: {
         value: 10,
         description: "Uncompressed BLOB",
-        usage: "externally-stored uncompressed BLOB column data",
       },
       ZBLOB: {
         value: 11,
         description: "First compressed BLOB",
-        usage: "externally-stored compressed BLOB column data, first page",
       },
       ZBLOB2: {
         value: 12,
         description: "Subsequent compressed BLOB",
-        usage: "externally-stored compressed BLOB column data, subsequent page",
+      },
+      UNKNOWN: {
+        value: 13,
+        description: "Unknown",
+      },
+      COMPRESSED: {
+        value: 14,
+        description: "Compressed",
+      },
+      ENCRYPTED: {
+        value: 15,
+        description: "Encrypted",
+      },
+      COMPRESSED_AND_ENCRYPTED: {
+        value: 16,
+        description: "Compressed and Encrypted",
+      },
+      ENCRYPTED_RTREE: {
+        value: 17,
+        description: "Encrypted R-tree",
+      },
+      SDI_BLOB: {
+        value: 18,
+        description: "Uncompressed SDI BLOB",
+      },
+      SDI_ZBLOB: {
+        value: 19,
+        description: "Compressed SDI BLOB",
+      },
+      LEGACY_DBLWR: {
+        value: 20,
+        description: "Legacy doublewrite buffer",
+      },
+      RSEG_ARRAY: {
+        value: 21,
+        description: "Rollback Segment Array",
+      },
+      LOB_INDEX: {
+        value: 22,
+        description: "Index of uncompressed LOB",
+      },
+      LOB_DATA: {
+        value: 23,
+        description: "Data of uncompressed LOB",
+      },
+      LOB_FIRST: {
+        value: 24,
+        description: "First page of an uncompressed LOB",
+      },
+      ZLOB_FIRST: {
+        value: 25,
+        description: "First page of a compressed LOB",
+      },
+      ZLOB_DATA: {
+        value: 26,
+        description: "Data of compressed LOB",
+      },
+      ZLOB_INDEX: {
+        value: 27,
+        description: "Index of compressed LOB",
+      },
+      ZLOB_FRAG: {
+        value: 28,
+        description: "Fragment of compressed LOB",
+      },
+      ZLOB_FRAG_ENTRY: {
+        value: 29,
+        description: "Index of fragment for compressed LOB",
+      },
+      SDI: {
+        value: 17_853,
+        description: "Serialized Dictionary Information",
+      },
+      RTREE: {
+        value: 17_854,
+        description: "R-tree index",
       },
       INDEX: {
         value: 17_855,
         description: "B+Tree index",
-        usage: "table and index data stored in B+Tree structure",
       },
     }.freeze
 
@@ -282,6 +345,10 @@ module Innodb
       page_number unless undefined?(page_number)
     end
 
+    def self.page_type_by_value(value)
+      PAGE_TYPE_BY_VALUE[value] || value
+    end
+
     # Return the "fil" header from the page, which is common for all page types.
     def fil_header
       @fil_header ||= cursor(pos_fil_header).name("fil_header") do |c|
@@ -291,7 +358,7 @@ module Innodb
           prev: c.name("prev") { Innodb::Page.maybe_undefined(c.read_uint32) },
           next: c.name("next") { Innodb::Page.maybe_undefined(c.read_uint32) },
           lsn: c.name("lsn") { c.read_uint64 },
-          type: c.name("type") { PAGE_TYPE_BY_VALUE[c.read_uint16] },
+          type: c.name("type") { Innodb::Page.page_type_by_value(c.read_uint16) },
           flush_lsn: c.name("flush_lsn") { c.read_uint64 },
           space_id: c.name("space_id") { c.read_uint32 }
         )

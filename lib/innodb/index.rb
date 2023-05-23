@@ -21,7 +21,9 @@ module Innodb
       raise "Page #{root_page_number} couldn't be read" unless @root
 
       # The root page should be an index page.
-      raise "Page #{root_page_number} is a #{@root.type} page, not an INDEX page" unless @root.type == :INDEX
+      unless @root.is_a?(Innodb::Page::Index)
+        raise "Page #{root_page_number} is a #{@root.type} page, not an INDEX page"
+      end
 
       # The root page should be the only page at its level.
       raise "Page #{root_page_number} does not appear to be an index root" if @root.prev || @root.next
@@ -53,12 +55,12 @@ module Innodb
 
     # Internal method used by recurse.
     def _recurse(parent_page, page_proc, link_proc, depth = 0)
-      page_proc.call(parent_page, depth) if page_proc && parent_page.type == :INDEX
+      page_proc.call(parent_page, depth) if page_proc && parent_page.is_a?(Innodb::Page::Index)
 
       parent_page.each_child_page do |child_page_number, child_min_key|
         child_page = page(child_page_number)
         child_page.record_describer = record_describer
-        next unless child_page.type == :INDEX
+        next unless child_page.is_a?(Innodb::Page::Index)
 
         link_proc&.call(parent_page, child_page, child_min_key, depth + 1)
         _recurse(child_page, page_proc, link_proc, depth + 1)
@@ -143,7 +145,7 @@ module Innodb
     def each_page_from(page)
       return enum_for(:each_page_from, page) unless block_given?
 
-      while page && page.type == :INDEX
+      while page.is_a?(Innodb::Page::Index)
         yield page
         break unless page.next
 

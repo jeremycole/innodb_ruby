@@ -156,8 +156,8 @@ def print_index_page_summary(pages)
   ]
 
   pages.each do |page_number, page|
-    case page.type
-    when :INDEX
+    case
+    when page.is_a?(Innodb::Page::Index)
       puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [
         page_number,
         page.page_header[:index_id],
@@ -166,7 +166,7 @@ def print_index_page_summary(pages)
         page.free_space,
         page.records,
       ]
-    when :ALLOCATED
+    when page.type == :ALLOCATED
       puts "%-12i%-8i%-8i%-8i%-8i%-8i" % [page_number, 0, 0, 0, page.size, 0]
     end
   end
@@ -429,12 +429,12 @@ def space_index_pages_free_plot(space, start_page)
   index_data = { 0 => { x: [], y: [] } }
 
   space.each_page(start_page) do |page_number, page|
-    case page.type
-    when :INDEX
+    case
+    when page.is_a?(Innodb::Page::Index)
       data = (index_data[page.page_header[:index_id]] ||= { x: [], y: [] })
       data[:x] << page_number
       data[:y] << page.free_space
-    when :ALLOCATED
+    when page.type == :ALLOCATED
       index_data[0][:x] << page_number
       index_data[0][:y] << page.size
     end
@@ -689,10 +689,9 @@ def page_account(innodb_system, space, page_number)
 
   page = space.page(page_number)
   page_type = Innodb::Page::PAGE_TYPE[page.type]
-  puts "  Page type is %s (%s, %s)." % [
+  puts "  Page type is %s (%s)." % [
     page.type,
     page_type[:description],
-    page_type[:usage],
   ]
 
   xdes = space.xdes_for_page(page_number)
@@ -921,7 +920,7 @@ def page_validate(_innodb_system, space, page_number)
     end
   end
 
-  page_is_valid = false if page.type == :INDEX && !page_validate_index(page)
+  page_is_valid = false if page.is_a?(Innodb::Page::Index) && !page_validate_index(page)
 
   puts "Page %d appears to be %s!" % [
     page_number,
@@ -930,7 +929,7 @@ def page_validate(_innodb_system, space, page_number)
 end
 
 def page_directory_summary(_space, page)
-  usage(1, "Page must be an index page") if page.type != :INDEX
+  usage(1, "Page must be an index page") unless page.is_a?(Innodb::Page::Index)
 
   puts "%-8s%-8s%-14s%-8s%s" % %w[
     slot
@@ -965,7 +964,7 @@ end
 
 def page_illustrate(page)
   width = 64
-  unknown_page_content = page.type == :INDEX && page.record_describer.nil?
+  unknown_page_content = page.is_a?(Innodb::Page::Index) && page.record_describer.nil?
   blocks = Array.new(page.size, unknown_page_content ? "▞" : " ")
   identifiers = {}
   identifier_sort = 0
@@ -1643,7 +1642,7 @@ if innodb_system && @options.table_name && @options.index_name
   page = @options.page ? space.page(@options.page) : index.root
 elsif @options.page
   page = space.page(@options.page)
-  index = space.index(@options.page) if page&.type == :INDEX && page&.root?
+  index = space.index(@options.page) if page.is_a?(Innodb::Page::Index) && page&.root?
 end
 
 # The non-option argument on the command line is the mode (usually the last,
@@ -1696,7 +1695,7 @@ if /^record-/.match(mode) && !page
   )
 end
 
-if /^record-/.match(mode) && page.type != :INDEX
+if /^record-/.match(mode) && !page.is_a?(Innodb::Page::Index)
   usage(1, "Mode #{mode} may be used only with index pages")
 end
 

@@ -327,7 +327,7 @@ module Innodb
         # for IBD files, if they haven't added indexes online.
         (3...@pages).each do |page_number|
           page = page(page_number)
-          yield page_number if page.type == :INDEX && page.root?
+          yield page_number if page.is_a?(Innodb::Page::Index) && page.root?
         end
       end
 
