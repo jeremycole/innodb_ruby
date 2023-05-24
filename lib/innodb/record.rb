@@ -39,6 +39,16 @@ module Innodb
       row&.map { |r| "%s=%s" % [r.name, r.value.inspect] }&.join(", ")
     end
 
+    def full_value_with_externs_for_field(field)
+      blob_value = field.value
+      extern_page = field.extern && page.space.page(field.extern.page_number)
+      while extern_page
+        blob_value += extern_page.blob_data
+        extern_page = extern_page.next_blob_page
+      end
+      blob_value
+    end
+
     def undo
       return nil unless roll_pointer
       return unless (innodb_system = @page.space.innodb_system)

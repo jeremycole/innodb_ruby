@@ -32,6 +32,12 @@ module Innodb
         end
       end
 
+      def next_blob_page
+        return unless blob_header[:next]
+
+        space.page(blob_header[:next])
+      end
+
       def each_region(&block)
         return enum_for(:each_region) unless block_given?
 
