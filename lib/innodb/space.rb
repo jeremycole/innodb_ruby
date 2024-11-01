@@ -289,7 +289,7 @@ module Innodb
     def rseg_page?(page_number)
       return false unless trx_sys
 
-      !trx_sys.rsegs.select { |rseg| rseg.space_id.zero? && rseg.page_number == page_number }.empty?
+      trx_sys.rsegs.any? { |rseg| rseg.space_id.zero? && rseg.page_number == page_number }
     end
 
     # Return the page number for the space's SYS data dictionary header.
@@ -358,7 +358,7 @@ module Innodb
     def each_inode(&block)
       return enum_for(:each_inode) unless block_given?
 
-      each_inode_list.each do |_name, list|
+      each_inode_list.each_value do |list|
         list.each do |page|
           page.each_allocated_inode(&block)
         end

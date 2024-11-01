@@ -1,9 +1,16 @@
+# TODO: Enable rubocop-rspec only along with all the fixes it demands.
+# require: rubocop-rspec
+
 AllCops:
   TargetRubyVersion: 2.6
   NewCops: enable
+Gemspec/DevelopmentDependencies:
+  Enabled: false
 Gemspec/RequireMFA:
   Enabled: false
 Lint/AmbiguousOperator:
+  Enabled: false
+Lint/FormatParameterMismatch:
   Enabled: false
 Layout/LineLength:
   Max: 120

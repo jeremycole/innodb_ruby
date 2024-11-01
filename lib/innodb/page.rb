@@ -469,7 +469,7 @@ module Innodb
 
     # Is the page in the doublewrite buffer?
     def in_doublewrite_buffer?
-      space&.system_space? && space&.doublewrite_page?(offset)
+      space&.system_space? && space.doublewrite_page?(offset)
     end
 
     # Is the space ID stored in the header different from that of the space

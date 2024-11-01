@@ -121,7 +121,7 @@ module Innodb
       base_type = matches[1].upcase.to_sym
       return [base_type, []] unless matches[3]
 
-      [base_type, matches[3].sub(/ /, "").split(/,/).map(&:to_i)]
+      [base_type, matches[3].sub(/ /, "").split(",").map(&:to_i)]
     end
   end
 end

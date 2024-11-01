@@ -76,7 +76,7 @@ class BufferCursor
   # position, raw byte buffer, and array of names.
   def print_trace(_cursor, position, bytes, name)
     slice_size = 16
-    bytes.each_slice(slice_size).each_with_index do |slice_bytes, slice_count|
+    bytes.each_slice(slice_size).with_index do |slice_bytes, slice_count|
       @trace_io.puts "%06i %s %-32s  %s" % [
         position + (slice_count * slice_size),
         direction == :backward ? "←" : "→",

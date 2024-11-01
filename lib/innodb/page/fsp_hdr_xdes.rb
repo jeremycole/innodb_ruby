@@ -219,7 +219,7 @@ module Innodb
       def each_region(&block)
         return enum_for(:each_region) unless block_given?
 
-        super(&block)
+        super
 
         yield Region.new(
           offset: pos_fsp_header,
@@ -233,7 +233,7 @@ module Innodb
           yield Region.new(
             offset: xdes.offset,
             length: size_xdes_entry,
-            name: "xdes_#{state}".to_sym,
+            name: :"xdes_#{state}",
             info: "Extent Descriptor (#{state})"
           )
         end
