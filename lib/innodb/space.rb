@@ -358,7 +358,7 @@ module Innodb
     def each_inode(&block)
       return enum_for(:each_inode) unless block_given?
 
-      each_inode_list.each_value do |list|
+      each_inode_list do |_name, list|
         list.each do |page|
           page.each_allocated_inode(&block)
         end
