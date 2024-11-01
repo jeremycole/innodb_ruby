@@ -182,7 +182,7 @@ module Innodb
       def each_region(&block)
         return enum_for(:each_region) unless block_given?
 
-        super(&block)
+        super
 
         yield Region.new(
           offset: pos_trx_sys_header,

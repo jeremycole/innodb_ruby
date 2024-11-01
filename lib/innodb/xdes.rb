@@ -118,7 +118,7 @@ module Innodb
     def each_page_status
       return enum_for(:each_page_status) unless block_given?
 
-      bitmap.each_byte.each_with_index do |byte, byte_index|
+      bitmap.each_byte.with_index do |byte, byte_index|
         (0..3).each do |page_offset|
           page_number = start_page + (byte_index * 4) + page_offset
           page_bits = ((byte >> (page_offset * BITS_PER_PAGE)) & BITMAP_BV_ALL)

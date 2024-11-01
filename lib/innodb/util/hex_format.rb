@@ -18,7 +18,7 @@ module HexFormat
   end
 
   def self.format_hex(data)
-    data.chars.each_slice(LINE_SIZE).each_with_index do |bytes, i|
+    data.chars.each_slice(LINE_SIZE).with_index do |bytes, i|
       yield format("%08i  %-#{GROUP_FORMAT_LENGTH}s  |%-#{LINE_SIZE}s|",
                    (i * LINE_SIZE), format_groups(bytes, GROUP_SIZE), format_printable(bytes))
     end

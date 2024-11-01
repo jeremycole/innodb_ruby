@@ -14,7 +14,6 @@ module Innodb
   end
 end
 
-require "pp"
 require "digest/crc32c"
 require "innodb/util/buffer_cursor"
 require "innodb/util/read_bits_at_offset"

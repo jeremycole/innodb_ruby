@@ -21,9 +21,11 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = ">= 2.6"
 
-  s.add_runtime_dependency("bindata", ">= 1.4.5", "< 3.0")
-  s.add_runtime_dependency("digest-crc", "~> 0.4", ">= 0.4.1")
-  s.add_runtime_dependency("histogram", "~> 0.2")
+  s.add_dependency("bigdecimal", "~> 3.1.8")
+  s.add_dependency("bindata", ">= 1.4.5", "< 3.0")
+  s.add_dependency("digest-crc", "~> 0.4", ">= 0.4.1")
+  s.add_dependency("getoptlong", "~> 0.2.1")
+  s.add_dependency("histogram", "~> 0.2")
 
   s.add_development_dependency("gnuplot", "~> 2.6.0")
   s.add_development_dependency("rspec", "~> 3.11.0")

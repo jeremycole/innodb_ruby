@@ -260,7 +260,7 @@ module Innodb
     end
 
     def data_dictionary_index?(table_name, index_name)
-      return unless data_dictionary_table?(table_name)
+      return false unless data_dictionary_table?(table_name)
 
       DATA_DICTIONARY_RECORD_DESCRIBERS[table_name.to_sym].include?(index_name.to_sym)
     end
@@ -307,7 +307,7 @@ module Innodb
       return enum_for(:each_data_dictionary_index) unless block_given?
 
       data_dictionary_indexes.each do |table_name, indexes|
-        indexes.each do |index_name, _root_page_number|
+        indexes.each_key do |index_name|
           yield table_name, index_name,
             data_dictionary_index(table_name, index_name)
         end

@@ -59,7 +59,7 @@ def usage(exit_code, message = nil)
   print "Error: #{message}\n" unless message.nil?
 
   # rubocop:disable Layout/HeredocIndentation
-  print <<'END_OF_USAGE'
+  print <<END_OF_USAGE
 
 Usage: innodb_log [-d] [-l <lsn>] -f <log file> <mode>
 

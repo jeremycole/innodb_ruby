@@ -444,7 +444,7 @@ def space_index_pages_free_plot(space, start_page)
   image_file = "#{image_name}_free.png"
 
   # Aim for one horizontal pixel per extent, but min 1k and max 10k width.
-  image_width = [10_000, [1_000, space.pages / space.pages_per_extent].max].min
+  (space.pages / space.pages_per_extent).clamp(1_000, 10_000)
 
   Gnuplot.open do |gp|
     Gnuplot::Plot.new(gp) do |plot|
@@ -475,7 +475,7 @@ end
 
 # rubocop:disable Metrics/BlockNesting
 def space_extents_illustrate_page_status(space, entry, count_by_identifier, identifiers)
-  entry.each_page_status.each_with_object("".dup) do |(page_number, page_status), bitmap|
+  entry.each_page_status.with_object("".dup) do |(page_number, page_status), bitmap|
     if page_number >= space.pages
       bitmap << " "
       next
@@ -576,8 +576,8 @@ def space_lsn_age_illustrate(space)
     next if page.lsn.zero?
 
     page_lsn[page_number] = page.lsn
-    lsn_min = page.lsn < lsn_min ? page.lsn : lsn_min
-    lsn_max = page.lsn > lsn_max ? page.lsn : lsn_max
+    lsn_min = [page.lsn, lsn_min].min
+    lsn_max = [page.lsn, lsn_max].max
   end
   lsn_delta = lsn_max - lsn_min
 
@@ -1249,7 +1249,7 @@ def usage(exit_code, message = nil)
   end
 
   # rubocop:disable Layout/HeredocIndentation
-  print <<'END_OF_USAGE'
+  print <<END_OF_USAGE
 
 Usage: innodb_space <options> <mode>
 
