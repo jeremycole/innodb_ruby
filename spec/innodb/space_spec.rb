@@ -108,7 +108,7 @@ describe Innodb::Space do
     end
 
     it "should return nil for a non-system space" do
-      @space_ibd.trx_sys.should eql nil
+      expect { @space_ibd.trx_sys }.to raise_error(RuntimeError)
     end
   end
 
@@ -118,7 +118,7 @@ describe Innodb::Space do
     end
 
     it "should return nil for a non-system space" do
-      @space_ibd.data_dictionary_page.should eql nil
+      expect { @space_ibd.data_dictionary_page }.to raise_error(RuntimeError)
     end
   end
 
