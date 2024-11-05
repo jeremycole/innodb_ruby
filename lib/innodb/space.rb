@@ -276,6 +276,12 @@ module Innodb
       fsp[:space_id]
     end
 
+    def checked_page_class!(page, expected_class)
+      return page if page.instance_of?(expected_class)
+
+      raise "Page #{page.offset} is not the correct type, found: #{page.class}, expected: #{expected_class}"
+    end
+
     # Return the page number for the space's TRX_SYS page.
     def page_trx_sys
       5
@@ -283,7 +289,9 @@ module Innodb
 
     # Get the Innodb::Page::TrxSys page for a system space.
     def trx_sys
-      page(page_trx_sys) if system_space?
+      raise "Transaction System is only available in system spaces" unless system_space?
+
+      checked_page_class!(page(page_trx_sys), Innodb::Page::TrxSys)
     end
 
     def rseg_page?(page_number)
@@ -299,7 +307,9 @@ module Innodb
 
     # Get the Innodb::Page::SysDataDictionaryHeader page for a system space.
     def data_dictionary_page
-      page(page_sys_data_dictionary) if system_space?
+      raise "Data Dictionary is only available in system spaces" unless system_space?
+
+      checked_page_class!(page(page_sys_data_dictionary), Innodb::Page::SysDataDictionaryHeader)
     end
 
     # Get an Innodb::List object for a specific list by list name.

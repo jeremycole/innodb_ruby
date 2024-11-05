@@ -546,7 +546,7 @@ module Innodb
       end
 
       def make_record_describer
-        if space&.innodb_system && index_id
+        if space&.innodb_system&.data_dictionary&.found? && index_id && !ibuf_index?
           @record_describer = space.innodb_system.data_dictionary.record_describer_by_index_id(index_id)
         elsif space
           @record_describer = space.record_describer
@@ -1096,17 +1096,23 @@ module Innodb
         pp supremum.record
         puts
 
-        puts "garbage records:"
-        each_garbage_record do |rec|
-          pp rec.record
+        if ibuf_index?
+          puts "(records not dumped due to this being an insert buffer index)"
+        elsif !record_describer
+          puts "(records not dumped due to missing record describer or data dictionary)"
+        else
+          puts "garbage records:"
+          each_garbage_record do |rec|
+            pp rec.record
+            puts
+          end
           puts
-        end
-        puts
 
-        puts "records:"
-        each_record do |rec|
-          pp rec.record
-          puts
+          puts "records:"
+          each_record do |rec|
+            pp rec.record
+            puts
+          end
         end
         puts
       end

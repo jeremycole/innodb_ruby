@@ -235,7 +235,14 @@ module Innodb
       system_space.data_dictionary_page.data_dictionary_header[:indexes]
     end
 
+    # Check if the data dictionary indexes are all available.
+    def found?
+      data_dictionary_indexes.values.map(&:values).flatten.none?(&:zero?)
+    end
+
     def data_dictionary_index_ids
+      raise "Data Dictionary not found; is the MySQL version supported?" unless found?
+
       return @data_dictionary_index_ids if @data_dictionary_index_ids
 
       # TODO: This could probably be done a lot more Ruby-like.
@@ -275,6 +282,8 @@ module Innodb
     # internal data dictionary index with an appropriate
     # record describer so that records can be recursed.
     def data_dictionary_index(table_name, index_name)
+      raise "Data Dictionary not found; is the MySQL version supported?" unless found?
+
       table_entry = data_dictionary_indexes[table_name]
       raise "Unknown data dictionary table #{table_name}" unless table_entry
 
