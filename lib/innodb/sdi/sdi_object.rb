@@ -61,11 +61,11 @@ module Innodb
       end
 
       def options
-        data["options"]&.split(";").to_h { |x| x.split("=") }
+        Innodb::Sdi.parse_options(data["options"])
       end
 
       def se_private_data
-        data["se_private_data"]&.split(";").to_h { |x| x.split("=") }
+        Innodb::Sdi.parse_se_private_data(dd_object["se_private_data"])
       end
     end
   end

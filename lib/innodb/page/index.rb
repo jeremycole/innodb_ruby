@@ -546,8 +546,12 @@ module Innodb
       end
 
       def make_record_describer
-        if space&.innodb_system&.data_dictionary&.found? && index_id && !ibuf_index?
-          @record_describer = space.innodb_system.data_dictionary.record_describer_by_index_id(index_id)
+        if space.innodb_system.data_dictionary && index_id && !ibuf_index?
+          @record_describer = space.innodb_system
+                                   .data_dictionary
+                                   .indexes
+                                   .find(innodb_index_id: index_id)
+                                   .record_describer
         elsif space
           @record_describer = space.record_describer
         end

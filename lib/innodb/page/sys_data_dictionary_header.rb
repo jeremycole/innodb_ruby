@@ -36,25 +36,25 @@ module Innodb
             unused_mix_id_low: c.name("unused_mix_id_low") { c.read_uint32 },
             indexes: c.name("indexes") do
               {
-                SYS_TABLES: c.name("SYS_TABLES") do
+                "SYS_TABLES" => c.name("SYS_TABLES") do
                   {
-                    PRIMARY: c.name("PRIMARY") { c.read_uint32 },
-                    ID: c.name("ID") { c.read_uint32 },
+                    "PRIMARY" => c.name("PRIMARY") { c.read_uint32 },
+                    "ID" => c.name("ID") { c.read_uint32 },
                   }
                 end,
-                SYS_COLUMNS: c.name("SYS_COLUMNS") do
+                "SYS_COLUMNS" => c.name("SYS_COLUMNS") do
                   {
-                    PRIMARY: c.name("PRIMARY") { c.read_uint32 },
+                    "PRIMARY" => c.name("PRIMARY") { c.read_uint32 },
                   }
                 end,
-                SYS_INDEXES: c.name("SYS_INDEXES") do
+                "SYS_INDEXES" => c.name("SYS_INDEXES") do
                   {
-                    PRIMARY: c.name("PRIMARY") { c.read_uint32 },
+                    "PRIMARY" => c.name("PRIMARY") { c.read_uint32 },
                   }
                 end,
-                SYS_FIELDS: c.name("SYS_FIELDS") do
+                "SYS_FIELDS" => c.name("SYS_FIELDS") do
                   {
-                    PRIMARY: c.name("PRIMARY") { c.read_uint32 },
+                    "PRIMARY" => c.name("PRIMARY") { c.read_uint32 },
                   }
                 end,
               }

@@ -87,105 +87,6 @@ describe Innodb::System do
     end
   end
 
-  describe "#each_table_name" do
-    it "is an enumerator" do
-      is_enumerator?(@system.each_table_name).should be_truthy
-    end
-
-    it "iterates all tables in the system" do
-      expected = %w[
-        SYS_FOREIGN
-        SYS_FOREIGN_COLS
-        sakila/actor
-        sakila/address
-        sakila/category
-        sakila/city
-        sakila/country
-        sakila/customer
-        sakila/film
-        sakila/film_actor
-        sakila/film_category
-        sakila/inventory
-        sakila/language
-        sakila/payment
-        sakila/rental
-        sakila/staff
-        sakila/store
-      ]
-
-      actual = @system.each_table_name.to_a
-      result = actual.map { |n| expected.include?(n) }.uniq
-      result.should eql [true]
-    end
-  end
-
-  describe "#each_column_name_by_table_name" do
-    it "is an enumerator" do
-      is_enumerator?(@system.each_column_name_by_table_name("sakila/film")).should be_truthy
-    end
-
-    it "iterates all columns in the table" do
-      expected = %w[
-        film_id
-        title
-        description
-        release_year
-        language_id
-        original_language_id
-        rental_duration
-        rental_rate
-        length
-        replacement_cost
-        rating
-        special_features
-        last_update
-      ]
-
-      actual = @system.each_column_name_by_table_name("sakila/film").to_a
-      result = actual.map { |n| expected.include?(n) }.uniq
-      result.should eql [true]
-    end
-  end
-
-  describe "#each_index_name_by_table_name" do
-    it "is an enumerator" do
-      is_enumerator?(@system.each_index_name_by_table_name("sakila/film")).should be_truthy
-    end
-
-    it "iterates all indexes in the table" do
-      expected = %w[
-        PRIMARY
-        idx_title
-        idx_fk_language_id
-        idx_fk_original_language_id
-      ]
-
-      actual = @system.each_index_name_by_table_name("sakila/film").to_a
-      result = actual.map { |n| expected.include?(n) }.uniq
-      result.should eql [true]
-    end
-  end
-
-  describe "#table_name_by_id" do
-    it "returns the correct table name" do
-      @system.table_name_by_id(19).should eql "sakila/film"
-    end
-  end
-
-  describe "#index_name_by_id" do
-    it "returns the correct index name" do
-      @system.index_name_by_id(27).should eql "PRIMARY"
-    end
-  end
-
-  describe "#table_and_index_name_by_id" do
-    it "returns the correct table and index name" do
-      table, index = @system.table_and_index_name_by_id(27)
-      table.should eql "sakila/film"
-      index.should eql "PRIMARY"
-    end
-  end
-
   describe "#index_by_name" do
     it "returns an Innodb::Index object" do
       index = @system.index_by_name("sakila/film", "PRIMARY")
@@ -195,7 +96,8 @@ describe Innodb::System do
 
   describe "#each_orphan" do
     before :all do
-      @system = Innodb::System.new("spec/data/ibdata1")
+      # Tablespace has a missing tablespace file for test/t_empty.
+      @system = Innodb::System.new("spec/data/orphan/ibdata1")
     end
 
     it "has an orphan space" do

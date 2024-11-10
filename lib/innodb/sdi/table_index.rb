@@ -50,10 +50,10 @@ module Innodb
       end
 
       def se_private_data
-        data["se_private_data"]&.split(";").to_h { |x| x.split("=") }
+        Innodb::Sdi.parse_se_private_data(data["se_private_data"])
       end
 
-      def index_id
+      def innodb_index_id
         se_private_data["id"].to_i
       end
 
@@ -61,11 +61,11 @@ module Innodb
         se_private_data["root"].to_i
       end
 
-      def space_id
+      def innodb_space_id
         se_private_data["space_id"].to_i
       end
 
-      def table_id
+      def innodb_table_id
         se_private_data["table_id"].to_i
       end
 
@@ -74,7 +74,7 @@ module Innodb
       end
 
       def options
-        data["options"]&.split(";").to_h { |x| x.split("=") }
+        Innodb::Sdi.parse_options(data["options"])
       end
 
       def type
@@ -86,22 +86,7 @@ module Innodb
       end
 
       def clustered?
-        table.clustered_index.index_id == index_id
-      end
-
-      def record_describer
-        describer = Innodb::RecordDescriber.new
-        describer.type(clustered? ? :clustered : :secondary)
-
-        elements.each do |element|
-          if element.key?
-            describer.key(element.column.name, *element.column.description)
-          elsif element.row?
-            describer.row(element.column.name, *element.column.description)
-          end
-        end
-
-        describer
+        table.clustered_index.innodb_index_id == innodb_index_id
       end
     end
   end

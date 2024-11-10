@@ -4,8 +4,8 @@ require "spec_helper"
 
 describe Innodb::Space do
   before :all do
-    @space = Innodb::Space.new("spec/data/ibdata1")
-    @space_ibd = Innodb::Space.new("spec/data/t_empty.ibd")
+    @space = Innodb::Space.new("spec/data/sakila/compact/ibdata1")
+    @space_ibd = Innodb::Space.new("spec/data/sakila/compact/sakila/film.ibd")
   end
 
   describe "DEFAULT_PAGE_SIZE" do
@@ -134,7 +134,7 @@ describe Innodb::Space do
     end
 
     it "iterates through indexes" do
-      @space_ibd.each_index.to_a.size.should eql 1
+      @space_ibd.each_index.to_a.size.should eql 4
     end
 
     it "yields an Innodb::Index" do
@@ -148,7 +148,7 @@ describe Innodb::Space do
     end
 
     it "iterates through pages" do
-      @space_ibd.each_page.to_a.size.should eql 6
+      @space_ibd.each_page.to_a.size.should eql 21
     end
 
     it "yields an Array of [page_number, page]" do

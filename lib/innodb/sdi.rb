@@ -12,6 +12,18 @@ module Innodb
       def register_specialization(id, specialized_class)
         @specialized_classes[id] = specialized_class
       end
+
+      def parse_semicolon_value_list(data)
+        data&.split(";").to_h { |x| x.split("=") }
+      end
+
+      def parse_se_private_data(data)
+        parse_semicolon_value_list(data)
+      end
+
+      def parse_options(data)
+        parse_semicolon_value_list(data)
+      end
     end
 
     attr_reader :space
@@ -53,20 +65,12 @@ module Innodb
       nil
     end
 
-    def each_table
-      return enum_for(:each_table) unless block_given?
-
-      each_object { |o| yield o if o.is_a?(Table) }
-
-      nil
+    def tables
+      each_object.select { |o| o.is_a?(Table) }
     end
 
-    def each_tablespace
-      return enum_for(:each_tablespace) unless block_given?
-
-      each_object { |o| yield o if o.is_a?(Tablespace) }
-
-      nil
+    def tablespaces
+      each_object.select { |o| o.is_a?(Tablespace) }
     end
   end
 end

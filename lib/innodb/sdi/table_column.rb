@@ -70,14 +70,14 @@ module Innodb
 
       def description
         [
-          data["column_type_utf8"],
-          unsigned? ? :unsigned : nil,
-          nullable? ? nil : :not_null,
+          data["column_type_utf8"].sub(/ unsigned$/, ""),
+          unsigned? ? :UNSIGNED : nil,
+          nullable? ? nil : :NOT_NULL,
         ].compact
       end
 
       def se_private_data
-        data["se_private_data"]&.split(";").to_h { |x| x.split("=") }
+        Innodb::Sdi.parse_se_private_data(data["se_private_data"])
       end
 
       def table_id

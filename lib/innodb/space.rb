@@ -48,16 +48,13 @@ module Innodb
       end
 
       def name
-        prefix = ""
-        prefix = "#{File.basename(File.dirname(file.path))}/" if File.extname(file.path) == ".ibd"
-
-        prefix + File.basename(file.path)
+        file.path
       end
     end
 
     # Open a space file, optionally providing the page size to use. Pages
     # that aren't 16 KiB may not be supported well.
-    def initialize(filenames)
+    def initialize(filenames, innodb_system: nil)
       filenames = [filenames] unless filenames.is_a?(Array)
 
       @data_files = []
@@ -73,7 +70,7 @@ module Innodb
       @compressed       = fsp_flags.compressed
 
       @pages = (@size / @page_size)
-      @innodb_system = nil
+      @innodb_system = innodb_system
       @record_describer = nil
     end
 
@@ -334,10 +331,14 @@ module Innodb
     def each_index_root_page_number
       return enum_for(:each_index_root_page_number) unless block_given?
 
-      if innodb_system
+      if innodb_system&.data_dictionary&.populated?
         # Retrieve the index root page numbers from the data dictionary.
-        innodb_system.data_dictionary.each_index_by_space_id(space_id) do |record|
-          yield record["PAGE_NO"]
+        # TODO: An efficient way to handle this?
+        tablespace = innodb_system.data_dictionary.tablespaces.find(innodb_space_id: space_id)
+        innodb_system.data_dictionary.tables.each do |table|
+          table.indexes.by(tablespace: tablespace).each do |index|
+            yield index.root_page_number
+          end
         end
       else
         # Guess that the index root pages will be present starting at page 3,

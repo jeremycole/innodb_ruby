@@ -5,8 +5,8 @@ require "spec_helper"
 describe Innodb::LogRecord do
   before :all do
     log_files = %w[
-      spec/data/ib_logfile0
-      spec/data/ib_logfile1
+      spec/data/sakila/compact/ib_logfile0
+      spec/data/sakila/compact/ib_logfile1
     ]
     @group = Innodb::LogGroup.new(log_files)
   end
