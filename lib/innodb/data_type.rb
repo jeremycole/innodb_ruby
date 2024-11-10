@@ -346,6 +346,7 @@ module Innodb
 
     class EnumType
       attr_reader :name
+      attr_reader :width
 
       def initialize(base_type, modifiers, properties)
         @width = 1
@@ -448,6 +449,7 @@ module Innodb
       TRX_ID: TransactionIdType,
       ROLL_PTR: RollPointerType,
       ENUM: EnumType,
+      JSON: BlobType,
     }.freeze
 
     def self.make_name(base_type, modifiers, properties)

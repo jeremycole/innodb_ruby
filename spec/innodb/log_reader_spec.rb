@@ -4,7 +4,7 @@ require "spec_helper"
 
 describe Innodb::LogReader do
   before :all do
-    log_files = ["spec/data/ib_logfile0", "spec/data/ib_logfile1"]
+    log_files = ["spec/data/sakila/compact/ib_logfile0", "spec/data/sakila/compact/ib_logfile1"]
     @group = Innodb::LogGroup.new(log_files)
     @reader = @group.reader
   end

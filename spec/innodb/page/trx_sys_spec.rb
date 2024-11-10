@@ -4,7 +4,7 @@ require "spec_helper"
 
 describe Innodb::Page::TrxSys do
   before :all do
-    @space = Innodb::Space.new("spec/data/ibdata1")
+    @space = Innodb::Space.new("spec/data/sakila/compact/ibdata1")
     @page = @space.page(5)
   end
 

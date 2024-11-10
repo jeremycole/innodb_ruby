@@ -4,7 +4,7 @@ require "spec_helper"
 
 describe Innodb::Page do
   before :all do
-    @space = Innodb::Space.new("spec/data/ibdata1")
+    @space = Innodb::Space.new("spec/data/sakila/compact/ibdata1")
     @page_data = @space.page_data(0)
     @page = @space.page(0)
   end
@@ -108,13 +108,13 @@ describe Innodb::Page do
 
     it "has the right keys and values" do
       @page.fil_header.size.should eql 8
-      @page.fil_header[:checksum].should eql 2_067_631_406
+      @page.fil_header[:checksum].should eql 3_774_490_636
       @page.fil_header[:offset].should eql 0
       @page.fil_header[:prev].should eql 0
       @page.fil_header[:next].should eql 0
-      @page.fil_header[:lsn].should eql 1_601_269
+      @page.fil_header[:lsn].should eql 8_400_049
       @page.fil_header[:type].should eql :FSP_HDR
-      @page.fil_header[:flush_lsn].should eql 1_603_732
+      @page.fil_header[:flush_lsn].should eql 8_400_260
       @page.fil_header[:space_id].should eql 0
     end
 
@@ -130,7 +130,7 @@ describe Innodb::Page do
 
   describe "#checksum_innodb" do
     it "calculates the right checksum" do
-      @page.checksum_innodb.should eql 2_067_631_406
+      @page.checksum_innodb.should eql 3_774_490_636
       @page.corrupt?.should eql false
     end
   end

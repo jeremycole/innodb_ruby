@@ -39,6 +39,13 @@ module Innodb
         hidden?
       end
 
+      def type
+        return :sys if %w[DB_TRX_ID DB_ROLL_PTR].include?(column.name)
+        return :key if key?
+
+        :row
+      end
+
       def column_opx
         data["column_opx"]
       end

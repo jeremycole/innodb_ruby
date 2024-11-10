@@ -4,7 +4,7 @@ require "spec_helper"
 
 describe Innodb::Page::Inode do
   before :all do
-    @space = Innodb::Space.new("spec/data/ibdata1")
+    @space = Innodb::Space.new("spec/data/sakila/compact/ibdata1")
     @page  = @space.page(2)
   end
 
@@ -32,7 +32,7 @@ describe Innodb::Page::Inode do
     it "has the right keys and values" do
       @page.list_entry.size.should eql 2
       @page.list_entry[:prev].should eql nil
-      @page.list_entry[:next].should eql nil
+      @page.list_entry[:next].should eql Innodb::Page::Address.new(page: 243, offset: 38)
     end
 
     it "has helper functions" do

@@ -4,7 +4,7 @@ require "spec_helper"
 
 describe Innodb::LogBlock do
   before :all do
-    @log = Innodb::Log.new("spec/data/ib_logfile0")
+    @log = Innodb::Log.new("spec/data/sakila/compact/ib_logfile0")
     @block = @log.block(0)
   end
 

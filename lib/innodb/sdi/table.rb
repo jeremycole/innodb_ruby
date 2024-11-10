@@ -21,14 +21,6 @@ module Innodb
         indexes.first.space_id
       end
 
-      def each_column(&block)
-        return enum_for(:each_column) unless block_given?
-
-        dd_object["columns"].each(&block)
-
-        nil
-      end
-
       def find_index_by_name(name)
         indexes.find { |index| index.name == name }
       end

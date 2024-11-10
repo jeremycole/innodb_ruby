@@ -19,7 +19,12 @@ module Innodb
     # The space ID of the system space, always 0.
     SYSTEM_SPACE_ID = 0
 
+    # The space ID of the mysql.ibd space, always 4294967294 (2**32-2).
+    MYSQL_SPACE_ID = 4_294_967_294
+
     def initialize(arg, data_directory: nil)
+      @data_dictionary = Innodb::DataDictionary.new
+
       if arg.is_a?(Array) && arg.size > 1
         data_filenames = arg
       else
@@ -40,7 +45,24 @@ module Innodb
 
       add_space_file(data_filenames)
 
-      @data_dictionary = Innodb::DataDictionary.new(system_space)
+      add_mysql_space_file
+      add_all_ibd_files
+
+      @internal_data_dictionary = if system_space.page(0).prev > 80_000 # ugh
+                                    Innodb::SdiDataDictionary.new(self)
+                                  else
+                                    Innodb::SysDataDictionary.new(self)
+                                  end
+      @internal_data_dictionary.populate_data_dictionary
+      data_dictionary.refresh
+
+      data_dictionary.tables.each do |table|
+        add_table(table.name) unless spaces[table.tablespace.innodb_space_id]
+      end
+    end
+
+    def data_directory
+      config[:data_directory]
     end
 
     # A helper to get the system space.
@@ -48,18 +70,21 @@ module Innodb
       spaces[SYSTEM_SPACE_ID]
     end
 
+    def mysql_space
+      spaces[MYSQL_SPACE_ID]
+    end
+
     # Add an already-constructed Innodb::Space object.
     def add_space(space)
       raise "Object was not an Innodb::Space" unless space.is_a?(Innodb::Space)
 
-      spaces[space.space_id.to_i] = space
+      spaces[space.space_id] = space
     end
 
     # Add a space by filename.
     def add_space_file(space_filenames)
-      space = Innodb::Space.new(space_filenames)
-      space.innodb_system = self
-      add_space(space)
+      space = Innodb::Space.new(space_filenames, innodb_system: self)
+      add_space(space) unless spaces[space.space_id]
     end
 
     # Add an orphaned space.
@@ -70,7 +95,8 @@ module Innodb
     # Add a space by table name, constructing an appropriate filename
     # from the provided table name.
     def add_table(table_name)
-      space_file = "%s/%s.ibd" % [config[:data_directory], table_name]
+      space_file = File.join(config[:data_directory], format("%s.ibd", table_name))
+
       if File.exist?(space_file)
         add_space_file(space_file)
       else
@@ -83,33 +109,48 @@ module Innodb
     def space(space_id)
       return spaces[space_id] if spaces[space_id]
 
-      unless (table_record = data_dictionary.table_by_space_id(space_id))
+      unless (table = data_dictionary.tables.find(innodb_space_id: space_id))
         raise "Table with space ID #{space_id} not found"
       end
 
-      add_table(table_record["NAME"])
+      add_table(table.name)
 
       spaces[space_id]
     end
 
-    # Return an Innodb::Space object by table name.
     def space_by_table_name(table_name)
-      unless (table_record = data_dictionary.table_by_name(table_name))
-        raise "Table #{table_name} not found"
-      end
+      space_id = data_dictionary.tables.find(name: table_name)&.tablespace&.innodb_space_id
 
-      return if table_record["SPACE"].zero?
+      spaces[space_id] if space_id
+    end
 
-      space(table_record["SPACE"])
+    def add_mysql_space_file
+      mysql_ibd = File.join(data_directory, "mysql.ibd")
+      add_space_file(mysql_ibd) if File.exist?(mysql_ibd)
     end
 
     # Iterate through all table names.
-    def each_table_name
-      return enum_for(:each_table_name) unless block_given?
+    def each_ibd_file_name(&block)
+      return enum_for(:each_ibd_file_name) unless block_given?
 
-      data_dictionary.each_table do |record|
-        yield record["NAME"]
+      Dir.glob(File.join(data_directory, "**/*.ibd"))
+         .map { |f| f.sub(File.join(data_directory, "/"), "") }.each(&block)
+
+      nil
+    end
+
+    def add_all_ibd_files
+      each_ibd_file_name do |file_name|
+        add_space_file(File.join(data_directory, file_name))
       end
+
+      nil
+    end
+
+    def each_space(&block)
+      return enum_for(:each_space) unless block_given?
+
+      spaces.each_value(&block)
 
       nil
     end
@@ -123,82 +164,20 @@ module Innodb
       nil
     end
 
-    # Iterate through all column names by table name.
-    def each_column_name_by_table_name(table_name)
-      return enum_for(:each_column_name_by_table_name, table_name) unless block_given?
-
-      data_dictionary.each_column_by_table_name(table_name) do |record|
-        yield record["NAME"]
-      end
-
-      nil
-    end
-
-    # Iterate through all index names by table name.
-    def each_index_name_by_table_name(table_name)
-      return enum_for(:each_index_name_by_table_name, table_name) unless block_given?
-
-      data_dictionary.each_index_by_table_name(table_name) do |record|
-        yield record["NAME"]
-      end
-
-      nil
-    end
-
-    # Iterate through all field names in a given index by table name
-    # and index name.
-    def each_index_field_name_by_index_name(table_name, index_name)
-      return enum_for(:each_index_field_name_by_index_name, table_name, index_name) unless block_given?
-
-      data_dictionary.each_field_by_index_name(table_name, index_name) do |record|
-        yield record["COL_NAME"]
-      end
-
-      nil
-    end
-
-    # Return the table name given a table ID.
-    def table_name_by_id(table_id)
-      data_dictionary.table_by_id(table_id).fetch("NAME", nil)
-    end
-
-    # Return the index name given an index ID.
-    def index_name_by_id(index_id)
-      data_dictionary.index_by_id(index_id).fetch("NAME", nil)
-    end
-
-    # Return the clustered index name given a table name.
-    def clustered_index_by_table_name(table_name)
-      data_dictionary.clustered_index_name_by_table_name(table_name)
-    end
-
-    # Return an array of the table name and index name given an index ID.
-    def table_and_index_name_by_id(index_id)
-      if (dd_index = data_dictionary.data_dictionary_index_ids[index_id])
-        # This is a data dictionary index, which won't be found in the data
-        # dictionary itself.
-        [dd_index[:table], dd_index[:index]]
-      elsif (index_record = data_dictionary.index_by_id(index_id))
-        # This is a system or user index.
-        [table_name_by_id(index_record["TABLE_ID"]), index_record["NAME"]]
-      end
-    end
-
     # Return an Innodb::Index object given a table name and index name.
     def index_by_name(table_name, index_name)
-      index_record = data_dictionary.index_by_name(table_name, index_name)
+      table = data_dictionary.tables.find(name: table_name)
+      index = table.indexes.find(name: index_name)
 
-      index_space = space(index_record["SPACE"])
-      describer = data_dictionary.record_describer_by_index_name(table_name, index_name)
-      index_space.index(index_record["PAGE_NO"], describer)
+      space(index.tablespace.innodb_space_id).index(index.root_page_number, index.record_describer)
     end
 
     # Return the clustered index given a table ID.
     def clustered_index_by_table_id(table_id)
-      table_name = table_name_by_id(table_id)
-      return unless table_name
+      table = data_dictionary.tables.find(innodb_table_id: table_id)
+      return unless table
 
-      index_by_name(table_name, clustered_index_by_table_name(table_name))
+      index_by_name(table.name, table.clustered_index.name)
     end
 
     def history

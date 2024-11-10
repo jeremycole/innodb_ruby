@@ -4,7 +4,7 @@ require "spec_helper"
 
 describe Innodb::Log do
   before :all do
-    @log = Innodb::Log.new("spec/data/ib_logfile0")
+    @log = Innodb::Log.new("spec/data/sakila/compact/ib_logfile0")
   end
 
   describe "#new" do
@@ -70,27 +70,27 @@ describe Innodb::Log do
 
     it "has a correct checkpoint_1" do
       c = @log.checkpoint.checkpoint_1
-      c.number.should eql 10
-      c.lsn.should eql 1_603_732
-      c.lsn_offset.should eql 1_597_588
+      c.number.should eql 14
+      c.lsn.should eql 8_400_260
+      c.lsn_offset.should eql 8_396_164
       c.buffer_size.should eql 1_048_576
       c.archived_lsn.should eql 18_446_744_073_709_551_615
-      c.checksum_1.should eql 654_771_786
-      c.checksum_2.should eql 1_113_429_956
-      c.fsp_free_limit.should eql 5
+      c.checksum_1.should eql 2_424_759_900
+      c.checksum_2.should eql 3_026_016_186
+      c.fsp_free_limit.should eql 9
       c.fsp_magic.should eql 1_441_231_243 # LOG_CHECKPOINT_FSP_MAGIC_N_VAL
     end
 
     it "has a correct checkpoint_2" do
       c = @log.checkpoint.checkpoint_2
-      c.number.should eql 11
-      c.lsn.should eql 1_603_732
-      c.lsn_offset.should eql 1_597_588
+      c.number.should eql 15
+      c.lsn.should eql 8_400_260
+      c.lsn_offset.should eql 8_396_164
       c.buffer_size.should eql 1_048_576
       c.archived_lsn.should eql 18_446_744_073_709_551_615
-      c.checksum_1.should eql 843_938_123
-      c.checksum_2.should eql 674_570_893
-      c.fsp_free_limit.should eql 5
+      c.checksum_1.should eql 125_194_589
+      c.checksum_2.should eql 1_139_538_825
+      c.fsp_free_limit.should eql 9
       c.fsp_magic.should eql 1_441_231_243 # LOG_CHECKPOINT_FSP_MAGIC_N_VAL
     end
   end

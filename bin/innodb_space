@@ -174,124 +174,70 @@ end
 
 # Print a summary of all spaces in the InnoDB system.
 def system_spaces(innodb_system)
-  puts "%-32s%-12s%-12s" % %w[
+  puts "%-64s%-12s" % %w[
     name
     pages
-    indexes
   ]
 
-  print_space_information = lambda do |name, space|
-    puts "%-32s%-12i%-12i" % [
-      name,
+  innodb_system&.each_space do |space|
+    puts "%-64s%-12i" % [
+      space.name.gsub("#{innodb_system.data_directory}/", ""),
       space.pages,
-      space.each_index.to_a.size,
     ]
-  end
-
-  print_space_information.call("(system)", innodb_system.system_space)
-
-  innodb_system.each_table_name do |table_name|
-    space = innodb_system.space_by_table_name(table_name)
-    next unless space
-
-    print_space_information.call(table_name, space)
   end
 
   innodb_system.each_orphan do |table_name|
-    puts "%-43s (orphan/tmp)" % table_name
+    puts "%-64s%-12s" % [table_name, "(orphan/tmp)"]
   end
 end
 
-# Print the contents of the SYS_TABLES data dictionary table.
+# Print the contents of the table list from the data dictionary.
 def data_dictionary_tables(innodb_system)
-  puts "%-32s%-12s%-12s%-12s%-12s%-12s%-15s%-12s" % %w[
+  puts "%-64s%-12s%-12s" % %w[
     name
-    id
-    n_cols
-    type
-    mix_id
-    mix_len
-    cluster_name
-    space
+    columns
+    indexes
   ]
 
-  innodb_system.data_dictionary.each_table do |record|
-    puts "%-32s%-12i%-12i%-12i%-12i%-12i%-15s%-12i" % [
-      record["NAME"],
-      record["ID"],
-      record["N_COLS"],
-      record["TYPE"],
-      record["MIX_ID"],
-      record["MIX_LEN"],
-      record["CLUSTER_NAME"],
-      record["SPACE"],
+  innodb_system.data_dictionary.tables.each do |table|
+    puts "%-64s%-12i%-12i" % [
+      table.name,
+      table.columns.count,
+      table.indexes.count,
     ]
   end
 end
 
-# Print the contents of the SYS_COLUMNS data dictionary table.
+# Print the contents of the column list from the data dictionary.
 def data_dictionary_columns(innodb_system)
-  puts "%-12s%-6s%-32s%-12s%-12s%-6s%-6s" % %w[
-    table_id
-    pos
+  puts "%-64s%-32s%-32s" % %w[
+    table
     name
-    mtype
-    prtype
-    len
-    prec
+    description
   ]
 
-  innodb_system.data_dictionary.each_column do |record|
-    puts "%-12i%-6i%-32s%-12i%-12i%-6i%-6i" % [
-      record["TABLE_ID"],
-      record["POS"],
-      record["NAME"],
-      record["MTYPE"],
-      record["PRTYPE"],
-      record["LEN"],
-      record["PREC"],
+  innodb_system.data_dictionary.columns.each do |column|
+    puts "%-64s%-32s%-32s" % [
+      column.table.name,
+      column.name,
+      column.description,
     ]
   end
 end
 
-# Print the contents of the SYS_INDEXES data dictionary table.
+# Print the contents of the index list from the data dictionary.
 def data_dictionary_indexes(innodb_system)
-  puts "%-12s%-12s%-32s%-10s%-6s%-12s%-12s" % %w[
-    table_id
-    id
+  puts "%-64s%-32s%-32s" % %w[
+    table
     name
-    n_fields
-    type
-    space
-    page_no
+    columns
   ]
 
-  innodb_system.data_dictionary.each_index do |record|
-    puts "%-12i%-12i%-32s%-10i%-6i%-12i%-12i" % [
-      record["TABLE_ID"],
-      record["ID"],
-      record["NAME"],
-      record["N_FIELDS"],
-      record["TYPE"],
-      record["SPACE"],
-      record["PAGE_NO"],
-    ]
-  end
-end
-
-# Print the contents of the SYS_FIELDS data dictionary table.
-def data_dictionary_fields(innodb_system)
-  puts "%-12s%-12s%-32s" % %w[
-    index_id
-    pos
-    col_name
-  ]
-
-  innodb_system.data_dictionary.each_field do |record|
-    puts "%-12i%-12i%-32s" % [
-      record["INDEX_ID"],
-      record["POS"],
-      record["COL_NAME"],
+  innodb_system.data_dictionary.indexes.each do |index|
+    puts "%-64s%-32s%-32s" % [
+      index.table.name,
+      index.name,
+      index.column_references.each.map(&:name),
     ]
   end
 end
@@ -411,7 +357,7 @@ def space_indexes(innodb_system, space)
     index.each_fseg do |fseg_name, fseg|
       puts "%-12i%-32s%-12i%-12s%-12i%-12i%-12i%-12s" % [
         index.id,
-        innodb_system ? innodb_system.index_name_by_id(index.id) : "",
+        innodb_system.data_dictionary.indexes.find(innodb_index_id: index.id)&.name,
         index.root.offset,
         fseg_name,
         fseg.fseg_id,
@@ -440,11 +386,13 @@ def space_index_pages_free_plot(space, start_page)
     end
   end
 
-  image_name = space.name.sub(".ibd", "").gsub(/[^a-zA-Z0-9_]/, "_").sub(/\A_+/, "")
+  image_name = space.name
+  image_name = image_name.sub(%r{^#{space.innodb_system.data_directory}/}, "") if space.innodb_system
+  image_name = image_name.sub(".ibd", "").gsub(/[^a-zA-Z0-9_]/, "_").sub(/\A_+/, "")
   image_file = "#{image_name}_free.png"
 
   # Aim for one horizontal pixel per extent, but min 1k and max 10k width.
-  (space.pages / space.pages_per_extent).clamp(1_000, 10_000)
+  image_width = (space.pages / space.pages_per_extent).clamp(1_000, 10_000)
 
   Gnuplot.open do |gp|
     Gnuplot::Plot.new(gp) do |plot|
@@ -493,8 +441,8 @@ def space_extents_illustrate_page_status(space, entry, count_by_identifier, iden
         unless identifiers[identifier]
           identifiers[identifier] = page.ibuf_index? ? "Insert Buffer Index" : "Index #{page.index_id}"
           if space.innodb_system
-            table, index = space.innodb_system.table_and_index_name_by_id(page.index_id)
-            identifiers[identifier] += " (%s.%s)" % [table, index] if table && index
+            dd_index = space.innodb_system.data_dictionary.indexes.find(innodb_index_id: page.index_id)
+            identifiers[identifier] += " (%s.%s)" % [dd_index.table.name, dd_index.name] if dd_index
           end
         end
       end
@@ -686,6 +634,8 @@ def space_sdi_construct_json(space)
 end
 
 def space_sdi_json_dump(space)
+  raise "Space does not have SDI data; is it older than MySQL 8.0?" unless space.sdi.valid?
+
   puts JSON.pretty_generate(space_sdi_construct_json(space))
 end
 
@@ -751,8 +701,8 @@ def page_account(innodb_system, space, page_number)
       puts "  Fseg is in #{fseg_name} fseg of index #{index.id}."
       puts "  Index root is page #{index.root.offset}."
       if innodb_system
-        table_name, index_name = innodb_system.table_and_index_name_by_id(index.id)
-        puts "  Index is #{table_name}.#{index_name}." if table_name && index_name
+        dd_index = innodb_system.data_dictionary.indexes.find(innodb_index_id: index.id)
+        puts "  Index is #{dd_index.table.name}.#{dd_index.name}." if dd_index
       end
     end
   end
@@ -1233,7 +1183,7 @@ def undo_history_summary(innodb_system)
 
   history_list.each do |history|
     history.each_undo_record do |undo|
-      table_name = innodb_system.table_name_by_id(undo.table_id)
+      table_name = innodb_system.data_dictionary.tables(innodb_table_id: undo.table_id)
       puts "%-8s%-8s%-14s%-20s%s" % [
         undo.page,
         undo.offset,
@@ -1340,16 +1290,13 @@ The following modes are supported:
     Print a summary of all spaces in the system.
 
   data-dictionary-tables
-    Print all records in the SYS_TABLES data dictionary table.
+    Print the contents of the table list from the data dictionary.
 
   data-dictionary-columns
-    Print all records in the SYS_COLUMNS data dictionary table.
+    Print the contents of the column list from the data dictionary.
 
   data-dictionary-indexes
-    Print all records in the SYS_INDEXES data dictionary table.
-
-  data-dictionary-fields
-    Print all records in the SYS_FIELDS data dictionary table.
+    Print the contents of the index list from the data dictionary.
 
   space-summary
     Summarize all pages within a tablespace. A starting page number can be
@@ -1437,20 +1384,20 @@ The following modes are supported:
 
   index-fseg-internal-lists
   index-fseg-leaf-lists
-    Print a summary of all lists in an index file segment. Index root page must
-    be provided with --page/-p.
+    Print a summary of all lists in an index file segment. Index must be specified
+    by name with --index-name/-I or by root page number with --page/-p.
 
   index-fseg-internal-list-iterate
   index-fseg-leaf-list-iterate
     Iterate the file segment list (whose name is provided in the first --list/-L
-    argument) for internal or leaf pages for a given index (whose root page
-    is provided in the first --page/-p argument). The lists used for each
+    argument) for internal or leaf pages for a given index (specified by name with
+    --index-name/-I or by root page number with --page/-p). The lists used for each
     index are 'full', 'not_full', and 'free'.
 
   index-fseg-internal-frag-pages
   index-fseg-leaf-frag-pages
-    Print a summary of all fragment pages in an index file segment. Index root
-    page must be provided with --page/-p.
+    Print a summary of all fragment pages in an index file segment. Index must be
+    specified by name with --index-name/-I or by root page number with --page/-p.
 
   page-dump
     Dump the contents of a page, using the Ruby pp ('pretty-print') module.
@@ -1631,14 +1578,8 @@ if @options.system_space_file
 end
 
 if innodb_system && @options.table_name
-  table_tablespace = innodb_system.space_by_table_name(@options.table_name)
-  if table_tablespace
-    space = table_tablespace
-  elsif @options.system_space_tables
-    space = innodb_system.system_space
-  else
-    raise "Tablespace file not found and --system-space-tables (-x) is not enabled"
-  end
+  space = innodb_system.space_by_table_name(@options.table_name)
+  raise "Couldn't load space for table #{@options.table_name}" unless space
 elsif @options.space_file
   space = Innodb::Space.new(@options.space_file)
 else
@@ -1749,8 +1690,6 @@ when "data-dictionary-columns"
   data_dictionary_columns(innodb_system)
 when "data-dictionary-indexes"
   data_dictionary_indexes(innodb_system)
-when "data-dictionary-fields"
-  data_dictionary_fields(innodb_system)
 when "space-summary"
   space_summary(space, @options.page || 0)
 when "space-index-pages-summary"
