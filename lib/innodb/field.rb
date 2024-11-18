@@ -27,8 +27,7 @@ module Innodb
       @position = position
       @name = name
       @nullable = !properties.delete(:NOT_NULL)
-      base_type, modifiers = parse_type_definition(type_definition.to_s)
-      @data_type = Innodb::DataType.new(base_type, modifiers, properties)
+      @data_type = Innodb::DataType.parse(type_definition, properties)
     end
 
     # Return whether this field can be NULL.
@@ -47,24 +46,26 @@ module Innodb
     end
 
     def variable?
-      [
-        Innodb::DataType::BlobType,
-        Innodb::DataType::VariableBinaryType,
-        Innodb::DataType::VariableCharacterType,
-      ].any? { |c| @data_type.is_a?(c) }
+      @data_type.variable?
+    end
+
+    def fixed?
+      !variable?
     end
 
     def blob?
-      @data_type.is_a?(Innodb::DataType::BlobType)
+      @data_type.blob?
     end
 
     # Return the actual length of this variable-length field.
     def length(record)
       if record.header.lengths.include?(@name)
         len = record.header.lengths[@name]
-        raise "Fixed-length mismatch" unless variable? || len == @data_type.width
+        if fixed? && len != @data_type.length
+          raise "Fixed-length mismatch; #{len} vs #{@data_type.length} for #{@data_type.name}"
+        end
       else
-        len = @data_type.width
+        len = @data_type.length
       end
       extern?(record) ? len - EXTERN_FIELD_SIZE : len
     end
@@ -75,13 +76,7 @@ module Innodb
     end
 
     def value_by_length(cursor, field_length)
-      if @data_type.respond_to?(:read)
-        cursor.name(@data_type.name) { @data_type.read(cursor) }
-      elsif @data_type.respond_to?(:value)
-        @data_type.value(read(cursor, field_length))
-      else
-        read(cursor, field_length)
-      end
+      @data_type.value(read(cursor, field_length))
     end
 
     # Read the data value (e.g. encoded in the data).
@@ -111,17 +106,6 @@ module Innodb
           length: c.name("length") { c.read_uint64 & 0x3fffffff }
         )
       end
-    end
-
-    # Parse a data type definition and extract the base type and any modifiers.
-    def parse_type_definition(type_string)
-      matches = /^([a-zA-Z0-9_]+)(\((.+)\))?(\s+unsigned)?$/.match(type_string)
-      raise "Unparseable type #{type_string}" unless matches
-
-      base_type = matches[1].upcase.to_sym
-      return [base_type, []] unless matches[3]
-
-      [base_type, matches[3].sub(/ /, "").split(",").map(&:to_i)]
     end
   end
 end

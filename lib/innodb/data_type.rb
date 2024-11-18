@@ -1,469 +1,121 @@
 # frozen_string_literal: true
 
-require "stringio"
-require "bigdecimal"
-require "date"
+require "csv"
 
 module Innodb
   class DataType
-    # MySQL's Bit-Value Type (BIT).
-    class BitType
-      attr_reader :name
-      attr_reader :width
+    class InvalidSpecificationError < StandardError; end
 
-      def initialize(base_type, modifiers, properties)
-        nbits = modifiers.fetch(0, 1)
-        raise "Unsupported width for BIT type." unless nbits >= 0 && nbits <= 64
+    # A hash of page types to specialized classes to handle them. Normally
+    # subclasses will register themselves in this list.
+    @specialized_classes = {}
 
-        @width = (nbits + 7) / 8
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
+    class << self
+      attr_reader :specialized_classes
+    end
 
-      def value(data)
-        "0b%b" % BinData.const_get("Uint%dbe" % (@width * 8)).read(data)
+    def self.register_specialization(data_type, specialized_class)
+      @specialized_classes[data_type] = specialized_class
+    end
+
+    def self.specialization_for(data_type)
+      # This needs to intentionally use Innodb::Page because we need to register
+      # in the class instance variable in *that* class.
+      Innodb::DataType.register_specialization(data_type, self)
+    end
+
+    def self.specialization_for?(data_type)
+      Innodb::DataType.specialized_classes.include?(data_type)
+    end
+
+    def self.ceil_to(value, multiple)
+      ((value + (multiple - 1)) / multiple) * multiple
+    end
+
+    module HasNumericModifiers
+      def coerce_modifiers(modifiers)
+        modifiers = modifiers&.split(",") if modifiers.is_a?(String)
+        modifiers&.map(&:to_i)
       end
     end
 
-    class IntegerType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = base_type_width_map[base_type]
-        @unsigned = properties.include?(:UNSIGNED)
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
+    module HasStringListModifiers
+      def coerce_modifiers(modifiers)
+        CSV.parse_line(modifiers, quote_char: "'")&.map(&:to_s)
       end
 
-      def base_type_width_map
-        {
-          BOOL: 1,
-          BOOLEAN: 1,
-          TINYINT: 1,
-          SMALLINT: 2,
-          MEDIUMINT: 3,
-          INT: 4,
-          INT6: 6,
-          BIGINT: 8,
-        }
-      end
-
-      def value(data)
-        nbits = @width * 8
-        @unsigned ? get_uint(data, nbits) : get_int(data, nbits)
-      end
-
-      def get_uint(data, nbits)
-        BinData.const_get("Uint%dbe" % nbits).read(data)
-      end
-
-      def get_int(data, nbits)
-        BinData.const_get("Int%dbe" % nbits).read(data) ^ (-1 << (nbits - 1))
+      def formatted_modifiers
+        CSV.generate_line(modifiers, quote_char: "'", force_quotes: true, row_sep: "")
       end
     end
 
-    class FloatType
-      attr_reader :name
-      attr_reader :width
+    attr_reader :type_name
+    attr_reader :modifiers
+    attr_reader :properties
 
-      def initialize(base_type, modifiers, properties)
-        @width = 4
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      # Read a little-endian single-precision floating-point number.
-      def value(data)
-        BinData::FloatLe.read(data)
-      end
+    def initialize(type_name, modifiers = nil, properties = nil)
+      @type_name = type_name
+      @modifiers = Array(coerce_modifiers(modifiers))
+      @properties = Array(properties)
     end
 
-    class DoubleType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = 8
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      # Read a little-endian double-precision floating-point number.
-      def value(data)
-        BinData::DoubleLe.read(data)
-      end
+    def variable?
+      false
     end
 
-    # MySQL's Fixed-Point Type (DECIMAL), stored in InnoDB as a binary string.
-    class DecimalType
-      attr_reader :name
-      attr_reader :width
-
-      # The value is stored as a sequence of signed big-endian integers, each
-      # representing up to 9 digits of the integral and fractional parts. The
-      # first integer of the integral part and/or the last integer of the
-      # fractional part might be compressed (or packed) and are of variable
-      # length. The remaining integers (if any) are uncompressed and 32 bits
-      # wide.
-      MAX_DIGITS_PER_INTEGER = 9
-      BYTES_PER_DIGIT = [0, 1, 1, 2, 2, 3, 3, 4, 4, 4].freeze
-
-      def initialize(base_type, modifiers, properties)
-        precision, scale = sanity_check(modifiers)
-        integral = precision - scale
-        @uncomp_integral = integral / MAX_DIGITS_PER_INTEGER
-        @uncomp_fractional = scale / MAX_DIGITS_PER_INTEGER
-        @comp_integral = integral - (@uncomp_integral * MAX_DIGITS_PER_INTEGER)
-        @comp_fractional = scale - (@uncomp_fractional * MAX_DIGITS_PER_INTEGER)
-        @width = (@uncomp_integral * 4) + BYTES_PER_DIGIT[@comp_integral] +
-                 (@comp_fractional * 4) + BYTES_PER_DIGIT[@comp_fractional]
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def value(data)
-        # Strings representing the integral and fractional parts.
-        intg = "".dup
-        frac = "".dup
-
-        stream = StringIO.new(data)
-        mask = sign_mask(stream)
-
-        intg << get_digits(stream, mask, @comp_integral)
-
-        (1..@uncomp_integral).each do
-          intg << get_digits(stream, mask, MAX_DIGITS_PER_INTEGER)
-        end
-
-        (1..@uncomp_fractional).each do
-          frac << get_digits(stream, mask, MAX_DIGITS_PER_INTEGER)
-        end
-
-        frac << get_digits(stream, mask, @comp_fractional)
-        frac = "0" if frac.empty?
-
-        # Convert to something resembling a string representation.
-        str = "#{mask.to_s.chop}#{intg}.#{frac}"
-
-        BigDecimal(str).to_s("F")
-      end
-
-      private
-
-      # Ensure width specification (if any) is compliant.
-      def sanity_check(modifiers)
-        raise "Invalid width specification" unless modifiers.size <= 2
-
-        precision = modifiers.fetch(0, 10)
-        raise "Unsupported precision for DECIMAL type" unless precision >= 1 && precision <= 65
-
-        scale = modifiers.fetch(1, 0)
-        raise "Unsupported scale for DECIMAL type" unless scale >= 0 && scale <= 30 && scale <= precision
-
-        [precision, scale]
-      end
-
-      # The sign is encoded in the high bit of the first byte/digit. The byte
-      # might be part of a larger integer, so apply the bit-flipper and push
-      # back the byte into the stream.
-      def sign_mask(stream)
-        byte = BinData::Uint8.read(stream)
-        sign = byte & 0x80
-        byte.assign(byte ^ 0x80)
-        stream.rewind
-        byte.write(stream)
-        stream.rewind
-        sign.zero? ? -1 : 0
-      end
-
-      # Return a string representing an integer with a specific number of digits.
-      def get_digits(stream, mask, digits)
-        nbits = BYTES_PER_DIGIT[digits] * 8
-        return "" unless nbits.positive?
-
-        value = (BinData.const_get("Int%dbe" % nbits).read(stream) ^ mask)
-        # Preserve leading zeros.
-        "%0#{digits}d" % value
-      end
+    def blob?
+      false
     end
 
-    # Fixed-length character type.
-    class CharacterType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = modifiers.fetch(0, 1)
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def value(data)
-        # The SQL standard defines that CHAR fields should have end-spaces
-        # stripped off.
-        data.sub(/ +$/, "")
-      end
+    def value(data)
+      data
     end
 
-    class VariableCharacterType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = modifiers[0]
-        raise "Invalid width specification" unless modifiers.size == 1
-
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def value(data)
-        # The SQL standard defines that VARCHAR fields should have end-spaces
-        # stripped off.
-        data.sub(/ +$/, "")
-      end
+    def coerce_modifiers(modifiers)
+      modifiers
     end
 
-    # Fixed-length binary type.
-    class BinaryType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = modifiers.fetch(0, 1)
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
+    def formatted_modifiers
+      modifiers.join(",")
     end
 
-    class VariableBinaryType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = modifiers[0]
-        raise "Invalid width specification" unless modifiers.size == 1
-
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
+    def format_type_name
+      [
+        [
+          type_name.to_s,
+          modifiers&.any? ? "(#{formatted_modifiers})" : nil,
+        ].compact.join,
+        *properties&.map { |p| p.to_s.sub("_", " ") },
+      ].compact.join(" ")
     end
 
-    class BlobType
-      attr_reader :name
-
-      def initialize(base_type, modifiers, properties)
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
+    def name
+      @name ||= format_type_name
     end
 
-    class YearType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = 1
-        @display_width = modifiers.fetch(0, 4)
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def value(data)
-        year = BinData::Uint8.read(data)
-        return (year % 100).to_s if @display_width != 4
-        return (year + 1900).to_s if year != 0
-
-        "0000"
-      end
+    def length
+      raise NotImplementedError
     end
 
-    class TimeType
-      attr_reader :name
-      attr_reader :width
+    # Parse a data type definition and extract the base type and any modifiers.
+    def self.parse_type_name_and_modifiers(type_string)
+      matches = /^(?<type_name>[a-zA-Z0-9_]+)(?:\((?<modifiers>.+)\))?(?<properties>\s+unsigned)?$/.match(type_string)
+      raise "Unparseable type #{type_string}" unless matches
 
-      def initialize(base_type, modifiers, properties)
-        @width = 3
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
+      type_name = matches[:type_name].upcase.to_sym
+      return [type_name, []] unless matches[:modifiers]
 
-      def value(data)
-        time = BinData::Int24be.read(data) ^ (-1 << 23)
-        sign = "-" if time.negative?
-        time = time.abs
-        "%s%02d:%02d:%02d" % [sign, time / 10_000, (time / 100) % 100, time % 100]
-      end
+      # Use the CSV parser since it can understand quotes properly.
+      [type_name, matches[:modifiers]]
     end
 
-    class DateType
-      attr_reader :name
-      attr_reader :width
+    def self.parse(type_string, properties = nil)
+      type_name, modifiers = parse_type_name_and_modifiers(type_string.to_s)
 
-      def initialize(base_type, modifiers, properties)
-        @width = 3
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
+      type_class = Innodb::DataType.specialized_classes[type_name]
+      raise "Unrecognized type #{type_name}" unless type_class
 
-      def value(data)
-        date = BinData::Int24be.read(data) ^ (-1 << 23)
-        day = date & 0x1f
-        month = (date >> 5) & 0xf
-        year = date >> 9
-        "%04d-%02d-%02d" % [year, month, day]
-      end
-    end
-
-    class DatetimeType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = 8
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def value(data)
-        datetime = BinData::Int64be.read(data) ^ (-1 << 63)
-        date = datetime / 1_000_000
-        year = date / 10_000
-        month = (date / 100) % 100
-        day = date % 100
-        time = datetime - (date * 1_000_000)
-        hour = time / 10_000
-        min = (time / 100) % 100
-        sec = time % 100
-        "%04d-%02d-%02d %02d:%02d:%02d" % [year, month, day, hour, min, sec]
-      end
-    end
-
-    class TimestampType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = 4
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      # Returns the UTC timestamp as a value in 'YYYY-MM-DD HH:MM:SS' format.
-      def value(data)
-        timestamp = BinData::Uint32be.read(data)
-        return "0000-00-00 00:00:00" if timestamp.zero?
-
-        DateTime.strptime(timestamp.to_s, "%s").strftime "%Y-%m-%d %H:%M:%S"
-      end
-    end
-
-    class EnumType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = 1
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def value(data)
-        nbits = @width * 8
-        BinData.const_get("Int%dbe" % nbits).read(data) ^ (-1 << (nbits - 1))
-      end
-    end
-
-    #
-    # Data types for InnoDB system columns.
-    #
-
-    # Transaction ID.
-    class TransactionIdType
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = 6
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def read(cursor)
-        cursor.name("transaction_id") { cursor.read_uint48 }
-      end
-    end
-
-    # Rollback data pointer.
-    class RollPointerType
-      extend ReadBitsAtOffset
-
-      Pointer = Struct.new(
-        :is_insert,
-        :rseg_id,
-        :undo_log,
-        keyword_init: true
-      )
-
-      attr_reader :name
-      attr_reader :width
-
-      def initialize(base_type, modifiers, properties)
-        @width = 7
-        @name = Innodb::DataType.make_name(base_type, modifiers, properties)
-      end
-
-      def self.parse_roll_pointer(roll_ptr)
-        Pointer.new(
-          is_insert: read_bits_at_offset(roll_ptr, 1, 55) == 1,
-          rseg_id: read_bits_at_offset(roll_ptr, 7, 48),
-          undo_log: Innodb::Page::Address.new(
-            page: read_bits_at_offset(roll_ptr, 32, 16),
-            offset: read_bits_at_offset(roll_ptr, 16, 0)
-          )
-        )
-      end
-
-      def value(data)
-        roll_ptr = BinData::Uint56be.read(data)
-        self.class.parse_roll_pointer(roll_ptr)
-      end
-    end
-
-    # Maps base type to data type class.
-    TYPES = {
-      BIT: BitType,
-      BOOL: IntegerType,
-      BOOLEAN: IntegerType,
-      TINYINT: IntegerType,
-      SMALLINT: IntegerType,
-      MEDIUMINT: IntegerType,
-      INT: IntegerType,
-      INT6: IntegerType,
-      BIGINT: IntegerType,
-      FLOAT: FloatType,
-      DOUBLE: DoubleType,
-      DECIMAL: DecimalType,
-      NUMERIC: DecimalType,
-      CHAR: CharacterType,
-      VARCHAR: VariableCharacterType,
-      BINARY: BinaryType,
-      VARBINARY: VariableBinaryType,
-      TINYBLOB: BlobType,
-      BLOB: BlobType,
-      MEDIUMBLOB: BlobType,
-      LONGBLOB: BlobType,
-      TINYTEXT: BlobType,
-      TEXT: BlobType,
-      MEDIUMTEXT: BlobType,
-      LONGTEXT: BlobType,
-      YEAR: YearType,
-      TIME: TimeType,
-      DATE: DateType,
-      DATETIME: DatetimeType,
-      TIMESTAMP: TimestampType,
-      TRX_ID: TransactionIdType,
-      ROLL_PTR: RollPointerType,
-      ENUM: EnumType,
-      JSON: BlobType,
-    }.freeze
-
-    def self.make_name(base_type, modifiers, properties)
-      name = base_type.to_s.dup
-      name << "(#{modifiers.join(',')})" unless modifiers.empty?
-      name << " "
-      name << properties.join(" ")
-      name.strip
-    end
-
-    def self.new(base_type, modifiers, properties)
-      raise "Data type '#{base_type}' is not supported" unless TYPES.key?(base_type)
-
-      TYPES[base_type].new(base_type, modifiers, properties)
+      type_class.new(type_name, modifiers, properties)
     end
   end
 end
