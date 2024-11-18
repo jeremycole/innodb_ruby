@@ -453,7 +453,7 @@ module Innodb
 
           # Two bytes are used only if the length exceeds 127 bytes and the
           # maximum length exceeds 255 bytes (or the field is a BLOB type).
-          if len > 127 && (f.blob? || f.data_type.width > 255)
+          if len > 127 && (f.blob? || f.data_type.length > 255)
             ext = (0x40 & len) != 0
             len = ((len & 0x3f) << 8) + cursor.read_uint8
           end
