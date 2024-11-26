@@ -1,0 +1,96 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# To update lib/innodb/mysql_collations.rb, run this with a path to the MySQL source directory
+# containing CHARSET_INFO collation definitions, e.g.:
+
+# bundle exec bin/innodb_ruby_generate_mysql_collations ~/git/mysql-server > lib/innodb/mysql_collations.rb
+
+MysqlCharsetInfo = Struct.new(
+  :number,
+  :primary_number,
+  :binary_number,
+  :state,
+  :csname,
+  :m_coll_name,
+  :comment,
+  :tailoring,
+  :coll_param,
+  :ctype,
+  :to_lower,
+  :to_upper,
+  :sort_order,
+  :uca,
+  :tab_to_uni,
+  :tab_from_uni,
+  :caseinfo,
+  :state_maps,
+  :ident_map,
+  :strxfrm_multiply,
+  :caseup_multiply,
+  :casedn_multiply,
+  :mbminlen,
+  :mbmaxlen,
+  :mbmaxlenlen,
+  :min_sort_char,
+  :max_sort_char,
+  :pad_char,
+  :escape_with_backslash_is_dangerous,
+  :levels_for_compare,
+  :cset,
+  :coll,
+  :pad_attribute
+)
+
+charset_infos = []
+
+raise "First argument must be the path to a modern MySQL source tree" unless (ARGV.size == 1) && Dir.exist?(ARGV[0])
+
+Dir.glob(File.join(ARGV[0], "strings/ctype-**.cc")).each do |filename|
+  content = File.read(filename)
+  warn "Parsing #{filename}..."
+
+  # Global individual constants e.g. CHARSET_INFO my_charset_utf8mb4_general_ci = { ... }
+  charset_info_strings = content.scan(/^CHARSET_INFO \w+ = ({.*?})/m).flatten
+
+  # Global array of constants e.g. CHARSET_INFO compiled_charsets[] = { { ... }, { ... } };
+  content.match(/CHARSET_INFO \w+\[\] = {\s*(?:{.*?}\s*,\s*)+/m)
+         &.match(0)
+         &.gsub(/CHARSET_INFO \w+\[\] = {/, "")
+         &.scan(/{.*?}/m)
+         &.each do |s|
+    charset_info_strings.push(s)
+  end
+
+  charset_info_strings = charset_info_strings.map do |x|
+    x.gsub(%r{/\*.*?\*/}, "").gsub(%r{//.*?$}, "").gsub(/\s+/, " ").gsub(/["']/, "")
+  end
+
+  charset_infos += charset_info_strings.map do |charset_info_string|
+    matches = charset_info_string.match(/{(?<definition>.*?)}/)
+
+    MysqlCharsetInfo.new(*matches[:definition].split(",").map(&:strip).map { |x| x =~ /^[0-9]+$/ ? x.to_i : x })
+  end
+end
+
+if charset_infos.empty?
+  warn "No MySQL collations found... bad path provided?"
+  exit 1
+end
+
+warn "Found #{charset_infos.size} collations, generating output."
+
+puts "# frozen_string_literal: true"
+puts
+puts "# Generated at #{Time.now.utc} using innodb_ruby_generate_mysql_collations. Do not edit!"
+puts
+
+puts "# rubocop:disable all"
+charset_infos.sort_by(&:number).each do |charset_info|
+  puts format("Innodb::MysqlCollation.add(id: %d, name: %s, character_set_name: %s, mbminlen: %i, mbmaxlen: %i)",
+              charset_info.number,
+              charset_info.m_coll_name.inspect,
+              charset_info.csname.inspect,
+              charset_info.mbminlen,
+              charset_info.mbmaxlen)
+end
