@@ -14,7 +14,7 @@ GEM
   specs:
     ast (2.4.2)
     bigdecimal (3.1.8)
-    bindata (2.5.0)
+    bindata (2.5.1)
     csv (3.3.0)
     diff-lcs (1.5.1)
     digest-crc (0.6.5)
