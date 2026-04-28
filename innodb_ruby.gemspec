@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = ">= 2.6"
 
-  s.add_dependency("bigdecimal", "~> 3.1.8")
+  s.add_dependency("bigdecimal", ">= 3.1.8", "< 4.2.0")
   s.add_dependency("bindata", ">= 1.4.5", "< 3.0")
   s.add_dependency("csv", "~> 3.3")
   s.add_dependency("digest-crc", "~> 0.4", ">= 0.4.1")
