@@ -15,7 +15,7 @@ GEM
     ast (2.4.2)
     bigdecimal (3.1.8)
     bindata (2.5.0)
-    csv (3.3.0)
+    csv (3.3.5)
     diff-lcs (1.5.1)
     digest-crc (0.6.5)
       rake (>= 12.0.0, < 14.0.0)
